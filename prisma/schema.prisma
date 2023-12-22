@@ -30,6 +30,10 @@ model League {
     name   String
     team   Team[]
     teamId String
+    user   User   @relation(fields: [userId], references: [id])
+    userId String
+
+    @@index([userId])
 }
 
 model Team {
@@ -109,6 +113,7 @@ model User {
     accounts      Account[]
     sessions      Session[]
     posts         Post[]
+    League        League[]
 }
 
 model VerificationToken {
