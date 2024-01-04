@@ -31,7 +31,7 @@ function generateTeam () {
 
     return;
 }
-/*
+
 function displayTeam () {
     const _name = generateName();
     console.log(_name);
@@ -39,7 +39,7 @@ function displayTeam () {
         localStorage.setItem("_playerName", _name);
     }
     //localStorage.setItem("_playerName", _name);
-}*/
+}
 
 function generatePlayer() {
     const retPlayer: Player = {
@@ -65,17 +65,15 @@ function generatePlayer() {
     }
 }
 
-/*
+
 function generateName(): string {
     let surName: string = "";
     
-    
-    
-    const randName = lastNames[Math.floor(Math.random() * 2000)];
+    const randName: String | undefined = lastNames[Math.floor(Math.random() * 2000)];
     if (typeof randName === `string`)
     {
         surName = randName;
     }
 
     return surName;
-}*/
+}
