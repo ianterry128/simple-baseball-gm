@@ -1,4 +1,5 @@
 import { Player } from "@prisma/client";
+import { Console } from "console";
 import { signIn, signOut, useSession } from "next-auth/react";
 import Head from "next/head";
 import Link from "next/link";
@@ -53,6 +54,11 @@ interface Hex {
   //hasBall: boolean,
 }
 
+type PitchResults = {
+  outCounter: number,
+  pitchLogContents: string[]
+}
+
 let hexField = new Map<Position, Hex>();
 
 export default function Home() {
@@ -64,8 +70,7 @@ export default function Home() {
     name: '',
     teams: []
   });
-  const [selectedTeam, setSelectedTeam] = useState(0)
-
+  const [selectedTeam, setSelectedTeam] = useState(0);
   function setSelectedTeamById(_id: string) {
     let i: number = 0;
     while (i < leagueInfo.teams.length && leagueInfo.teams[i]?.id !== _id) {
@@ -73,6 +78,17 @@ export default function Home() {
     }
     setSelectedTeam(i);
   }
+
+  const [logContents, setLogContents] = useState<string[]>([]);
+  function appendLogContents(_text: string) {
+    setLogContents([
+      ...logContents,
+      _text
+    ]);
+  }
+  const [isLogActive, setIsLogActive] = useState<boolean>(false);
+
+  
 
 // FUNCTIONS HERE USE REACT HOOKS
   function createLeague () {
@@ -206,6 +222,76 @@ export default function Home() {
     )
   }
 
+  function MatchSim(leagueInfoProp:LeagueStateStruct, team_home:TeamStateStruct, team_away:TeamStateStruct) {
+    let currentInning: number = 1;
+    const numInnings: number = 3;
+    let outCount = 0;
+    let strikeCount = 0;
+    let ballCount = 0;
+    let homeScore = 0;
+    let awayScore = 0;
+    let home_bat_cur = 0;
+    let away_bat_cur = 0;
+    let pitchResults: PitchResults = {outCounter:0, pitchLogContents:[]};
+  
+    let home_lineup: PlayerStateStruct[] = createLineup(team_home);
+    let away_lineup: PlayerStateStruct[] = createLineup(team_away);
+    let home_p_index: number = getPitcher(team_home);
+    let away_p_index: number = getPitcher(team_away);
+  
+    // set visibility of log
+    setIsLogActive(true);
+    //const txt = document.getElementById('log') as HTMLInputElement;
+    //const score_txt = document.getElementById('scoretext') as HTMLInputElement;
+    //txt.value = '';
+    setLogContents(['']);
+    let _localContents: string[] = [];
+
+    while (currentInning <= numInnings) {
+      // Top of the inning
+      _localContents.push(`Top of Inning ${currentInning} begins...\n`)
+      _localContents.push(`The ${team_away.name} are batting...\n`);
+      while (outCount < 3) {
+        _localContents.push(`${away_lineup[away_bat_cur]?.name} steps up to the plate...\n`);
+        
+        pitchResults = pitch('txt.value', team_home.players[home_p_index]!, team_away.players[away_bat_cur]!);
+        outCount += pitchResults.outCounter;
+        
+          pitchResults.pitchLogContents.forEach((v) => {
+            _localContents.push(v);
+          });
+        
+        //_localContents.push(...pitchResults.pitchLogContents);
+        //outCount += pitch('txt.value', team_home.players[home_p_index]!, team_away.players[away_bat_cur]!);
+        away_bat_cur++;
+        if (away_bat_cur > 8) away_bat_cur = 0;
+      }
+      outCount = 0;
+      // Bottom of the inning
+      _localContents.push(`Bottom of Inning ${currentInning} begins...\n`)
+      _localContents.push(`The ${team_home.name} are batting...\n`)
+      while (outCount < 3) {
+        _localContents.push(`${home_lineup[home_bat_cur]?.name} steps up to the plate...\n`)
+        
+        pitchResults = pitch('txt.value', team_away.players[away_p_index]!, team_home.players[home_bat_cur]!);
+        outCount += pitchResults.outCounter;
+        
+          pitchResults.pitchLogContents.forEach((v) => {
+            _localContents.push(v);
+          });
+        
+        //_localContents.push(...pitchResults.pitchLogContents);
+        //outCount += pitch('txt.value', team_away.players[away_p_index]!, team_home.players[home_bat_cur]!);
+        home_bat_cur++;
+        if (home_bat_cur > 8) home_bat_cur = 0;
+      }
+      outCount = 0;
+  
+      currentInning++;
+    }
+    setLogContents(_localContents);
+  }
+
   //const displayName = typeof window !== 'undefined' ? localStorage.getItem("_playerName") : "Jane Doe";
   return (
     <>
@@ -236,7 +322,10 @@ export default function Home() {
         /> 
       </div>
       <LeagueTeamsTable leagueInfoProp={leagueInfo} />   
-      <MatchTextLog />
+      <MatchTextLog
+        isActive={isLogActive}
+        contents={logContents}
+       />
     </div>
     <div className="flex">
     </div>  
@@ -315,34 +404,54 @@ function populateHexField() {
   hexField.set({q:0, r:0, s:0}, {position: {q:0,r:0,s:0}, isFair: true});
 }
 
-function MatchSim(leagueInfoProp:LeagueStateStruct, team_home:TeamStateStruct, team_away:TeamStateStruct) {
-  let currentInning: number = 1;
-  const numInnings: number = 9;
-  let outCount = 0;
-  let strikeCount = 0;
-  let ballCount = 0;
-  let homeScore = 0;
-  let awayScore = 0;
-  let home_bat_cur = 0;
-  let away_bat_cur = 0;
-
-  let home_lineup: PlayerStateStruct[] = createLineup(team_home);
-  let away_lineup: PlayerStateStruct[] = createLineup(team_away);
-  //createLineup();
-  const txt = document.getElementById('log') as HTMLInputElement;
-  const score_txt = document.getElementById('scoretext') as HTMLInputElement;
-  txt.value = '';
-  while (currentInning <= numInnings) {
-    txt.value += `Top of Inning ${currentInning} begins...\n`;
-    txt.value += `The ${team_away.name} are batting...\n`;
-    while (outCount < 3) {
-      txt.value += `${away_lineup[away_bat_cur]?.name} steps up to the plate...\n`;
-
+/**
+  function MatchSim(leagueInfoProp:LeagueStateStruct, team_home:TeamStateStruct, team_away:TeamStateStruct) {
+    let currentInning: number = 1;
+    const numInnings: number = 3;
+    let outCount = 0;
+    let strikeCount = 0;
+    let ballCount = 0;
+    let homeScore = 0;
+    let awayScore = 0;
+    let home_bat_cur = 0;
+    let away_bat_cur = 0;
+  
+    let home_lineup: PlayerStateStruct[] = createLineup(team_home);
+    let away_lineup: PlayerStateStruct[] = createLineup(team_away);
+    let home_p_index: number = getPitcher(team_home);
+    let away_p_index: number = getPitcher(team_away);
+  
+    const txt = document.getElementById('log') as HTMLInputElement;
+    const score_txt = document.getElementById('scoretext') as HTMLInputElement;
+    txt.value = '';
+    while (currentInning <= numInnings) {
+      // Top of the inning
+      txt.value += `Top of Inning ${currentInning} begins...\n`;
+      txt.value += `The ${team_away.name} are batting...\n`;
+      while (outCount < 3) {
+        txt.value += `${away_lineup[away_bat_cur]?.name} steps up to the plate...\n`;
+  
+        outCount += pitch(txt.value, team_home.players[home_p_index]!, team_away.players[away_bat_cur]!);
+        away_bat_cur++;
+        if (away_bat_cur > 8) away_bat_cur = 0;
+      }
+      outCount = 0;
+      // Bottom of the inning
+      txt.value += `Bottom of Inning ${currentInning} begins...\n`;
+      txt.value += `The ${team_home.name} are batting...\n`;
+      while (outCount < 3) {
+        txt.value += `${home_lineup[home_bat_cur]?.name} steps up to the plate...\n`;
+  
+        outCount += pitch(txt.value, team_away.players[away_p_index]!, team_home.players[home_bat_cur]!);
+        home_bat_cur++;
+        if (home_bat_cur > 8) home_bat_cur = 0;
+      }
+      outCount = 0;
+  
+      currentInning++;
     }
-
-    currentInning++;
   }
-}
+*/
 
 // TODO: does this mutate the state object?? might not be what we want...
 function createLineup(team: TeamStateStruct): PlayerStateStruct[] {
@@ -362,8 +471,61 @@ function createLineup(team: TeamStateStruct): PlayerStateStruct[] {
   return lineUp;
 }
 
-function pitch() {
-  
+function getPitcher(team: TeamStateStruct): number {
+  let i = 0;
+  let index = 0;
+  while (i < team.players.length) {
+    if (team.players[i]?.class === "P") {
+      index = i;
+      return index;
+    }
+    i++;
+  }
+  return index;
 }
+
+function pitch(log: string, pitcher: PlayerStateStruct, batter: PlayerStateStruct): PitchResults {
+  const _prec_roll: number = Math.floor(Math.random() * pitcher.precision + 1)
+  const _con_roll: number = Math.floor(Math.random() * batter.contact + 1)
+
+  let retStrings: string[] = [];
+  //log += `${pitcher.name} pitches with ${_prec_roll} precision...`
+  retStrings.push(`${pitcher.name} pitches with ${_prec_roll} precision...\n`);
+  if (_con_roll >= _prec_roll) {
+    //log += `with ${_con_roll} contact, ${batter.name} gets a hit!!!`
+    retStrings.push(`with ${_con_roll} contact, ${batter.name} gets a hit!!!\n`);
+    return {outCounter:0, pitchLogContents:retStrings};
+  }
+  else {
+    //log += `${batter.name} swings with ${_con_roll}, and it's a miss...`
+    retStrings.push(`${batter.name} swings with ${_con_roll}, and it's a miss...\n`);
+    return {outCounter:1, pitchLogContents:retStrings};
+  }
+  //return {0,[]};
+}
+
+/**
+  function MatchTextLogLoc({_isActive, _contents} : {_isActive:boolean, _contents:string}) {
+    return (
+        <div
+        className="flex flex-col p-2"
+        style={{ visibility: _isActive ? "visible" : "hidden" }}
+        >
+            <h1
+            id="scoretext">Home: 0 Away: 0</h1>
+            <textarea
+            className="flex border-4 gap-2"
+            id="log"
+            value={_contents}
+            readOnly
+            autoFocus
+            rows={10}
+            cols={10}>
+  
+            </textarea>
+        </div>
+    )
+  }
+*/
 
 

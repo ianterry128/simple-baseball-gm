@@ -1,7 +1,14 @@
-export function MatchTextLog() {
+interface MatchLogProps {
+    isActive?: boolean;
+    contents?: string[];
+}
+
+export function MatchTextLog(props: MatchLogProps) {
     return (
         <div
-        className="flex flex-col p-2">
+        className="flex flex-col p-2"
+        style={{ visibility: props.isActive ? "visible" : "hidden" }}
+        >
             <h1
             id="scoretext">Home: 0 Away: 0</h1>
             <textarea
@@ -9,8 +16,9 @@ export function MatchTextLog() {
             id="log"
             readOnly
             autoFocus
-            rows={50}
-            cols={60}>
+            rows={10}
+            cols={10}
+            value={props.contents}>
 
             </textarea>
         </div>
