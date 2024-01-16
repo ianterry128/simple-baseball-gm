@@ -4,6 +4,7 @@ import Head from "next/head";
 import Link from "next/link";
 import { useState } from "react";
 import { GenerateTeam } from "~/components/GenerateTeam";
+import { MatchTextLog } from "~/components/MatchTextLog";
 import { lastNames } from "~/data/names";
 import { teamNames } from "~/data/names";
 
@@ -40,6 +41,19 @@ interface LeagueStateStruct {
   name: string,
   teams: TeamStateStruct[]
 }
+
+interface Position {
+  q: number,
+  r: number,
+  s: number,
+}
+interface Hex {
+  position: Position,
+  isFair: boolean,
+  //hasBall: boolean,
+}
+
+let hexField = new Map<Position, Hex>();
 
 export default function Home() {
   const hello = api.post.hello.useQuery({ text: "from tRPC" });
@@ -207,7 +221,7 @@ export default function Home() {
         <button 
               className="rounded-full transition-colors duration-200 hover:bg-green-500 
           bg-green-700 text-white shadow-sm font-bold px-10 py-5 w-52"
-              onClick={() => createLeague()}>
+              onClick={() => MatchSim(leagueInfo, leagueInfo.teams[0]!, leagueInfo.teams[selectedTeam]!)} >
               Exhibition
         </button>
       </div>
@@ -222,6 +236,7 @@ export default function Home() {
         /> 
       </div>
       <LeagueTeamsTable leagueInfoProp={leagueInfo} />   
+      <MatchTextLog />
     </div>
     <div className="flex">
     </div>  
@@ -296,92 +311,59 @@ return (
 )
 }
 
-/*
-function LeagueTeamsTable({leagueInfoProp} : {leagueInfoProp:LeagueStateStruct}) {
-  return (
-      <div>
-        <table className="table-auto border-2 border-spacing-2 p-8">
-          <caption>My League: {leagueInfoProp.name}</caption>
-          <thead>
-            <tr className="even:bg-gray-50 odd:bg-white">
-              <th>Name</th>
-              <th>Wins</th>
-              <th>Losses</th>
-            </tr>
-          </thead>
-          <tbody>
-            {
-              leagueInfoProp.teams.map((index) => {
-                return (
-                  <tr 
-                  key={index.id} 
-                  className="even:bg-green-200 odd:bg-gray-50 hover:bg-blue-600 hover:text-gray-50"
-                  onClick={() => {
-                    console.log(`row click registered: ${index.name}`)
-                    //setSelectedTeam()
-                  }}>
-                    <td>{index.name}</td>
-                    <td>0</td>
-                    <td>0</td>
-                  </tr>
-                )
-              })
-            }
-          </tbody>
-        </table>
-      </div>
-  )
-}*/
+function populateHexField() {
+  hexField.set({q:0, r:0, s:0}, {position: {q:0,r:0,s:0}, isFair: true});
+}
 
-  /*
-  function populateTable() {
-    if (typeof _playerInfoLoc !== null)
-    {
-      _playerInfoLoc.map((index) => {
-        return (
-          <tr key={index.id}>
-            <td>{index.name}</td>
-            <td>{index.class}</td>
-            <td>{index.age}</td>
-            <td>{index.strength}</td>
-            <td>{index.speed}</td>
-            <td>{index.precision}</td>
-            <td>{index.contact}</td>
-          </tr>
-        )
-      })
+function MatchSim(leagueInfoProp:LeagueStateStruct, team_home:TeamStateStruct, team_away:TeamStateStruct) {
+  let currentInning: number = 1;
+  const numInnings: number = 9;
+  let outCount = 0;
+  let strikeCount = 0;
+  let ballCount = 0;
+  let homeScore = 0;
+  let awayScore = 0;
+  let home_bat_cur = 0;
+  let away_bat_cur = 0;
+
+  let home_lineup: PlayerStateStruct[] = createLineup(team_home);
+  let away_lineup: PlayerStateStruct[] = createLineup(team_away);
+  //createLineup();
+  const txt = document.getElementById('log') as HTMLInputElement;
+  const score_txt = document.getElementById('scoretext') as HTMLInputElement;
+  txt.value = '';
+  while (currentInning <= numInnings) {
+    txt.value += `Top of Inning ${currentInning} begins...\n`;
+    txt.value += `The ${team_away.name} are batting...\n`;
+    while (outCount < 3) {
+      txt.value += `${away_lineup[away_bat_cur]?.name} steps up to the plate...\n`;
+
     }
-    else return (
-      <tr>
-            <td>blank</td>
-            <td>blank</td>
-            <td>blank</td>
-            <td>blank</td>
-            <td>blank</td>
-            <td>blank</td>
-            <td>blank</td>
-          </tr>
-    )
+
+    currentInning++;
   }
+}
+
+// TODO: does this mutate the state object?? might not be what we want...
+function createLineup(team: TeamStateStruct): PlayerStateStruct[] {
+  let lineUp: PlayerStateStruct[] = team.players.sort((a, b) => {
+    if (b.contact < a.contact) return -1;
+    if (b.contact > a.contact) return 1;
+    return 0;
+  });
   
-  notes: 
-  <TeamDisplayTable playerInfoProp={playerInfo}/>  
+  // sort by best hitters
+  let i = 0;
+  while (i < team.players.length) {
+    console.log(`batter #${i+1} is ${lineUp[i]?.name} with CONTACT ${lineUp[i]?.contact}...`)
+    i++;
+  }
 
-  function TeamDisplayTable({playerInfoProp} : {playerInfoProp:PlayerStateStruct[]}) {
+  return lineUp;
+}
 
-    playerInfoProp.map((index) => {
-                return (
-                  <tr key={index.id} className="even:bg-green-200 odd:bg-gray-50">
-                    <td>{index.name}</td>
-                    <td>{index.class}</td>
-                    <td>{index.age}</td>
-                    <td>{index.strength}</td>
-                    <td>{index.speed}</td>
-                    <td>{index.precision}</td>
-                    <td>{index.contact}</td>
-                  </tr>
-                )
-              })
-  */
+function pitch() {
+  
+}
 
 
