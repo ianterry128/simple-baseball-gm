@@ -10,6 +10,7 @@ import { lastNames } from "~/data/names";
 import { teamNames } from "~/data/names";
 
 import { api } from "~/utils/api";
+import { Position, hex_lineDraw } from "~/utils/hexUtil";
 
 interface PlayerStateStruct {
     id: string,
@@ -43,20 +44,23 @@ interface LeagueStateStruct {
   teams: TeamStateStruct[]
 }
 
-interface Position {
-  q: number,
-  r: number,
-  s: number,
-}
+/**
+  interface Position {
+    q: number,
+    r: number,
+    s: number,
+  }
+*/
 interface Hex {
-  position: Position,
+  position: Position
   isFair: boolean,
   //hasBall: boolean,
 }
 
 type PitchResults = {
   outCounter: number,
-  pitchLogContents: string[]
+  pitchLogContents: string[],
+  hitLine: Hex[]
 }
 
 let hexField = new Map<Position, Hex>();
@@ -80,13 +84,17 @@ export default function Home() {
   }
 
   const [logContents, setLogContents] = useState<string[]>([]);
-  function appendLogContents(_text: string) {
-    setLogContents([
-      ...logContents,
-      _text
-    ]);
-  }
+  /**
+    function appendLogContents(_text: string) {
+      setLogContents([
+        ...logContents,
+        _text
+      ]);
+    }
+  */
   const [isLogActive, setIsLogActive] = useState<boolean>(false);
+  // TODO: set score while stepping through game log
+  const [scoreStr, setScoreStr] = useState<string>('Home: 0  Away: 0');
 
   
 
@@ -232,7 +240,8 @@ export default function Home() {
     let awayScore = 0;
     let home_bat_cur = 0;
     let away_bat_cur = 0;
-    let pitchResults: PitchResults = {outCounter:0, pitchLogContents:[]};
+    let pitchResults: PitchResults = {outCounter:0, pitchLogContents:[], hitLine:[]};
+    let hexesAtDistance: Hex[] = [];
   
     let home_lineup: PlayerStateStruct[] = createLineup(team_home);
     let away_lineup: PlayerStateStruct[] = createLineup(team_away);
@@ -325,6 +334,7 @@ export default function Home() {
       <MatchTextLog
         isActive={isLogActive}
         contents={logContents}
+        score={scoreStr}
        />
     </div>
     <div className="flex">
@@ -464,7 +474,7 @@ function createLineup(team: TeamStateStruct): PlayerStateStruct[] {
   // sort by best hitters
   let i = 0;
   while (i < team.players.length) {
-    console.log(`batter #${i+1} is ${lineUp[i]?.name} with CONTACT ${lineUp[i]?.contact}...`)
+    //console.log(`batter #${i+1} is ${lineUp[i]?.name} with CONTACT ${lineUp[i]?.contact}...`)
     i++;
   }
 
@@ -485,23 +495,65 @@ function getPitcher(team: TeamStateStruct): number {
 }
 
 function pitch(log: string, pitcher: PlayerStateStruct, batter: PlayerStateStruct): PitchResults {
-  const _prec_roll: number = Math.floor(Math.random() * pitcher.precision + 1)
-  const _con_roll: number = Math.floor(Math.random() * batter.contact + 1)
+  const _prec_roll: number = Math.floor(Math.random() * pitcher.precision + 1);
+  const _con_roll: number = Math.floor(Math.random() * batter.contact + 1);
+
+  let hitDistance: number = 0;
+  let _hitLineHex: Hex[] = [];
 
   let retStrings: string[] = [];
   //log += `${pitcher.name} pitches with ${_prec_roll} precision...`
   retStrings.push(`${pitcher.name} pitches with ${_prec_roll} precision...\n`);
   if (_con_roll >= _prec_roll) {
     //log += `with ${_con_roll} contact, ${batter.name} gets a hit!!!`
-    retStrings.push(`with ${_con_roll} contact, ${batter.name} gets a hit!!!\n`);
-    return {outCounter:0, pitchLogContents:retStrings};
+    hitDistance = Math.floor(Math.random() * batter.strength + 1);
+    retStrings.push(`with ${_con_roll} contact, ${batter.name} hits the ball ${hitDistance} hexes!!!\n`);
+    const _hitDistArr: Hex[] = getHexesAtDistance(hitDistance); // get hexes to select from for final hit ball position
+    const finalBallPos: Hex = _hitDistArr[Math.floor(Math.random() * (_hitDistArr.length -1))] ?? {position:{q:0,r:0,s:0}, isFair:true}; // get hex of final ball pos
+    const _hitLinePos: Position[] = hex_lineDraw({q:0,r:0,s:0}, finalBallPos.position); 
+    // since hex_lineDraw returns Position[], we have to convert it to Hex[]
+    let i = 0;
+    while (i < _hitLinePos.length) {
+      _hitLineHex[i] = {position:{q:_hitLinePos[i]?.q!, r:_hitLinePos[i]?.r!, s:_hitLinePos[i]?.s!}, isFair:true}
+      i++;
+    }
+    return {outCounter:0, pitchLogContents:retStrings, hitLine:_hitLineHex};
   }
   else {
     //log += `${batter.name} swings with ${_con_roll}, and it's a miss...`
-    retStrings.push(`${batter.name} swings with ${_con_roll}, and it's a miss...\n`);
-    return {outCounter:1, pitchLogContents:retStrings};
+    retStrings.push(`${batter.name} swings with ${_con_roll} contact, and it's a miss...\n`);
+    return {outCounter:1, pitchLogContents:retStrings, hitLine:[]};
   }
   //return {0,[]};
+}
+
+function getHexesAtDistance(distance: number): Hex[] {
+  let hexes: Hex[] = [];
+  let isFilled: boolean = false;
+  let i = 0;
+  const l_corner = {position:{q:-distance, r:0, s:distance}, isFair:true};
+  const center = {position:{q:0, r:-distance, s:distance}, isFair:true};
+  const r_corner = {position:{q:distance, r:-distance, s:0}, isFair:true};
+
+  const leftCenterLine: Position[] = hex_lineDraw(l_corner.position, center.position);
+  const centerRightLine: Position[] = hex_lineDraw(center.position, r_corner.position);
+
+  while (i < leftCenterLine.length) {
+    hexes[i] = {position:leftCenterLine[i]!, isFair:true};
+    i++;
+  }
+  let j = i;
+  while (j < leftCenterLine.length + centerRightLine.length - 1) {
+    if (!hexes.some(val => {
+      return JSON.stringify(val) === JSON.stringify({position:centerRightLine[i - leftCenterLine.length]!, isFair:true})
+    }))
+    {
+      hexes[j] = {position:centerRightLine[i - leftCenterLine.length]!, isFair:true};
+      j++;
+    }
+    i++;
+  }
+  return hexes;
 }
 
 /**

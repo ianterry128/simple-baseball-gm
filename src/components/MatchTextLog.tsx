@@ -1,6 +1,7 @@
 interface MatchLogProps {
     isActive?: boolean;
     contents?: string[];
+    score?: string;
 }
 
 export function MatchTextLog(props: MatchLogProps) {
@@ -10,7 +11,7 @@ export function MatchTextLog(props: MatchLogProps) {
         style={{ visibility: props.isActive ? "visible" : "hidden" }}
         >
             <h1
-            id="scoretext">Home: 0 Away: 0</h1>
+            id="scoretext">{props.score}</h1>
             <textarea
             className="flex border-4 gap-2"
             id="log"
