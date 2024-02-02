@@ -10,7 +10,7 @@ import { lastNames } from "~/data/names";
 import { teamNames } from "~/data/names";
 
 import { api } from "~/utils/api";
-import { Position, hex_lineDraw } from "~/utils/hexUtil";
+import { Position, hex_distance, hex_lineDraw } from "~/utils/hexUtil";
 
 interface PlayerStateStruct {
     id: string,
@@ -24,7 +24,7 @@ interface PlayerStateStruct {
     precisionPot: number,
     contact: number,
     contactPot: number,
-    class?: string,
+    class: string,
     potential: number,
     experience: number,
     level: number,
@@ -51,9 +51,15 @@ interface LeagueStateStruct {
     s: number,
   }
 */
+enum Height {
+  GROUND = 0,
+  AIR = 1,
+  HIGH = 2
+}
 interface Hex {
-  position: Position
-  isFair: boolean,
+  position: Position,
+  ballHeight: Height
+  //isFair: boolean,
   //hasBall: boolean,
 }
 
@@ -61,6 +67,18 @@ type PitchResults = {
   outCounter: number,
   pitchLogContents: string[],
   hitLine: Hex[]
+}
+
+type BasesOccupied = {
+  first: string,
+  second: string,
+  third: string
+}
+
+type FieldActionResults = {
+  outCounter: number,
+  fieldActionLogContents: string[],
+  baseResults: BasesOccupied
 }
 
 let hexField = new Map<Position, Hex>();
@@ -155,7 +173,7 @@ export default function Home() {
           'C',
           'P'
         ]; 
-        newPlayer.class = classesToGen[n];
+        newPlayer.class = classesToGen[n]!;
         newPlayers[n] = newPlayer;
         n++;
       }
@@ -241,6 +259,8 @@ export default function Home() {
     let home_bat_cur = 0;
     let away_bat_cur = 0;
     let pitchResults: PitchResults = {outCounter:0, pitchLogContents:[], hitLine:[]};
+    let basesOccupied: BasesOccupied = {first:'none', second:'none', third:'none'};
+    let fieldActionResults: FieldActionResults = {outCounter:0, fieldActionLogContents:[], baseResults: basesOccupied};
     let hexesAtDistance: Hex[] = [];
   
     let home_lineup: PlayerStateStruct[] = createLineup(team_home);
@@ -263,7 +283,13 @@ export default function Home() {
       while (outCount < 3) {
         _localContents.push(`${away_lineup[away_bat_cur]?.name} steps up to the plate...\n`);
         
-        pitchResults = pitch('txt.value', team_home.players[home_p_index]!, team_away.players[away_bat_cur]!);
+        pitchResults = pitch(team_home.players[home_p_index]!, team_away.players[away_bat_cur]!);
+        // What happens after a hit? (or miss)
+        if (pitchResults.hitLine.length > 0) { // if hitline.length >1 then the ball was hit
+          fieldAction(away_lineup[away_bat_cur]!, home_lineup, pitchResults.hitLine, basesOccupied) // input batter, field team, hitline,
+          // output outcount, scoreToAdd, baseRanTo
+        }
+        //outCount += fieldActionResults.outCounter;
         outCount += pitchResults.outCounter;
         
           pitchResults.pitchLogContents.forEach((v) => {
@@ -282,7 +308,9 @@ export default function Home() {
       while (outCount < 3) {
         _localContents.push(`${home_lineup[home_bat_cur]?.name} steps up to the plate...\n`)
         
-        pitchResults = pitch('txt.value', team_away.players[away_p_index]!, team_home.players[home_bat_cur]!);
+        pitchResults = pitch(team_away.players[away_p_index]!, team_home.players[home_bat_cur]!);
+        fieldAction(home_lineup[home_bat_cur]!, away_lineup, pitchResults.hitLine, basesOccupied);
+        //outCount += fieldActionResults.outCounter;
         outCount += pitchResults.outCounter;
         
           pitchResults.pitchLogContents.forEach((v) => {
@@ -295,7 +323,6 @@ export default function Home() {
         if (home_bat_cur > 8) home_bat_cur = 0;
       }
       outCount = 0;
-  
       currentInning++;
     }
     setLogContents(_localContents);
@@ -410,9 +437,11 @@ return (
 )
 }
 
-function populateHexField() {
-  hexField.set({q:0, r:0, s:0}, {position: {q:0,r:0,s:0}, isFair: true});
-}
+/**
+  function populateHexField() {
+    hexField.set({q:0, r:0, s:0}, {position: {q:0,r:0,s:0}, ballHeight: 0});
+  }
+*/
 
 /**
   function MatchSim(leagueInfoProp:LeagueStateStruct, team_home:TeamStateStruct, team_away:TeamStateStruct) {
@@ -494,7 +523,7 @@ function getPitcher(team: TeamStateStruct): number {
   return index;
 }
 
-function pitch(log: string, pitcher: PlayerStateStruct, batter: PlayerStateStruct): PitchResults {
+function pitch(pitcher: PlayerStateStruct, batter: PlayerStateStruct): PitchResults {
   const _prec_roll: number = Math.floor(Math.random() * pitcher.precision + 1);
   const _con_roll: number = Math.floor(Math.random() * batter.contact + 1);
 
@@ -509,14 +538,66 @@ function pitch(log: string, pitcher: PlayerStateStruct, batter: PlayerStateStruc
     hitDistance = Math.floor(Math.random() * batter.strength + 1);
     retStrings.push(`with ${_con_roll} contact, ${batter.name} hits the ball ${hitDistance} hexes!!!\n`);
     const _hitDistArr: Hex[] = getHexesAtDistance(hitDistance); // get hexes to select from for final hit ball position
-    const finalBallPos: Hex = _hitDistArr[Math.floor(Math.random() * (_hitDistArr.length -1))] ?? {position:{q:0,r:0,s:0}, isFair:true}; // get hex of final ball pos
+    const finalBallPos: Hex = _hitDistArr[Math.floor(Math.random() * (_hitDistArr.length -1))] ?? {position:{q:0,r:0,s:0}, ballHeight:Height.GROUND}; // get hex of final ball pos
     const _hitLinePos: Position[] = hex_lineDraw({q:0,r:0,s:0}, finalBallPos.position); 
-    // since hex_lineDraw returns Position[], we have to convert it to Hex[]
-    let i = 0;
-    while (i < _hitLinePos.length) {
-      _hitLineHex[i] = {position:{q:_hitLinePos[i]?.q!, r:_hitLinePos[i]?.r!, s:_hitLinePos[i]?.s!}, isFair:true}
-      i++;
+    // Determine launch angle
+    let launchAngle: Height = 0;
+    if (hitDistance > 15) { // if distance is 26 or greater, launchAngle must be HIGH... distance btwn 16 and 26 -> HIGH or AIR
+      launchAngle = hitDistance < 27 ? Math.floor(Math.random() * 2 + 1) : Height.HIGH; 
     }
+    else if (hitDistance <= 15) { // if distance is less than or equal to 15
+      if (hitDistance >= 3) { // and greater than 3
+        launchAngle = Math.floor(Math.random() * 3 + 1); // any launchAngle is possible
+      }
+      else if (hitDistance < 3) { // if hitdistance is less than 3, height is GROUND
+        launchAngle = Height.GROUND;
+      }
+    }
+
+    // since hex_lineDraw returns Position[], we have to convert it to Hex[]...
+    // here we set ball height for each hex in the hitLine, based on launchAngle
+    let i = 1;
+    console.log(`${batter.name} hitline is: `) // for debugging
+    if (launchAngle === Height.GROUND) {  // all hexes GROUND
+      while (i < _hitLinePos.length) {
+        _hitLineHex[i] = {position:{q:_hitLinePos[i]?.q!, r:_hitLinePos[i]?.r!, s:_hitLinePos[i]?.s!}, ballHeight:Height.GROUND}
+        console.log(`hex: ${_hitLineHex[i]?.position.q}, ${_hitLineHex[i]?.position.r}, ${_hitLineHex[i]?.position.s} GROUND`) // for debugging
+        i++;
+      }
+    }
+    else if (launchAngle === Height.AIR) {
+      while (i < _hitLinePos.length) {
+        if (i <= _hitLinePos.length/1.4) { // these hexes AIR
+          _hitLineHex[i] = {position:{q:_hitLinePos[i]?.q!, r:_hitLinePos[i]?.r!, s:_hitLinePos[i]?.s!}, ballHeight:Height.AIR}
+          console.log(`hex: ${_hitLineHex[i]?.position.q}, ${_hitLineHex[i]?.position.r}, ${_hitLineHex[i]?.position.s} AIR`) // for debugging
+          i++;
+        }
+        else if (i > _hitLinePos.length/1.4) { // these hexes GROUND
+          _hitLineHex[i] = {position:{q:_hitLinePos[i]?.q!, r:_hitLinePos[i]?.r!, s:_hitLinePos[i]?.s!}, ballHeight:Height.GROUND}
+          console.log(`hex: ${_hitLineHex[i]?.position.q}, ${_hitLineHex[i]?.position.r}, ${_hitLineHex[i]?.position.s} GROUND`) // for debugging
+          i++;
+        }
+      }
+    }
+    else if (launchAngle === Height.HIGH) {
+      while (i < _hitLinePos.length) {
+        if (i === _hitLinePos.length-1) { // final position is GROUND
+          _hitLineHex[i] = {position:{q:_hitLinePos[i]?.q!, r:_hitLinePos[i]?.r!, s:_hitLinePos[i]?.s!}, ballHeight:Height.GROUND}
+          console.log(`hex: ${_hitLineHex[i]?.position.q}, ${_hitLineHex[i]?.position.r}, ${_hitLineHex[i]?.position.s} GROUND`) // for debugging
+          i++;
+        }
+        if (i === _hitLinePos.length-2) { // Position 1 hex before final is AIR
+          _hitLineHex[i] = {position:{q:_hitLinePos[i]?.q!, r:_hitLinePos[i]?.r!, s:_hitLinePos[i]?.s!}, ballHeight:Height.AIR}
+          console.log(`hex: ${_hitLineHex[i]?.position.q}, ${_hitLineHex[i]?.position.r}, ${_hitLineHex[i]?.position.s} AIR`) // for debugging
+          i++;
+        }
+        else if (i < _hitLinePos.length-2) { // all other hexes are HIGH
+          _hitLineHex[i] = {position:{q:_hitLinePos[i]?.q!, r:_hitLinePos[i]?.r!, s:_hitLinePos[i]?.s!}, ballHeight:Height.HIGH}
+          console.log(`hex: ${_hitLineHex[i]?.position.q}, ${_hitLineHex[i]?.position.r}, ${_hitLineHex[i]?.position.s} HIGH`) // for debugging
+          i++;
+        }
+      }
+    } 
     return {outCounter:0, pitchLogContents:retStrings, hitLine:_hitLineHex};
   }
   else {
@@ -525,6 +606,79 @@ function pitch(log: string, pitcher: PlayerStateStruct, batter: PlayerStateStruc
     return {outCounter:1, pitchLogContents:retStrings, hitLine:[]};
   }
   //return {0,[]};
+}
+
+function fieldAction(batter: PlayerStateStruct, fieldTeam: PlayerStateStruct[], hitLine: Hex[], basesOccupied: BasesOccupied): FieldActionResults {
+  // iterate through fielders
+  //  fielder can field if his spd roll > ballspeed+distance
+  type FieldPositions = '1B' | '2B' | 'SS' | '3B' | 'CF' | 'LF' | 'RF' | 'C' | 'P' 
+  const fielderHexPos: Record<FieldPositions, Position> = {
+    '1B': {q:12,r:-15,s:3},
+    '2B': {q:6,r:-15,s:9},
+    'SS': {q:-6,r:-0,s:16},
+    '3B': {q:-10,r:-5,s:15},
+    'CF': {q:0,r:-25,s:25},
+    'LF': {q:-14,r:-10,s:24},
+    'RF': {q:14,r:-24,s:10},
+    'C': {q:0,r:0,s:0},
+    'P': {q:0,r:-7,s:7}
+  }
+  let retStrings: string[] = [];
+  let _baseResults = basesOccupied;
+  let _outcounter = 0;
+
+  // TODO: write function that returns list of fielders whose range the hitline passes through
+  let fieldersInRange = getFieldersInRange(fieldTeam, hitLine);
+  let speed_F: number = 0;
+  fieldersInRange.forEach((fielder) => {
+    console.log(`${fielder.class} ${fielder.name} is in range`)
+  })
+  
+  
+  //speed_F = Math.floor(Math.random() * fielder.speed + 1); // roll speed
+  /**
+    for (let i=0; i < hitLine.length; i++) { // for each hex the ball passes through
+      fieldTeam.forEach((fielder) => {  // for each fielder
+        if (hitLine[i]?.ballHeight !== Height.HIGH) { // if the ball at this hex is not high
+          let dist = hex_distance(fielderHexPos[fielder.class as FieldPositions], hitLine[i]?.position!)
+          // Corner IF can move 2 hex to snag passing ball
+          if (fielder.class === '1B' || fielder.class === '3B' || fielder.class === "P") {
+            if (dist <= 2) {
+              let prec_F = Math.floor(Math.random() * fielder.precision + 1);
+              if (prec_F >= hitLine.length) { // if fielder's prec roll beats ball hit str
+                _outcounter += 1;
+                //break;
+              }
+            }
+          }
+          // Middle IF can move 3 hex to snag passing ball
+          if (fielder.class === '2B' || fielder.class === 'SS') {
+            if (dist <= 3) {
+              let prec_F = Math.floor(Math.random() * fielder.precision + 1);
+              if (prec_F >= hitLine.length) { // if fielder's prec roll beats ball hit str
+                _outcounter += 1;
+                //break;
+              }
+            }
+          }
+          // OF can move 5 hex to snag passing ball
+          if (fielder.class === 'LF' || fielder.class === 'RF' || fielder.class === 'CF') {
+            if (dist <= 5) {
+              let prec_F = Math.floor(Math.random() * fielder.precision + 1);
+              if (prec_F >= hitLine.length) { // if fielder's prec roll beats ball hit str
+                _outcounter += 1;
+                //break;
+              }
+            }
+          }
+          // Base runner gets to first base after however many turns it takes to get to 13 speed
+        }    
+      })
+      }
+  */
+    
+
+  return {outCounter:0, fieldActionLogContents: [], baseResults: {first:'', second:'', third:''}}
 }
 
 function getHexesAtDistance(distance: number): Hex[] {
@@ -539,7 +693,7 @@ function getHexesAtDistance(distance: number): Hex[] {
   const centerRightLine: Position[] = hex_lineDraw(center.position, r_corner.position);
 
   while (i < leftCenterLine.length) {
-    hexes[i] = {position:leftCenterLine[i]!, isFair:true};
+    hexes[i] = {position:leftCenterLine[i]!, ballHeight:0};
     i++;
   }
   let j = i;
@@ -548,12 +702,58 @@ function getHexesAtDistance(distance: number): Hex[] {
       return JSON.stringify(val) === JSON.stringify({position:centerRightLine[i - leftCenterLine.length]!, isFair:true})
     }))
     {
-      hexes[j] = {position:centerRightLine[i - leftCenterLine.length]!, isFair:true};
+      hexes[j] = {position:centerRightLine[i - leftCenterLine.length]!, ballHeight:0};
       j++;
     }
     i++;
   }
   return hexes;
+}
+
+function getFieldersInRange(fieldTeam: PlayerStateStruct[], hitLine: Hex[]): PlayerStateStruct[] {
+  let fielders: PlayerStateStruct[] = [];
+  type FieldPositions = '1B' | '2B' | 'SS' | '3B' | 'CF' | 'LF' | 'RF' | 'C' | 'P' 
+  const fielderHexPos: Record<FieldPositions, Position> = {
+    '1B': {q:12,r:-15,s:3},
+    '2B': {q:6,r:-15,s:9},
+    'SS': {q:-6,r:-0,s:16},
+    '3B': {q:-10,r:-5,s:15},
+    'CF': {q:0,r:-25,s:25},
+    'LF': {q:-14,r:-10,s:24},
+    'RF': {q:14,r:-24,s:10},
+    'C': {q:0,r:0,s:0},
+    'P': {q:0,r:-7,s:7}
+  }
+
+
+  for (let i=1; i < hitLine.length; i++) { // for each hex the ball passes through
+    fieldTeam.forEach((fielder) => {  // for each fielder
+      if (hitLine[i]?.ballHeight !== Height.HIGH) { // if the ball at this hex is not high
+        let dist = hex_distance(fielderHexPos[fielder.class as FieldPositions], hitLine[i]?.position!)
+        // Corner IF can move 2 hex to snag passing ball
+        if (fielder.class === '1B' || fielder.class === '3B' || fielder.class === 'P' || fielder.class === 'C') {
+          if (dist <= 2) {
+            fielders.push(fielder);
+            // need to "break" so we don't push same fielder for multiple hitline positions
+          }
+        }
+        // Middle IF can move 3 hex to snag passing ball
+        if (fielder.class === '2B' || fielder.class === 'SS') {
+          if (dist <= 3) {
+            fielders.push(fielder);
+          }
+        }
+        // OF can move 5 hex to snag passing ball
+        if (fielder.class === 'LF' || fielder.class === 'RF' || fielder.class === 'CF') {
+          if (dist <= 5) {
+            fielders.push(fielder);
+          }
+        }
+      }
+    })
+        // Base runner gets to first base after however many turns it takes to get to 13 speed
+    }    
+  return fielders;
 }
 
 /**
