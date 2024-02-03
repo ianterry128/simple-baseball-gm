@@ -1,11 +1,14 @@
 import { Player } from "@prisma/client";
 import { Console } from "console";
+import { randomUUID } from "crypto";
 import { signIn, signOut, useSession } from "next-auth/react";
 import Head from "next/head";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { number } from "zod";
 import { GenerateTeam } from "~/components/GenerateTeam";
 import { MatchTextLog } from "~/components/MatchTextLog";
+import { MatchTextLog2 } from "~/components/MatchTextLog2";
 import { lastNames } from "~/data/names";
 import { teamNames } from "~/data/names";
 
@@ -72,14 +75,17 @@ type PitchResults = {
 type BasesOccupied = {
   first: string,
   second: string,
-  third: string
+  third: string 
 }
 
 type FieldActionResults = {
   outCounter: number,
   fieldActionLogContents: string[],
-  baseResults: BasesOccupied
+  baseResults: BasesOccupied,
+  runsScored: number
 }
+
+type FieldPositions = '1B' | '2B' | 'SS' | '3B' | 'CF' | 'LF' | 'RF' | 'C' | 'P' ;
 
 let hexField = new Map<Position, Hex>();
 
@@ -100,8 +106,15 @@ export default function Home() {
     }
     setSelectedTeam(i);
   }
+  // LEAGUE TABLE STATE
+  const [isLeagueTableActive, setIsLeagueTableActive] = useState<boolean>(true);
 
+// LOG STATE VARIABLES
   const [logContents, setLogContents] = useState<string[]>([]);
+  const [logIndex, setLogIndex] = useState<number>(0);
+  const [isLogPaused, setIsLogPaused] = useState<boolean>(true);
+  const [logInterval, setLogInterval] = useState<number>(1500);
+  const [logSpeedTxt, setLogSpeedTxt] = useState<string>('Speed >');
   /**
     function appendLogContents(_text: string) {
       setLogContents([
@@ -111,10 +124,27 @@ export default function Home() {
     }
   */
   const [isLogActive, setIsLogActive] = useState<boolean>(false);
-  // TODO: set score while stepping through game log
-  const [scoreStr, setScoreStr] = useState<string>('Home: 0  Away: 0');
 
-  
+  // SCOREBOARD STATE VARIABLES
+  const [sb_teamHome, setSb_teamHome] = useState<string>('');
+  const [sb_teamAway, setSb_teamAway] = useState<string>('');
+  const [sb_runsHome, setSb_runsHome] = useState<number>(0);
+  const [sb_runsAway, setSb_runsAway] = useState<number>(0);
+  const [sb_inning, setSb_inning] = useState<number>(0);
+  const [sb_inningHalf, setSb_inningHalf] = useState<string>('');
+  const [sb_hitsHome, setSb_hitsHome] = useState<number>(0);
+  const [sb_hitsAway, setSb_hitsAway] = useState<number>(0);
+  const [sb_errHome, setSb_errHome] = useState<number>(0);
+  const [sb_errAway, setSb_errAway] = useState<number>(0);
+  const [sb_outs, setSb_outs] = useState<number>(0);
+  const [sb_batter, setSb_batter] = useState<string>('');
+  const [sb_baseRunners, setSb_baseRunners] = useState<BasesOccupied>({
+    first: 'none',
+    second: 'none',
+    third: 'none' 
+  });
+
+  const [numInnings, setNumInnings] = useState<number>(6);
 
 // FUNCTIONS HERE USE REACT HOOKS
   function createLeague () {
@@ -213,9 +243,10 @@ export default function Home() {
     setLeagueInfo(newLeague);
   }
 
-  function LeagueTeamsTable({leagueInfoProp} : {leagueInfoProp:LeagueStateStruct}) {
+  function LeagueTeamsTable({leagueInfoProp, isActiveProp} : {leagueInfoProp:LeagueStateStruct, isActiveProp:boolean}) {
     return (
-        <div>
+        <div
+        style={{ display: isActiveProp ? "inline" : "none" }}>
           <table className="table-auto border-2 border-spacing-2 p-8">
             <caption>My League: {leagueInfoProp.name}</caption>
             <thead>
@@ -250,7 +281,7 @@ export default function Home() {
 
   function MatchSim(leagueInfoProp:LeagueStateStruct, team_home:TeamStateStruct, team_away:TeamStateStruct) {
     let currentInning: number = 1;
-    const numInnings: number = 3;
+    const inningsCount: number = numInnings;
     let outCount = 0;
     let strikeCount = 0;
     let ballCount = 0;
@@ -260,21 +291,23 @@ export default function Home() {
     let away_bat_cur = 0;
     let pitchResults: PitchResults = {outCounter:0, pitchLogContents:[], hitLine:[]};
     let basesOccupied: BasesOccupied = {first:'none', second:'none', third:'none'};
-    let fieldActionResults: FieldActionResults = {outCounter:0, fieldActionLogContents:[], baseResults: basesOccupied};
+    let fieldActionResults: FieldActionResults = {outCounter:0, fieldActionLogContents:[], baseResults: basesOccupied, runsScored: 0};
     let hexesAtDistance: Hex[] = [];
   
     let home_lineup: PlayerStateStruct[] = createLineup(team_home);
     let away_lineup: PlayerStateStruct[] = createLineup(team_away);
-    let home_p_index: number = getPitcher(team_home);
-    let away_p_index: number = getPitcher(team_away);
+    let home_p_index: number = getPlayerIndex('P', team_home);
+    let away_p_index: number = getPlayerIndex('P', team_away);
   
     // set visibility of log
     setIsLogActive(true);
-    //const txt = document.getElementById('log') as HTMLInputElement;
-    //const score_txt = document.getElementById('scoretext') as HTMLInputElement;
-    //txt.value = '';
     setLogContents(['']);
     let _localContents: string[] = [];
+
+    // set league table visibility
+    setIsLeagueTableActive(false);
+    // set initial scoreboard info
+    
 
     while (currentInning <= numInnings) {
       // Top of the inning
@@ -284,24 +317,31 @@ export default function Home() {
         _localContents.push(`${away_lineup[away_bat_cur]?.name} steps up to the plate...\n`);
         
         pitchResults = pitch(team_home.players[home_p_index]!, team_away.players[away_bat_cur]!);
+        pitchResults.pitchLogContents.forEach((v) => { // log pitch log contents
+          _localContents.push(v);
+        });
         // What happens after a hit? (or miss)
         if (pitchResults.hitLine.length > 0) { // if hitline.length >1 then the ball was hit
-          fieldAction(away_lineup[away_bat_cur]!, home_lineup, pitchResults.hitLine, basesOccupied) // input batter, field team, hitline,
+          fieldActionResults = fieldAction(away_lineup[away_bat_cur]!, home_lineup, pitchResults.hitLine, basesOccupied) // input batter, field team, hitline,
           // output outcount, scoreToAdd, baseRanTo
-        }
-        //outCount += fieldActionResults.outCounter;
-        outCount += pitchResults.outCounter;
-        
-          pitchResults.pitchLogContents.forEach((v) => {
+          outCount += fieldActionResults.outCounter;
+          basesOccupied = fieldActionResults.baseResults;
+          awayScore += fieldActionResults.runsScored;
+          fieldActionResults.fieldActionLogContents.forEach((v) => { // log field action log contents
             _localContents.push(v);
           });
-        
+        }
+        else {
+          outCount += pitchResults.outCounter;
+        }
+        //_localContents.push(`~~~ Home: ${homeScore} Away: ${awayScore} ||| Outs: ${outCount} ~~~\n`)
         //_localContents.push(...pitchResults.pitchLogContents);
         //outCount += pitch('txt.value', team_home.players[home_p_index]!, team_away.players[away_bat_cur]!);
         away_bat_cur++;
         if (away_bat_cur > 8) away_bat_cur = 0;
       }
       outCount = 0;
+      basesOccupied = {first:'none', second:'none', third:'none'};
       // Bottom of the inning
       _localContents.push(`Bottom of Inning ${currentInning} begins...\n`)
       _localContents.push(`The ${team_home.name} are batting...\n`)
@@ -309,23 +349,242 @@ export default function Home() {
         _localContents.push(`${home_lineup[home_bat_cur]?.name} steps up to the plate...\n`)
         
         pitchResults = pitch(team_away.players[away_p_index]!, team_home.players[home_bat_cur]!);
-        fieldAction(home_lineup[home_bat_cur]!, away_lineup, pitchResults.hitLine, basesOccupied);
-        //outCount += fieldActionResults.outCounter;
-        outCount += pitchResults.outCounter;
-        
-          pitchResults.pitchLogContents.forEach((v) => {
+        pitchResults.pitchLogContents.forEach((v) => { // log pitch log contents
+          _localContents.push(v);
+        });
+        // What happens after a hit? (or miss)
+        if (pitchResults.hitLine.length > 0) { // if hitline.length >1 then the ball was hit
+          fieldActionResults = fieldAction(home_lineup[home_bat_cur]!, away_lineup, pitchResults.hitLine, basesOccupied) // input batter, field team, hitline,
+          // output outcount, scoreToAdd, baseRanTo
+          outCount += fieldActionResults.outCounter;
+          basesOccupied = fieldActionResults.baseResults;
+          homeScore += fieldActionResults.runsScored;
+          fieldActionResults.fieldActionLogContents.forEach((v) => { // log field action log contents
             _localContents.push(v);
           });
-        
+        }
+        else {
+          outCount += pitchResults.outCounter;
+        }
+        //_localContents.push(`~~~ Home: ${homeScore} Away: ${awayScore} ||| Outs: ${outCount} ~~~\n`)
         //_localContents.push(...pitchResults.pitchLogContents);
         //outCount += pitch('txt.value', team_away.players[away_p_index]!, team_home.players[home_bat_cur]!);
         home_bat_cur++;
         if (home_bat_cur > 8) home_bat_cur = 0;
       }
       outCount = 0;
+      basesOccupied = {first:'none', second:'none', third:'none'};
       currentInning++;
     }
     setLogContents(_localContents);
+  }
+  
+    interface MatchLogProps3 {
+      isActive?: boolean;
+  }
+  
+  function MatchTextLog3(props: MatchLogProps3) {
+    useEffect(() => {
+      const intervalId = setInterval(() => {
+        if (!isLogPaused) {
+          // update scoreboard state variables here
+          setLogIndex(c => c + 1); 
+          let str = logContents[logIndex];
+          if (str?.includes('steps up')) { // set batter TODO: do this a better way
+            let batter = str.split(' ', 1);
+            setSb_batter(batter[0]!);  
+          }
+          if (str?.includes('Inning')) { // update inning info
+            let half = str.substring(0,3)==='Top' ? 'Top' : 'Bottom'
+            setSb_inningHalf(half);
+            if (half==='Top') {
+              setSb_inning(n => n+1);
+            }
+            setSb_outs(0); // reset outs to 0 when sides change
+            let baseReset: BasesOccupied = { //reset bases when sides change
+              first: '',
+              second: '',
+              third: ''
+            }
+            setSb_baseRunners(baseReset);
+          }
+          if (str?.includes('miss...')) { // strikeout
+            setSb_outs(n => n+1);
+          }
+          if (str?.includes('an OUT!')) {
+            setSb_outs(n => n+1);
+          }
+          if (str?.includes('hits the ball')) { // record hits
+            if (sb_inningHalf === 'Top') { // in top of the inning, Away team is at bat
+              setSb_hitsAway(n => n+1);
+            }
+            else {
+              setSb_hitsHome(n => n+1);
+            }
+          }
+          if (str?.includes('missed')) { // record errors
+            if (sb_inningHalf === 'Top') { // in top of the inning, Home team is in field
+              setSb_errHome(n => n+1);
+            }
+            else {
+              setSb_errAway(n => n+1);
+            }
+          }
+          if (str?.includes('runners advance')) { // update baserunners
+            let curBases = sb_baseRunners;
+            let newBases: BasesOccupied = {
+              first: sb_batter,
+              second: curBases.first,
+              third: curBases.second
+            }
+            setSb_baseRunners(newBases);
+          }
+          if (str?.includes('scores')) {
+            if (sb_inningHalf === 'Top') { // in top of the inning, Away team is at bat
+              setSb_runsAway(n => n+1);
+            }
+            else {
+              setSb_runsHome(n => n+1);
+            }
+          }
+        }
+      }, logInterval);
+      return () => clearInterval(intervalId);
+    }, []);
+
+      return (
+          <div
+          className="flex flex-col p-2"
+          style={{ visibility: props.isActive ? "visible" : "hidden" }}
+          >
+              <div className="flex p-2">
+              <button 
+                className="rounded-full transition-colors duration-200 hover:bg-green-500 
+            bg-green-700 text-white shadow-sm font-bold px-10 py-5 w-52"
+                onClick={() => {
+                  isLogPaused ? setIsLogPaused(false) : setIsLogPaused(true)
+                }} >
+                Start/Pause Log
+            </button>
+            <button 
+                className="rounded-full transition-colors duration-200 hover:bg-green-500 
+            bg-green-700 text-white shadow-sm font-bold px-10 py-5 w-52"
+                onClick={() => {
+                  if (logInterval === 1500) {
+                    setLogInterval(1000);
+                    setLogSpeedTxt("Speed >>");
+                  }
+                  else if (logInterval === 1000) {
+                    setLogInterval(500);
+                    setLogSpeedTxt("Speed >>>");
+                  }
+                  else if (logInterval === 500) {
+                    setLogInterval(1500);
+                    setLogSpeedTxt("Speed >");
+                  }
+                }} 
+                >
+                  {logSpeedTxt}
+            </button>
+          </div>
+          <Scoreboard></Scoreboard>
+              <textarea
+              className="flex border-4 gap-2"
+              id="log2"
+              readOnly
+              autoFocus
+              rows={10}
+              cols={10}
+              value={logContents?.slice(0, logIndex).reverse()}
+              >
+              </textarea>
+          </div>
+      )
+  }
+  
+  interface ScoreboardProps {
+    isActive?: boolean;
+}
+  function Scoreboard(props: ScoreboardProps) {
+    //create header row and inningRun columns
+    let headerArr = [' '];
+    let inningRuns = []
+    for (let i=0; i < numInnings; i++) {
+      headerArr.push(`${i+1}`);
+      inningRuns.push('-');
+    }
+    headerArr.push('R');
+    headerArr.push('H');
+    headerArr.push('E');
+    return (
+      <div
+      className="flex p-1"
+      >
+        <table className="table-auto border-2 border-spacing-2 px-8">
+        <caption>`{sb_inningHalf} of the {sb_inning} inning`</caption>
+        <thead>
+        <tr className="even:bg-gray-50 odd:bg-white">
+          {
+            headerArr.map((v, index) => {
+              if (index <= numInnings) {
+                return (
+                  <th 
+                  className="px-2 font-light"
+                  key={crypto.randomUUID()}>{v}</th>
+                )
+              }
+              else {
+                return (
+                  <th 
+                  className="px-2 font-bold"
+                  key={crypto.randomUUID()}>{v}</th>
+                )
+              }    
+            })
+          }
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Home</td>
+            {
+              inningRuns.map((v) => {
+                return (
+                  <td
+                  className="px-2" 
+                  key={crypto.randomUUID()}>{v}</td>
+                )
+              })
+            }
+            <td className="px-2 font-bold" >{sb_runsHome}</td>
+            <td className="px-2 font-bold" >{sb_hitsHome}</td>
+            <td className="px-2 font-bold" >{sb_errHome}</td>
+          </tr>
+          <tr>
+            <td>Away</td>
+            {
+              inningRuns.map((v) => {
+                return (
+                  <td
+                  className="px-2" 
+                  key={crypto.randomUUID()}>{v}</td>
+                )
+              })
+            }
+            <td className="px-2 font-bold" >{sb_runsAway}</td>
+            <td className="px-2 font-bold" >{sb_hitsAway}</td>
+            <td className="px-2 font-bold" >{sb_errAway}</td>
+          </tr>
+        </tbody>
+      </table>
+      <div className="p-2">
+      <h1>Outs: {sb_outs}</h1>
+      <h1>1st: {sb_baseRunners.first}</h1>
+      <h1>2nd: {sb_baseRunners.second}</h1>
+      <h1>3rd: {sb_baseRunners.third}</h1>
+      </div>
+      </div>
+  )
   }
 
   //const displayName = typeof window !== 'undefined' ? localStorage.getItem("_playerName") : "Jane Doe";
@@ -357,12 +616,18 @@ export default function Home() {
         teamIndexProp={selectedTeam}
         /> 
       </div>
-      <LeagueTeamsTable leagueInfoProp={leagueInfo} />   
-      <MatchTextLog
+      <LeagueTeamsTable 
+      leagueInfoProp={leagueInfo}
+      isActiveProp={isLeagueTableActive} />   
+      {/*<MatchTextLog
         isActive={isLogActive}
         contents={logContents}
-        score={scoreStr}
-       />
+  />*/}
+       <div>
+       <MatchTextLog3
+        isActive={isLogActive}
+        />
+       </div>
     </div>
     <div className="flex">
     </div>  
@@ -371,9 +636,6 @@ export default function Home() {
 }
 
 // Functions outside Home() do not require REACT hooks
-
-
-
 function generateName(): string {
   let surName: string = "";
    
@@ -437,61 +699,6 @@ return (
 )
 }
 
-/**
-  function populateHexField() {
-    hexField.set({q:0, r:0, s:0}, {position: {q:0,r:0,s:0}, ballHeight: 0});
-  }
-*/
-
-/**
-  function MatchSim(leagueInfoProp:LeagueStateStruct, team_home:TeamStateStruct, team_away:TeamStateStruct) {
-    let currentInning: number = 1;
-    const numInnings: number = 3;
-    let outCount = 0;
-    let strikeCount = 0;
-    let ballCount = 0;
-    let homeScore = 0;
-    let awayScore = 0;
-    let home_bat_cur = 0;
-    let away_bat_cur = 0;
-  
-    let home_lineup: PlayerStateStruct[] = createLineup(team_home);
-    let away_lineup: PlayerStateStruct[] = createLineup(team_away);
-    let home_p_index: number = getPitcher(team_home);
-    let away_p_index: number = getPitcher(team_away);
-  
-    const txt = document.getElementById('log') as HTMLInputElement;
-    const score_txt = document.getElementById('scoretext') as HTMLInputElement;
-    txt.value = '';
-    while (currentInning <= numInnings) {
-      // Top of the inning
-      txt.value += `Top of Inning ${currentInning} begins...\n`;
-      txt.value += `The ${team_away.name} are batting...\n`;
-      while (outCount < 3) {
-        txt.value += `${away_lineup[away_bat_cur]?.name} steps up to the plate...\n`;
-  
-        outCount += pitch(txt.value, team_home.players[home_p_index]!, team_away.players[away_bat_cur]!);
-        away_bat_cur++;
-        if (away_bat_cur > 8) away_bat_cur = 0;
-      }
-      outCount = 0;
-      // Bottom of the inning
-      txt.value += `Bottom of Inning ${currentInning} begins...\n`;
-      txt.value += `The ${team_home.name} are batting...\n`;
-      while (outCount < 3) {
-        txt.value += `${home_lineup[home_bat_cur]?.name} steps up to the plate...\n`;
-  
-        outCount += pitch(txt.value, team_away.players[away_p_index]!, team_home.players[home_bat_cur]!);
-        home_bat_cur++;
-        if (home_bat_cur > 8) home_bat_cur = 0;
-      }
-      outCount = 0;
-  
-      currentInning++;
-    }
-  }
-*/
-
 // TODO: does this mutate the state object?? might not be what we want...
 function createLineup(team: TeamStateStruct): PlayerStateStruct[] {
   let lineUp: PlayerStateStruct[] = team.players.sort((a, b) => {
@@ -509,17 +716,28 @@ function createLineup(team: TeamStateStruct): PlayerStateStruct[] {
 
   return lineUp;
 }
-
-function getPitcher(team: TeamStateStruct): number {
+// TODO: enforce that only one of team or players is input
+function getPlayerIndex(position: FieldPositions, team?: TeamStateStruct, players?: PlayerStateStruct[]): number {
   let i = 0;
   let index = 0;
-  while (i < team.players.length) {
-    if (team.players[i]?.class === "P") {
-      index = i;
-      return index;
+  if (team !== undefined) {  // do this if team was input as TeamStateStruct
+    while (i < team.players.length) {
+      if (team.players[i]?.class === position) {
+        index = i;
+        return index;
+      }
+      i++;
     }
-    i++;
   }
+  else if (players !== undefined) {  // else do this if team was input as PlayerStateStruct[]
+    while (i < players.length) {
+      if (players[i]?.class === position) {
+        index = i;
+        return index;
+      }
+      i++;
+    }
+  }  
   return index;
 }
 
@@ -547,7 +765,7 @@ function pitch(pitcher: PlayerStateStruct, batter: PlayerStateStruct): PitchResu
     }
     else if (hitDistance <= 15) { // if distance is less than or equal to 15
       if (hitDistance >= 3) { // and greater than 3
-        launchAngle = Math.floor(Math.random() * 3 + 1); // any launchAngle is possible
+        launchAngle = Math.floor(Math.random() * 3); // any launchAngle is possible
       }
       else if (hitDistance < 3) { // if hitdistance is less than 3, height is GROUND
         launchAngle = Height.GROUND;
@@ -557,7 +775,7 @@ function pitch(pitcher: PlayerStateStruct, batter: PlayerStateStruct): PitchResu
     // since hex_lineDraw returns Position[], we have to convert it to Hex[]...
     // here we set ball height for each hex in the hitLine, based on launchAngle
     let i = 1;
-    console.log(`${batter.name} hitline is: `) // for debugging
+    console.log(`${batter.name} hitline is (length=${_hitLinePos.length}) (launch=${launchAngle}): `) // for debugging
     if (launchAngle === Height.GROUND) {  // all hexes GROUND
       while (i < _hitLinePos.length) {
         _hitLineHex[i] = {position:{q:_hitLinePos[i]?.q!, r:_hitLinePos[i]?.r!, s:_hitLinePos[i]?.s!}, ballHeight:Height.GROUND}
@@ -611,7 +829,7 @@ function pitch(pitcher: PlayerStateStruct, batter: PlayerStateStruct): PitchResu
 function fieldAction(batter: PlayerStateStruct, fieldTeam: PlayerStateStruct[], hitLine: Hex[], basesOccupied: BasesOccupied): FieldActionResults {
   // iterate through fielders
   //  fielder can field if his spd roll > ballspeed+distance
-  type FieldPositions = '1B' | '2B' | 'SS' | '3B' | 'CF' | 'LF' | 'RF' | 'C' | 'P' 
+  
   const fielderHexPos: Record<FieldPositions, Position> = {
     '1B': {q:12,r:-15,s:3},
     '2B': {q:6,r:-15,s:9},
@@ -626,59 +844,69 @@ function fieldAction(batter: PlayerStateStruct, fieldTeam: PlayerStateStruct[], 
   let retStrings: string[] = [];
   let _baseResults = basesOccupied;
   let _outcounter = 0;
+  let _runsCounter = 0;
 
-  // TODO: write function that returns list of fielders whose range the hitline passes through
-  let fieldersInRange = getFieldersInRange(fieldTeam, hitLine);
-  let speed_F: number = 0;
-  fieldersInRange.forEach((fielder) => {
-    console.log(`${fielder.class} ${fielder.name} is in range`)
-  })
+  let activeFielder: PlayerStateStruct | undefined = undefined;
+  let activeBallIndex: number = 0;
+  //TODO: check for backup fielders in case first fielder misses
+  if (hitLine.length <= 2) {  // catcher should not field the ball unless it is hit less than 3 hexes
+    activeFielder = fieldTeam[getPlayerIndex('C', undefined, fieldTeam)]// Catcher fields the ball
+    activeBallIndex = 1;
+  }
+  else {
+    let fieldersInRange = getFieldersInRange(fieldTeam, hitLine);
+    activeBallIndex = fieldersInRange.findIndex(f => f !== undefined && f!== null); // returns earliest index where a fielder can field ball
+    activeFielder = activeBallIndex !== -1 ? fieldersInRange[activeBallIndex] : undefined;  // findIndex returns -1 if no fielder is in range
+    //console.log(`activeBallIndex: ${activeBallIndex} fielder: ${activeFielder?.name}`)
+  }
   
-  
-  //speed_F = Math.floor(Math.random() * fielder.speed + 1); // roll speed
-  /**
-    for (let i=0; i < hitLine.length; i++) { // for each hex the ball passes through
-      fieldTeam.forEach((fielder) => {  // for each fielder
-        if (hitLine[i]?.ballHeight !== Height.HIGH) { // if the ball at this hex is not high
-          let dist = hex_distance(fielderHexPos[fielder.class as FieldPositions], hitLine[i]?.position!)
-          // Corner IF can move 2 hex to snag passing ball
-          if (fielder.class === '1B' || fielder.class === '3B' || fielder.class === "P") {
-            if (dist <= 2) {
-              let prec_F = Math.floor(Math.random() * fielder.precision + 1);
-              if (prec_F >= hitLine.length) { // if fielder's prec roll beats ball hit str
-                _outcounter += 1;
-                //break;
-              }
-            }
-          }
-          // Middle IF can move 3 hex to snag passing ball
-          if (fielder.class === '2B' || fielder.class === 'SS') {
-            if (dist <= 3) {
-              let prec_F = Math.floor(Math.random() * fielder.precision + 1);
-              if (prec_F >= hitLine.length) { // if fielder's prec roll beats ball hit str
-                _outcounter += 1;
-                //break;
-              }
-            }
-          }
-          // OF can move 5 hex to snag passing ball
-          if (fielder.class === 'LF' || fielder.class === 'RF' || fielder.class === 'CF') {
-            if (dist <= 5) {
-              let prec_F = Math.floor(Math.random() * fielder.precision + 1);
-              if (prec_F >= hitLine.length) { // if fielder's prec roll beats ball hit str
-                _outcounter += 1;
-                //break;
-              }
-            }
-          }
-          // Base runner gets to first base after however many turns it takes to get to 13 speed
-        }    
-      })
+  if (activeFielder !== undefined) { // if there is a fielder in range
+    console.log(`${activeFielder.class} ${activeFielder?.name} attempts to field the ball at ${hitLine[activeBallIndex]?.position.q} ${hitLine[activeBallIndex]?.position.r} ${hitLine[activeBallIndex]?.position.s}`);
+    retStrings.push(`${activeFielder.class} ${activeFielder?.name} attempts to field the ball at ${hitLine[activeBallIndex]?.position.q} ${hitLine[activeBallIndex]?.position.r} ${hitLine[activeBallIndex]?.position.s}\n`);
+    // fielder's precision roll must beat the ball factor to successfully catch... TODO: skills/perks that upgrade fielder prec_roll
+    let prec_roll: number = Math.floor(Math.random() * activeFielder.precision + 1); 
+    let ball_factor: number = Math.floor(Math.random() * 10 + 1); 
+    retStrings.push(`${activeFielder.class} ${activeFielder.name} rolls ${prec_roll} vs ball factor of ${ball_factor}\n`)
+    if (prec_roll >= ball_factor) {
+      _outcounter += 1;
+      retStrings.push(`That's an OUT!\n`)
+    }
+    else { // miss
+      retStrings.push(`${activeFielder.class} ${activeFielder.name} missed the catch!\n`)
+      let r_1 = _baseResults.first;
+      let r_2 = _baseResults.second;
+      let r_3 = _baseResults.third;
+      // runners advance
+      _baseResults.first = batter.name;
+      _baseResults.second = r_1;
+      _baseResults.third = r_2;
+      retStrings.push(`runners advance...\n`)
+      if (r_3 !== 'none') { // if there was a runner on third, he scores
+        // runner scores
+        _runsCounter += 1;
+        retStrings.push(`${r_3} scores!!!\n`);
       }
-  */
-    
-
-  return {outCounter:0, fieldActionLogContents: [], baseResults: {first:'', second:'', third:''}}
+      retStrings.push(`Runners on base: 1: ${_baseResults.first} | 2: ${_baseResults.second} | 3: ${_baseResults.third}\n`)
+    }
+  }
+  else if (activeFielder === undefined) {
+    let r_1 = _baseResults.first;
+    let r_2 = _baseResults.second;
+    let r_3 = _baseResults.third;
+    // runners advance
+    _baseResults.first = batter.name;
+    _baseResults.second = r_1;
+    _baseResults.third = r_2;
+    retStrings.push(`runners advance...\n`)
+    if (r_3 !== 'none') { // if there was a runner on third, he scores
+      // runner scores
+      _runsCounter += 1;
+      retStrings.push(`${r_3} scores!!!\n`)
+    }
+    retStrings.push(`Runners on base: 1: ${_baseResults.first} | 2: ${_baseResults.second} | 3: ${_baseResults.third}\n`)
+  }
+  return {outCounter: _outcounter, fieldActionLogContents: retStrings, baseResults: _baseResults, runsScored: _runsCounter}
+  //return {outCounter:0, fieldActionLogContents: [], baseResults: {first:'', second:'', third:''}, runsScored: 0}
 }
 
 function getHexesAtDistance(distance: number): Hex[] {
@@ -710,9 +938,14 @@ function getHexesAtDistance(distance: number): Hex[] {
   return hexes;
 }
 
+/*
+  getFieldersInRange returns a PlayerStateStruct[] like:
+  fielders = [undefined, undefined, undefined, VALUE, VALUE, undefined...]
+  where index of VALUEs also refers to index of hitLine where that fielder can field the ball
+*/
 function getFieldersInRange(fieldTeam: PlayerStateStruct[], hitLine: Hex[]): PlayerStateStruct[] {
   let fielders: PlayerStateStruct[] = [];
-  type FieldPositions = '1B' | '2B' | 'SS' | '3B' | 'CF' | 'LF' | 'RF' | 'C' | 'P' 
+  //type FieldPositions = '1B' | '2B' | 'SS' | '3B' | 'CF' | 'LF' | 'RF' | 'C' | 'P' 
   const fielderHexPos: Record<FieldPositions, Position> = {
     '1B': {q:12,r:-15,s:3},
     '2B': {q:6,r:-15,s:9},
@@ -725,33 +958,34 @@ function getFieldersInRange(fieldTeam: PlayerStateStruct[], hitLine: Hex[]): Pla
     'P': {q:0,r:-7,s:7}
   }
 
-
   for (let i=1; i < hitLine.length; i++) { // for each hex the ball passes through
     fieldTeam.forEach((fielder) => {  // for each fielder
       if (hitLine[i]?.ballHeight !== Height.HIGH) { // if the ball at this hex is not high
         let dist = hex_distance(fielderHexPos[fielder.class as FieldPositions], hitLine[i]?.position!)
         // Corner IF can move 2 hex to snag passing ball
-        if (fielder.class === '1B' || fielder.class === '3B' || fielder.class === 'P' || fielder.class === 'C') {
+        if (fielder.class === '1B' || fielder.class === '3B' || fielder.class === 'P') {
           if (dist <= 2) {
-            fielders.push(fielder);
+            //fielders.push(fielder);
+            fielders[i] = fielder;
             // need to "break" so we don't push same fielder for multiple hitline positions
           }
         }
         // Middle IF can move 3 hex to snag passing ball
         if (fielder.class === '2B' || fielder.class === 'SS') {
           if (dist <= 3) {
-            fielders.push(fielder);
+            //fielders.push(fielder);
+            fielders[i] = fielder;
           }
         }
         // OF can move 5 hex to snag passing ball
         if (fielder.class === 'LF' || fielder.class === 'RF' || fielder.class === 'CF') {
           if (dist <= 5) {
-            fielders.push(fielder);
+            //fielders.push(fielder);
+            fielders[i] = fielder;
           }
         }
       }
     })
-        // Base runner gets to first base after however many turns it takes to get to 13 speed
     }    
   return fielders;
 }
