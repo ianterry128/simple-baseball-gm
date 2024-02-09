@@ -6,11 +6,24 @@ export interface Position {
     s: number,
   }
 
+export interface Pixel {
+    x: number,
+    y: number,
+}
+
 export function hex_subtract(a: Position, b: Position): Position {
     return ({
         q: a.q - b.q,
         r: a.r - b.r,
         s: a.s - b.s
+    })
+}
+
+export function hex_add(a: Position, b: Position): Position {
+    return ({
+        q: a.q + b.q,
+        r: a.r + b.r,
+        s: a.s + b.s
     })
 }
 
@@ -65,3 +78,43 @@ export function hex_lineDraw(a: Position, b: Position): Position[] {
     }
     return results
 }
+
+export function hex_to_pixel(_hex: Position, size: number, offset: Pixel): Pixel {
+    let x = size * (3./2 * _hex.q) + offset.x;
+    let y = size * (Math.sqrt(3)/2 * _hex.q  +  Math.sqrt(3) * _hex.r) + offset.y;
+
+    return {x: x, y: y}
+}
+
+export function pixel_to_hex(pixel: Pixel, size: number, offset: Pixel): Position {
+    let realPixel: Pixel = {x: pixel.x - offset.x, y: pixel.y - offset.y};
+    let _q = ( 2./3 * realPixel.x) / size;
+    let _r = (-1./3 * realPixel.x  +  Math.sqrt(3)/3 * realPixel.y) / size;
+
+    return hex_round({q:_q, r:_r, s:-_q-_r});
+}
+
+export function hex_scale(_hex: Position, radius: number): Position {
+    return {q:_hex.q * radius, r:_hex.r * radius, s:_hex.s * radius};
+}
+
+
+export function hex_ring(center: Position, radius: number): Position[] {
+    let results: Position[] = [];
+    let directions: Position[] = [
+        {q:1, r:0, s:-1}, {q:1, r:-1, s:0}, {q:0, r:-1, s:1}, 
+        {q:-1, r:0, s:1}, {q:-1, r:1, s:0}, {q:0, r:1, s:-1}, 
+    ];
+    // this code doesn't work for radius == 0;
+    let hex = hex_add(center, hex_scale(directions[4]!, radius));
+    for (let i=0; i<6; i++) {
+        for (let j=0; j<radius; j++) {
+            results.push(hex);
+            hex = hex_add(hex, directions[i]!);
+        }
+    }         
+    return results
+}
+
+
+    
