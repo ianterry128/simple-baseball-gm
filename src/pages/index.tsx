@@ -110,6 +110,11 @@ type FieldPositions = '1B' | '2B' | 'SS' | '3B' | 'CF' | 'LF' | 'RF' | 'C' | 'P'
 
 let hexField = new Map<Position, Hex>();
 
+// these are used for scoreboard during game simulation
+let __homeInningRuns: string[] = []; 
+let __awayInningRuns: string[] = [];
+//
+
 export default function Home() {
   const hello = api.post.hello.useQuery({ text: "from tRPC" });
   //const [playerInfo, setPlayerInfo] = useState<PlayerStateStruct[]>([]);
@@ -159,13 +164,16 @@ export default function Home() {
   const [sb_errAway, setSb_errAway] = useState<number>(0);
   const [sb_outs, setSb_outs] = useState<number>(0);
   const [sb_batter, setSb_batter] = useState<string>('');
+  const [sb_homeInningRuns, setSb_homeInningRuns] = useState<string[]>(__homeInningRuns);
+  const [sb_awayInningRuns, setSb_awayInningRuns] = useState<string[]>(__awayInningRuns);
+  const [sb_hasInningRunsRun, setSb_hasInningRunsRun] = useState<boolean>(false);
   const [sb_baseRunners, setSb_baseRunners] = useState<SB_BasesOccupied>({
     first: 'none',
     second: 'none',
     third: 'none'
   });
 
-  const [numInnings, setNumInnings] = useState<number>(9);
+  const [numInnings, setNumInnings] = useState<number>(2);
 
   const proclivities: {[key: string]: Proclivity} = {
     'slugger': {strength:0.50, speed:0.10, precision:0.10, contact:0.30},
@@ -184,6 +192,14 @@ export default function Home() {
     proclivities['strong fielder']!,
     proclivities['balanced']!
   ]
+
+  if (!sb_hasInningRunsRun) {
+    for (let i=0; i<numInnings; i++) {
+      __awayInningRuns[i] = '-';
+      __homeInningRuns[i] = '-';
+    }
+    setSb_hasInningRunsRun(true);
+  }
 
 // FUNCTIONS HERE USE REACT HOOKS
   function createLeague () {
@@ -480,12 +496,25 @@ export default function Home() {
     return false;
     //setLogContents(_localContents);
   }
-  
+ 
     interface MatchLogProps3 {
       isActive?: boolean;
+      _homeInningRuns: string[];
+      _awayInningRuns: string[]
   }
   
   function MatchTextLog3(props: MatchLogProps3) {
+    //let _homeInningRuns: string[] = [];
+    //let _awayInningRuns: string[] = [];
+    /**
+      for (let i=0; i<numInnings; i++) {
+        props._awayInningRuns[i] = '-';
+        props._homeInningRuns[i] = '-';
+      }
+    */
+    //setSB_awayInningRuns(_awayInningRuns);
+    //setSB_homeInningRuns(_homeInningRuns);
+
     useEffect(() => {
       const intervalId = setInterval(() => {
         if (!isLogPaused) {
@@ -500,7 +529,26 @@ export default function Home() {
             let half = str.substring(0,3)==='Top' ? 'Top' : 'Bottom'
             setSb_inningHalf(half);
             if (half==='Top') {
-              setSb_inning(n => n+1);
+
+              setSb_inning(n => n+1); // increment inning
+              // set Away inning runs to 0
+              // the increment doesn't register until next tick,
+              //so we use sb_inning instead of sb_inning-1
+              props._awayInningRuns[sb_inning] = '0'; 
+              setSb_awayInningRuns(props._awayInningRuns);
+              props._homeInningRuns[sb_inning] = '-'; 
+              // this is in case of extra innings, to keep rows the same length during top of inning
+              /**
+                if (props._awayInningRuns.length < props._homeInningRuns.length) {
+                  props._homeInningRuns.push('-');
+                  setSb_homeInningRuns(props._homeInningRuns);
+                }
+              */
+            }
+            else if (half==='Bottom') {
+              // set Home inning runs to 0
+              props._homeInningRuns[sb_inning-1] = '0';
+              setSb_homeInningRuns(props._homeInningRuns);
             }
             setSb_outs(0); // reset outs to 0 when sides change
             let baseReset: SB_BasesOccupied = { //reset bases when sides change
@@ -598,10 +646,16 @@ export default function Home() {
           }
           if (str?.includes('scores')) {
             if (sb_inningHalf === 'Top') { // in top of the inning, Away team is at bat
-              setSb_runsAway(n => n+1);
+              setSb_runsAway(n => n+1); // increment Away total runs
+              // increment Away inning runs
+              props._awayInningRuns[sb_inning-1] = (parseInt(props._awayInningRuns[sb_inning-1]!) + 1).toString();
+              setSb_awayInningRuns(props._awayInningRuns);
             }
             else {
-              setSb_runsHome(n => n+1);
+              setSb_runsHome(n => n+1); // increment Home total runs
+              // increment Home inning runs
+              props._homeInningRuns[sb_inning-1] = (parseInt(props._homeInningRuns[sb_inning-1]!) + 1).toString();
+              setSb_homeInningRuns(props._homeInningRuns);
             }
             // set baserunners
             let curBases = sb_baseRunners;
@@ -683,10 +737,10 @@ export default function Home() {
   function Scoreboard(props: ScoreboardProps) {
     //create header row and inningRun columns
     let headerArr = [' '];
-    let inningRuns = []
-    for (let i=0; i < numInnings; i++) {
+    //let inningRuns = []
+    for (let i=0; i < __awayInningRuns.length; i++) {
       headerArr.push(`${i+1}`);
-      inningRuns.push('-');
+      //inningRuns.push('-');
     }
     headerArr.push('R');
     headerArr.push('H');
@@ -701,7 +755,7 @@ export default function Home() {
         <tr className="even:bg-gray-50 odd:bg-white">
           {
             headerArr.map((v, index) => {
-              if (index <= numInnings) {
+              if (index <= __awayInningRuns.length) {
                 return (
                   <th 
                   className="px-2 font-light"
@@ -723,7 +777,7 @@ export default function Home() {
           <tr>
             <td>Home</td>
             {
-              inningRuns.map((v) => {
+              sb_homeInningRuns.map((v) => {
                 return (
                   <td
                   className="px-2" 
@@ -738,7 +792,7 @@ export default function Home() {
           <tr>
             <td>Away</td>
             {
-              inningRuns.map((v) => {
+              sb_awayInningRuns.map((v) => {
                 return (
                   <td
                   className="px-2" 
@@ -858,6 +912,8 @@ export default function Home() {
        <div>
        <MatchTextLog3
         isActive={isLogActive}
+        _awayInningRuns={__awayInningRuns}
+        _homeInningRuns={__homeInningRuns}
         />
        </div>
     </div>
@@ -1238,11 +1294,11 @@ function fieldAction(batter: PlayerStateStruct, fieldTeam: PlayerStateStruct[], 
           let field_roll: number = 0;
           let spd_roll_2: number = Math.floor(Math.random() * _baseResults.second!.speed + 1);  // runner on second runs with speed
           if (activeFielder.class !== '3B'){
-            let field_roll: number = str_roll_f;  // fielder throws with strength*throwFactor
+            field_roll = str_roll_f;  // fielder throws with strength*throwFactor
             retStrings.push(`${activeFielder.class} ${activeFielder.name} throws with a strength of ${field_roll} against ${_baseResults.second!.name}'s speed of ${spd_roll_2}.\n`);
           }
           else if (activeFielder.class === '3B') { // 3B runs to tag third instead of throwing
-            let field_roll: number = Math.floor(Math.random() * activeFielder.speed*throwFactor + 1); // 3B runs with speed*throwFactor
+            field_roll = Math.floor(Math.random() * activeFielder.speed*throwFactor + 1); // 3B runs with speed*throwFactor
             retStrings.push(`${activeFielder.class} ${activeFielder.name} runs to tag third with a speed of ${field_roll} against ${_baseResults.second!.name}'s speed of ${spd_roll_2}.\n`);
           }
           
@@ -1309,11 +1365,11 @@ function fieldAction(batter: PlayerStateStruct, fieldTeam: PlayerStateStruct[], 
           let field_roll: number = str_roll_f;
           let spd_roll_3: number = Math.floor(Math.random() * _baseResults.third!.speed + 1);  // runner on third runs with speed
           if (activeFielder.class !== 'C'){
-            let field_roll: number = str_roll_f;  // fielder throws with strength*throwFactor
+            field_roll = str_roll_f;  // fielder throws with strength*throwFactor
             retStrings.push(`${activeFielder.class} ${activeFielder.name} throws with a strength of ${field_roll} against ${_baseResults.third!.name}'s speed of ${spd_roll_3}.\n`);
           }
           else if (activeFielder.class === 'C') { // C runs to tag home instead of throwing
-            let field_roll: number = Math.floor(Math.random() * activeFielder.speed*throwFactor + 1); // C runs with speed*throwFactor
+            field_roll = Math.floor(Math.random() * activeFielder.speed*throwFactor + 1); // C runs with speed*throwFactor
             retStrings.push(`${activeFielder.class} ${activeFielder.name} runs to tag home with a speed of ${field_roll} against ${_baseResults.third!.name}'s speed of ${spd_roll_3}.\n`);
           }
           
@@ -1664,6 +1720,7 @@ function fieldAction(batter: PlayerStateStruct, fieldTeam: PlayerStateStruct[], 
         basesEarned[3] += 1;
       }
       else if (str_roll_of > spd_roll_runner) {
+        // TODO: factor precision into this somehow. As it is, str is too powerful for defense
         if (str_roll_of >= (spd_roll_runner+ball_factor)*2 && str_roll_of > 30) { // critical running error! Thrown out. 
           let _base = basesEarned[highestIndex]! + highestIndex + 1;
           _outcounter += 1;
