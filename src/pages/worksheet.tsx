@@ -30,31 +30,40 @@ export default function Home() {
   //const [placedOfCount, setPlacedOfCount] = useState<number>(0);
   //const [isPlacingOfState, setIsPlacingOfState] = useState<boolean>(false);
 
+  const canvas_w = 2560;
+  const canvas_h = 1440;
+
   let placed_of_count = 0;
   let placed_mif_count = 0;
   let placed_r2_count = 0;
 
   const a = 2 * Math.PI / 6;
+
+  const left_dist = 40;
+  const right_dist = 40;
+  const center_dist = 40;
   // FUNCTIONS HERE USE REACT HOOKS
 
   function drawHexes(x: number, y: number) {
     const canvas: HTMLCanvasElement = document.getElementById('canvas') as HTMLCanvasElement;
     setCanvasState(canvas);
     const ctx = canvas.getContext('2d');
-    const r = 15;
+    const r = 15; // this determines size of each hex
     setHexSizeState(15);
     let home_pos: Position = {q:0, r:0, s:0};
     let first_pos: Position = {q:13, r:-13, s:0};
     let second_pos: Position = {q:0, r:-13, s:13};
     let third_pos: Position = {q:-13, r:0, s:13};
-    let r_post: Position = {q:33, r:-33, s:0};
-    let l_post: Position = {q:-33, r:0, s:33};
-    let center: Position = {q:0, r:-40, s:40};
+    let r_post: Position = {q:right_dist, r:-right_dist, s:0};
+    let l_post: Position = {q:-left_dist, r:0, s:left_dist};
+    let center: Position = {q:0, r:-center_dist, s:center_dist};
     let mound_pos: Position = {q:0, r:-7, s:7};
 
     //drawHex(ctx!, x, y, r);
     //draw grass
-    drawSquare(ctx!, {q:l_post.q-7, r:l_post.r, s:l_post.s+7}, center, {q:r_post.q, r:r_post.r, s:r_post.s}, home_pos, r, '#48a82a');
+    drawSquare(ctx!, {q:l_post.q-7, r:l_post.r, s:l_post.s+7}, 
+      {q:center.q, r:center.r-7, s:center.s+7}, 
+      {q:r_post.q+7, r:r_post.r, s:r_post.s-7}, {q:home_pos.q, r:home_pos.r+7, s:home_pos.s-7}, r, '#48a82a');
 
     drawLine(ctx!, first_pos, second_pos, r, '#a88f32');
     drawLine(ctx!, second_pos, third_pos, r, '#a88f32');
@@ -77,16 +86,16 @@ export default function Home() {
     drawLine(ctx!, third_pos, second_pos, r, 'white');
     drawLine(ctx!, second_pos, first_pos, r, 'white');
     //draw bases
-    let base_pixel  = hex_to_pixel(first_pos, r, {x: 1800/2, y: 1200-15});
+    let base_pixel  = hex_to_pixel(first_pos, r, {x: canvas_w/2, y: canvas_h-15});
     drawHex(ctx!, base_pixel.x, base_pixel.y, r, 'silver');
-    base_pixel  = hex_to_pixel(second_pos, r, {x: 1800/2, y: 1200-15});
+    base_pixel  = hex_to_pixel(second_pos, r, {x: canvas_w/2, y: canvas_h-15});
     drawHex(ctx!, base_pixel.x, base_pixel.y, r, 'silver');
-    base_pixel  = hex_to_pixel(third_pos, r, {x: 1800/2, y: 1200-15});
+    base_pixel  = hex_to_pixel(third_pos, r, {x: canvas_w/2, y: canvas_h-15});
     drawHex(ctx!, base_pixel.x, base_pixel.y, r, 'silver');
-    base_pixel  = hex_to_pixel(home_pos, r, {x: 1800/2, y: 1200-15});
+    base_pixel  = hex_to_pixel(home_pos, r, {x: canvas_w/2, y: canvas_h-15});
     drawHex(ctx!, base_pixel.x, base_pixel.y, r, 'silver');
     //draw mound plate
-    let p_mound_pix = hex_to_pixel(mound_pos, r, {x: 1800/2, y: 1200-15});
+    let p_mound_pix = hex_to_pixel(mound_pos, r, {x: canvas_w/2, y: canvas_h-15});
     drawHex(ctx!, p_mound_pix.x, p_mound_pix.y, r, 'silver');
     //draw mound dirt
     drawRing(ctx!, mound_pos, 1, r, '#7d7210');
@@ -96,7 +105,7 @@ export default function Home() {
       const bb = canvas.getBoundingClientRect();
       const x = Math.floor( (event.clientX - bb.left) / bb.width * canvas.width );
       const y = Math.floor( (event.clientY - bb.top) / bb.height * canvas.height );
-      let hexCoord: Position = pixel_to_hex({x:x, y:y}, r, {x: 1800/2, y: 1200-15});
+      let hexCoord: Position = pixel_to_hex({x:x, y:y}, r, {x: canvas_w/2, y: canvas_h-15});
 
       //console.log(`pixel coord: ${x}, ${y}`);
       console.log(`hex coord: ${hexCoord.q}, ${hexCoord.r}, ${hexCoord.s}`)
@@ -126,7 +135,7 @@ export default function Home() {
     let pixel: Pixel = {x:0, y:0};
     let y: number = 0;
     for (let i=0; i<num_hexes; i++) {
-      pixel  = hex_to_pixel(hex_line[i]!, size, {x: 1800/2, y: 1200-15});
+      pixel  = hex_to_pixel(hex_line[i]!, size, {x: canvas_w/2, y: canvas_h-15});
       drawHex(ctx, pixel.x, pixel.y, size, color);
     }
   }
@@ -147,7 +156,7 @@ export default function Home() {
     let pixel: Pixel = {x:0, y:0};
 
     for (let i=0; i<hexes_to_draw.length; i++) {
-      pixel  = hex_to_pixel(hexes_to_draw[i]!, size, {x: 1800/2, y: 1200-15});
+      pixel  = hex_to_pixel(hexes_to_draw[i]!, size, {x: canvas_w/2, y: canvas_h-15});
       drawHex(ctx, pixel.x, pixel.y, size, color);
     }
   }
@@ -163,10 +172,10 @@ export default function Home() {
       const bb = canvasState!.getBoundingClientRect();
       const x = Math.floor( (event.clientX - bb.left) / bb.width * canvasState!.width );
       const y = Math.floor( (event.clientY - bb.top) / bb.height * canvasState!.height );
-      let place_pos: Position = pixel_to_hex({x:x, y:y}, hexSizeState, {x: 1800/2, y: 1200-15});
+      let place_pos: Position = pixel_to_hex({x:x, y:y}, hexSizeState, {x: canvas_w/2, y: canvas_h-15});
   
       //draw player
-      let pixel  = hex_to_pixel(place_pos, hexSizeState, {x: 1800/2, y: 1200-15});
+      let pixel  = hex_to_pixel(place_pos, hexSizeState, {x: canvas_w/2, y: canvas_h-15});
       drawHex(canvasState?.getContext('2d')!, pixel.x, pixel.y, hexSizeState, 'red');
       drawRing(canvasState?.getContext('2d')!, place_pos, 5, hexSizeState, 'red');
       placed_of_count += 1;
@@ -187,10 +196,10 @@ export default function Home() {
       const bb = canvasState!.getBoundingClientRect();
       const x = Math.floor( (event.clientX - bb.left) / bb.width * canvasState!.width );
       const y = Math.floor( (event.clientY - bb.top) / bb.height * canvasState!.height );
-      let place_pos: Position = pixel_to_hex({x:x, y:y}, hexSizeState, {x: 1800/2, y: 1200-15});
+      let place_pos: Position = pixel_to_hex({x:x, y:y}, hexSizeState, {x: canvas_w/2, y: canvas_h-15});
   
       //draw player
-      let pixel  = hex_to_pixel(place_pos, hexSizeState, {x: 1800/2, y: 1200-15});
+      let pixel  = hex_to_pixel(place_pos, hexSizeState, {x: canvas_w/2, y: canvas_h-15});
       drawHex(canvasState?.getContext('2d')!, pixel.x, pixel.y, hexSizeState, 'blue');
       drawRing(canvasState?.getContext('2d')!, place_pos, 3, hexSizeState, 'blue');
       placed_mif_count += 1;
@@ -210,10 +219,10 @@ export default function Home() {
       const bb = canvasState!.getBoundingClientRect();
       const x = Math.floor( (event.clientX - bb.left) / bb.width * canvasState!.width );
       const y = Math.floor( (event.clientY - bb.top) / bb.height * canvasState!.height );
-      let place_pos: Position = pixel_to_hex({x:x, y:y}, hexSizeState, {x: 1800/2, y: 1200-15});
+      let place_pos: Position = pixel_to_hex({x:x, y:y}, hexSizeState, {x: canvas_w/2, y: canvas_h-15});
   
       //draw player
-      let pixel  = hex_to_pixel(place_pos, hexSizeState, {x: 1800/2, y: 1200-15});
+      let pixel  = hex_to_pixel(place_pos, hexSizeState, {x: canvas_w/2, y: canvas_h-15});
       drawHex(canvasState?.getContext('2d')!, pixel.x, pixel.y, hexSizeState, 'purple');
       drawRing(canvasState?.getContext('2d')!, place_pos, 2, hexSizeState, 'purple');
       placed_r2_count += 1;
@@ -279,8 +288,8 @@ export default function Home() {
       <div className="overflow-scroll flex p-2 gap-4 w-dvw h-dvh">
         <canvas id="canvas" 
           className="border-2"
-          width={1800} 
-          height={1200}/>
+          width={canvas_w} 
+          height={canvas_h}/>
       </div>
     </div>
     </>

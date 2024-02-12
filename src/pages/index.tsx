@@ -38,7 +38,9 @@ interface PlayerStateStruct {
 interface TeamStateStruct {
   id: string,
   name: string,
-  players: PlayerStateStruct[]
+  players: PlayerStateStruct[],
+  wins: number,
+  losses: number
 }
 
 interface LeagueStateStruct {
@@ -163,7 +165,25 @@ export default function Home() {
     third: 'none'
   });
 
-  const [numInnings, setNumInnings] = useState<number>(6);
+  const [numInnings, setNumInnings] = useState<number>(9);
+
+  const proclivities: {[key: string]: Proclivity} = {
+    'slugger': {strength:0.50, speed:0.10, precision:0.10, contact:0.30},
+    'contact hitter': {strength:0.30, speed:0.10, precision:0.10, contact:0.50},
+    'pitcher': {strength:0.20, speed:0.20, precision:0.40, contact:0.20},
+    'speed hitter': {strength:0.15, speed:0.50, precision:0.05, contact:0.30},
+    'speed fielder': {strength:0.10, speed:0.50, precision:0.30, contact:0.10},
+    'strong fielder': {strength:0.40, speed:0.10, precision:0.40, contact:0.10},
+    'balanced': {strength:0.25, speed:0.25, precision:0.25, contact:0.25},
+  }
+  const proclivitiesArr: Proclivity[] = [
+    proclivities['slugger']!,
+    proclivities['contact hitter']!,
+    proclivities['speed hitter']!,
+    proclivities['speed fielder']!,
+    proclivities['strong fielder']!,
+    proclivities['balanced']!
+  ]
 
 // FUNCTIONS HERE USE REACT HOOKS
   function createLeague () {
@@ -200,15 +220,15 @@ export default function Home() {
           classLvl: 0
         }
         const classesProclivities: {[key: string]: Proclivity} = {
-          '1B': {strength:0.30, speed:0.20, precision:0.10, contact:0.40},
-          '2B': {strength:0.30, speed:0.20, precision:0.10, contact:0.40},
-          'SS': {strength:0.30, speed:0.20, precision:0.10, contact:0.40},
-          '3B': {strength:0.30, speed:0.20, precision:0.10, contact:0.40},
-          'CF': {strength:0.30, speed:0.20, precision:0.10, contact:0.40},
-          'LF': {strength:0.30, speed:0.20, precision:0.10, contact:0.40},
-          'RF': {strength:0.30, speed:0.20, precision:0.10, contact:0.40},
-          'C': {strength:0.30, speed:0.20, precision:0.10, contact:0.40},
-          'P': {strength:0.25, speed:0.20, precision:0.35, contact:0.20}
+          '1B': proclivitiesArr[m]!,
+          '2B': proclivitiesArr[m]!,
+          'SS': proclivitiesArr[m]!,
+          '3B': proclivitiesArr[m]!,
+          'CF': proclivitiesArr[m]!,
+          'LF': proclivitiesArr[m]!,
+          'RF': proclivitiesArr[m]!,
+          'C': proclivitiesArr[m]!,
+          'P': proclivities['pitcher']!
         }
 
         const classesToGen: string[] = [
@@ -237,7 +257,7 @@ export default function Home() {
         newPlayer.name = _name
         newPlayer.age = Math.floor(Math.random() * (40 - 16) + 16);
         // choose lvl of player
-        newPlayer.level = Math.floor(Math.random() * (75-60+1) + 60); // random lvl between 5 and 12
+        newPlayer.level = Math.floor(Math.random() * (75-70+1) + 70); // random lvl between 75 and 70
         //team_lvl_max -= newPlayer.level; // to ensure every team has same total lvls across players
         let numStatPoints = 16 + ((newPlayer.level-1)*3); // lvl 1 has 20 total stat points and each additional lvl has +3
         // we start at 16, because each stat MUST have at least 1 point
@@ -280,7 +300,9 @@ export default function Home() {
       let teamToAdd: TeamStateStruct = {
         id: crypto.randomUUID(),
         name: _teamName,
-        players: newPlayers
+        players: newPlayers,
+        wins: 0,
+        losses: 0,
       }
       teamsToAdd[m] = teamToAdd;
       teamNamesUsed[m] = _teamName;
@@ -322,8 +344,8 @@ export default function Home() {
                       setSelectedTeamById(index.id);
                     }}>
                       <td>{index.name}</td>
-                      <td>0</td>
-                      <td>0</td>
+                      <td>{index.wins}</td>
+                      <td>{index.losses}</td>
                     </tr>
                   )
                 })
@@ -334,26 +356,7 @@ export default function Home() {
     )
   }
 
-  function MatchSim(leagueInfoProp:LeagueStateStruct, team_home:TeamStateStruct, team_away:TeamStateStruct) {
-    let currentInning: number = 1;
-    const inningsCount: number = numInnings;
-    let outCount = 0;
-    let strikeCount = 0;
-    let ballCount = 0;
-    let homeScore = 0;
-    let awayScore = 0;
-    let home_bat_cur = 0;
-    let away_bat_cur = 0;
-    let pitchResults: PitchResults = {outCounter:0, pitchLogContents:[], hitLine:[]};
-    let basesOccupied: BasesOccupied = {first:undefined, second:undefined, third:undefined};
-    let fieldActionResults: FieldActionResults = {outCounter:0, fieldActionLogContents:[], baseResults: basesOccupied, runsScored: 0};
-    let hexesAtDistance: Hex[] = [];
-  
-    let home_lineup: PlayerStateStruct[] = createLineup(team_home);
-    let away_lineup: PlayerStateStruct[] = createLineup(team_away);
-    let home_p_index: number = getPlayerIndex('P', team_home);
-    let away_p_index: number = getPlayerIndex('P', team_away);
-  
+  function exhibition(team_home:TeamStateStruct, team_away:TeamStateStruct) {
     // set visibility of log
     setIsLogActive(true);
     setLogContents(['']);
@@ -361,19 +364,50 @@ export default function Home() {
 
     // set league table visibility
     setIsLeagueTableActive(false);
+    MatchSim(leagueInfo, team_home, team_away, _localContents)
+    setLogContents(_localContents);
+  }
+
+  /*
+  // MatchSim returns TRUE if Home team wins. If Away team wins, return FALSE.
+  */
+  function MatchSim(leagueInfoProp:LeagueStateStruct, team_home:TeamStateStruct, team_away:TeamStateStruct, _logContents: string[]): boolean {
+    let _num_innings = numInnings;
+    let currentInning: number = 1;
+    let outCount = 0;
+    let homeScore = 0;
+    let awayScore = 0;
+    let home_bat_cur = 0;
+    let away_bat_cur = 0;
+    let pitchResults: PitchResults = {outCounter:0, pitchLogContents:[], hitLine:[]};
+    let basesOccupied: BasesOccupied = {first:undefined, second:undefined, third:undefined};
+    let fieldActionResults: FieldActionResults = {outCounter:0, fieldActionLogContents:[], baseResults: basesOccupied, runsScored: 0};
+  
+    let home_lineup: PlayerStateStruct[] = createLineup(team_home);
+    let away_lineup: PlayerStateStruct[] = createLineup(team_away);
+    let home_p_index: number = getPlayerIndex('P', team_home);
+    let away_p_index: number = getPlayerIndex('P', team_away);
+  
+    // set visibility of log
+    //setIsLogActive(true);
+    //setLogContents(['']);
+    //let _localContents: string[] = [];
+
+    // set league table visibility
+    //setIsLeagueTableActive(false);
     // set initial scoreboard info
     
 
-    while (currentInning <= numInnings) {
+    while (currentInning <= _num_innings) {
       // Top of the inning
-      _localContents.push(`Top of Inning ${currentInning} begins...\n`)
-      _localContents.push(`The ${team_away.name} are batting...\n`);
+      _logContents.push(`Top of Inning ${currentInning} begins...\n`)
+      _logContents.push(`The ${team_away.name} are batting...\n`);
       while (outCount < 3) {
-        _localContents.push(`${away_lineup[away_bat_cur]?.name} steps up to the plate...\n`);
+        _logContents.push(`${away_lineup[away_bat_cur]?.name} steps up to the plate...\n`);
         
         pitchResults = pitch(team_home.players[home_p_index]!, team_away.players[away_bat_cur]!);
         pitchResults.pitchLogContents.forEach((v) => { // log pitch log contents
-          _localContents.push(v);
+          _logContents.push(v);
         });
         // What happens after a hit? (or miss)
         if (pitchResults.hitLine.length > 0) { // if hitline.length >1 then the ball was hit
@@ -383,7 +417,7 @@ export default function Home() {
           basesOccupied = fieldActionResults.baseResults;
           awayScore += fieldActionResults.runsScored;
           fieldActionResults.fieldActionLogContents.forEach((v) => { // log field action log contents
-            _localContents.push(v);
+            _logContents.push(v);
           });
         }
         else {
@@ -397,15 +431,19 @@ export default function Home() {
       }
       outCount = 0;
       basesOccupied = {first:undefined, second:undefined, third:undefined};
+      if (homeScore > awayScore && currentInning === _num_innings) { // game is over if the Home team is ahead going into the bottom of the 9th
+        _logContents.push(`The Home Team ${team_home.name} win!!!\n`)
+        return true;
+      }
       // Bottom of the inning
-      _localContents.push(`Bottom of Inning ${currentInning} begins...\n`)
-      _localContents.push(`The ${team_home.name} are batting...\n`)
+      _logContents.push(`Bottom of Inning ${currentInning} begins...\n`)
+      _logContents.push(`The ${team_home.name} are batting...\n`)
       while (outCount < 3) {
-        _localContents.push(`${home_lineup[home_bat_cur]?.name} steps up to the plate...\n`)
+        _logContents.push(`${home_lineup[home_bat_cur]?.name} steps up to the plate...\n`)
         
         pitchResults = pitch(team_away.players[away_p_index]!, team_home.players[home_bat_cur]!);
         pitchResults.pitchLogContents.forEach((v) => { // log pitch log contents
-          _localContents.push(v);
+          _logContents.push(v);
         });
         // What happens after a hit? (or miss)
         if (pitchResults.hitLine.length > 0) { // if hitline.length >1 then the ball was hit
@@ -415,7 +453,7 @@ export default function Home() {
           basesOccupied = fieldActionResults.baseResults;
           homeScore += fieldActionResults.runsScored;
           fieldActionResults.fieldActionLogContents.forEach((v) => { // log field action log contents
-            _localContents.push(v);
+            _logContents.push(v);
           });
         }
         else {
@@ -429,9 +467,18 @@ export default function Home() {
       }
       outCount = 0;
       basesOccupied = {first:undefined, second:undefined, third:undefined};
+      if (currentInning === _num_innings && homeScore === awayScore) {
+        _num_innings += 1;
+      }
       currentInning++;
     }
-    setLogContents(_localContents);
+    if (homeScore > awayScore) {
+      _logContents.push(`The Home Team ${team_home.name} win!!!\n`)
+      return true;
+    }
+    _logContents.push(`The Away Team ${team_away.name} win!!!\n`)
+    return false;
+    //setLogContents(_localContents);
   }
   
     interface MatchLogProps3 {
@@ -463,11 +510,25 @@ export default function Home() {
             }
             setSb_baseRunners(baseReset);
           }
-          if (str?.includes('miss...')) { // strikeout
+          if (str?.includes('strikes out')) { // strikeout
             setSb_outs(n => n+1);
           }
           if (str?.includes('an OUT!')) {
             setSb_outs(n => n+1);
+          }
+          if (str?.includes('out at')) {
+            let curBases = sb_baseRunners;
+            let _runner = str.split(' ', 1)[0];
+            // which base was this runner previously on (if any)?
+            let firstBaseString: string = (sb_baseRunners.first === _runner) ? 'none' : curBases.first;
+            let secondBaseString: string = (sb_baseRunners.second === _runner) ? 'none' : curBases.second;
+            let thirdBaseString: string = (sb_baseRunners.third === _runner) ? 'none' : curBases.third;
+            let newBases: SB_BasesOccupied = {
+              first: firstBaseString,
+              second: secondBaseString,
+              third: thirdBaseString
+            }
+            setSb_baseRunners(newBases);
           }
           if (str?.includes('missed')) { // record errors
             if (sb_inningHalf === 'Top') { // in top of the inning, Home team is in field
@@ -503,7 +564,7 @@ export default function Home() {
           if (str?.includes('advances to third base')) { // update baserunners TODO
             let curBases = sb_baseRunners;
             let _runner = str.split(' ', 1)[0];
-            // which base was this batter previously on (if any)?
+            // which base was this runner previously on (if any)?
             let firstBaseString: string = (sb_baseRunners.first === _runner) ? 'none' : curBases.first;
             let secondBaseString: string = (sb_baseRunners.second === _runner) ? 'none' : curBases.second;
             let newBases: SB_BasesOccupied = {
@@ -701,7 +762,58 @@ export default function Home() {
   )
   }
 
-  //const displayName = typeof window !== 'undefined' ? localStorage.getItem("_playerName") : "Jane Doe";
+  function simFullSeason(leagueInfoProp: LeagueStateStruct) {
+    let teamWins: number[] = [];
+    let teamLosses: number[] = [];
+    let teamInitializer: TeamStateStruct = {
+      id: '',
+      name: '',
+      players: [],
+      wins: 0,
+      losses: 0
+    }
+    let _teams: TeamStateStruct[] = [];
+    for (let i=0; i<leagueInfoProp.teams.length; i++) {
+      _teams[i] = {
+        id: leagueInfoProp.teams[i]?.id!,
+        name: leagueInfoProp.teams[i]?.name!,
+        players: leagueInfoProp.teams[i]?.players!,
+        wins: 0,
+        losses: 0
+      }
+    }
+    
+
+    let didHomeWin: boolean = false;
+    for (let i=0; i<leagueInfoProp.teams.length; i++) {
+      for (let j=i; j<leagueInfoProp.teams.length; j++) {
+        // play every team 3 times
+        for (let k=0; k<30; k++) {
+          if (i !== j) {
+            didHomeWin = MatchSim(leagueInfoProp, leagueInfoProp.teams[i]!, leagueInfoProp.teams[j]!, []);
+            if (didHomeWin) {
+              _teams[i]!.wins += 1;
+              _teams[j]!.losses += 1;
+            }
+            else {
+              _teams[j]!.wins += 1;
+              _teams[i]!.losses += 1;
+            }
+          } 
+        }
+        
+      }
+    }
+
+    let _league: LeagueStateStruct = {
+      id: leagueInfoProp.id,
+      name: leagueInfoProp.name,
+      teams: _teams
+    }
+    setLeagueInfo(_league);
+    
+  }
+
   return (
     <>
     <div className="flex flex-col">
@@ -716,8 +828,14 @@ export default function Home() {
         <button 
               className="rounded-full transition-colors duration-200 hover:bg-green-500 
           bg-green-700 text-white shadow-sm font-bold px-10 py-5 w-52"
-              onClick={() => MatchSim(leagueInfo, leagueInfo.teams[0]!, leagueInfo.teams[selectedTeam]!)} >
+              onClick={() => exhibition(leagueInfo.teams[0]!, leagueInfo.teams[selectedTeam]!)} >
               Exhibition
+        </button>
+        <button 
+              className="rounded-full transition-colors duration-200 hover:bg-green-500 
+          bg-green-700 text-white shadow-sm font-bold px-10 py-5 w-52"
+              onClick={() => simFullSeason(leagueInfo)} >
+              Sim Season
         </button>
       </div>
       <div className="flex p-2 gap-4">
@@ -871,6 +989,9 @@ function pitch(pitcher: PlayerStateStruct, batter: PlayerStateStruct): PitchResu
     //log += `with ${_con_roll} contact, ${batter.name} gets a hit!!!`
     let str_roll = Math.floor(Math.random() * batter.strength + 1);
     hitDistance = hitDistanceCalc(str_roll);
+    if (hitDistance === 40 || hitDistance === 41) { // the ball hits the outfield fence and bounces back to hex at dist 39
+      hitDistance = 39;
+    } 
     retStrings.push(`with ${_con_roll} contact, ${batter.name} hits the ball ${hitDistance} hexes!!! str_roll = ${str_roll}\n`);
     const _hitDistArr: Hex[] = getHexesAtDistance(hitDistance); // get hexes to select from for final hit ball position
     const finalBallPos: Hex = _hitDistArr[Math.floor(Math.random() * (_hitDistArr.length -1))] ?? {position:{q:0,r:0,s:0}, ballHeight:Height.GROUND}; // get hex of final ball pos
@@ -938,6 +1059,7 @@ function pitch(pitcher: PlayerStateStruct, batter: PlayerStateStruct): PitchResu
   else {
     //log += `${batter.name} swings with ${_con_roll}, and it's a miss...`
     retStrings.push(`${batter.name} swings with ${_con_roll} contact, and it's a miss...\n`);
+    retStrings.push(`${batter.name} strikes out!\n`);
     return {outCounter:1, pitchLogContents:retStrings, hitLine:[]};
   }
   //return {0,[]};
@@ -953,7 +1075,24 @@ function fieldAction(batter: PlayerStateStruct, fieldTeam: PlayerStateStruct[], 
   let activeFielder: PlayerStateStruct | undefined = undefined;
   let activeBallIndex: number = 0;
   //TODO: check for backup fielders in case first fielder misses
-  if (hitLine.length <= 2) {  // catcher should not field the ball unless it is hit less than 3 hexes
+  if (hitLine.length >= 42) { // it's a homerun
+    _runsCounter += 1;
+    retStrings.push(`${batter.name} hits a Home Run!!!!!\n`);
+    retStrings.push(`${batter.name} scores!!!\n`);
+    if (_baseResults.first !== undefined) {
+      _runsCounter += 1;
+      retStrings.push(`${_baseResults.first.name} scores!!!\n`);
+    }
+    if (_baseResults.second !== undefined) {
+      _runsCounter += 1;
+      retStrings.push(`${_baseResults.second.name} scores!!!\n`);
+    }
+    if (_baseResults.third !== undefined) {
+      _runsCounter += 1;
+      retStrings.push(`${_baseResults.third.name} scores!!!\n`);
+    }
+  }
+  else if (hitLine.length <= 2) {  // catcher should not field the ball unless it is hit less than 3 hexes
     activeFielder = fieldTeam[getPlayerIndex('C', undefined, fieldTeam)]// Catcher fields the ball
     activeBallIndex = 1;
   }
@@ -968,7 +1107,11 @@ function fieldAction(batter: PlayerStateStruct, fieldTeam: PlayerStateStruct[], 
     //console.log(`${activeFielder.class} ${activeFielder?.name} attempts to field the ball at ${hitLine[activeBallIndex]?.position.q} ${hitLine[activeBallIndex]?.position.r} ${hitLine[activeBallIndex]?.position.s}`);
     retStrings.push(`${activeFielder.class} ${activeFielder?.name} attempts to field the ball at ${hitLine[activeBallIndex]?.position.q} ${hitLine[activeBallIndex]?.position.r} ${hitLine[activeBallIndex]?.position.s}\n`);
     // fielder's precision roll must beat the ball factor to successfully catch... TODO: skills/perks that upgrade fielder prec_roll
-    let prec_roll: number = Math.floor(Math.random() * activeFielder.precision + 1); 
+    let prec_mod = 1;
+    if (activeFielder.class === 'P') { // P debuffed by 75%, because they were too powerful in defense
+      prec_mod = 0.25;
+    }
+    let prec_roll: number = Math.floor(Math.random() * activeFielder.precision*prec_mod + 1); 
     let ball_factor: number = Math.floor(Math.random() * 15 + 1); 
     retStrings.push(`${activeFielder.class} ${activeFielder.name} rolls ${prec_roll} vs ball factor of ${ball_factor}\n`)
     //let basesEarned_batter = 0;
@@ -1023,7 +1166,6 @@ function fieldAction(batter: PlayerStateStruct, fieldTeam: PlayerStateStruct[], 
         
         let distance = hex_distance(hitLine[activeBallIndex]!.position, throw_position); // TODO: change position thrown to based on active ball position
         let throwFactor: number = getThrowFactor(distance);
-        // OLD STUFF V ================================
         //basesEarned_batter = 0;
         let str_roll_f: number = Math.floor(Math.random() * (activeFielder.strength*throwFactor) + 1); // fielder throws with strength*throwFactor
         if (force_base === 1) { // attempt to get the out at first
@@ -1049,25 +1191,32 @@ function fieldAction(batter: PlayerStateStruct, fieldTeam: PlayerStateStruct[], 
             basesEarned[1] = 1;
           }
           else if (str_roll_f > spd_roll_1) { // runner1 thrown out at 2nd
-            basesEarned[1] = 0;
+            basesEarned[1] = -1;
             _outcounter += 1;
             retStrings.push(`${_baseResults.first!.name} is thrown out at 2nd!\n`);
             retStrings.push(`That's an OUT!\n`); 
             if (_outcounter < 3) { // if still less than 3 outs, try for double play
               let spd_roll_batter: number = Math.floor(Math.random() * batter.speed + 1);  // batter runs with speed
+              console.log('It is happening!!!')
               if (activeFielder.class === '1B' || activeFielder.class === '2B' || activeFielder.class === 'RF') {
                 // SS has ball because he caught it at second
                 //get index of SS
                 throwFactor = getThrowFactor(13);
-                let index_ss = fieldTeam.findIndex((v) => {v.class === 'SS'});
+                let index_ss = fieldTeam.findIndex(v => v.class === 'SS');
+                console.log(`activeFielder SS index: ${index_ss}`)
                 activeFielder = fieldTeam[index_ss];
+                console.log(`activeFielder shortstop? ${activeFielder?.class}`)
+                console.log(`activeFielder shortstop? ${activeFielder?.name}`)
               }
               else {
                 // 2B has ball because he caught it at second
                 //get index of 2B
                 throwFactor = getThrowFactor(13);
-                let index_2b = fieldTeam.findIndex((v) => {v.class === '2B'});
+                let index_2b = fieldTeam.findIndex(v => v.class === '2B');
+                console.log(`activeFielder 2B index: ${index_2b}`)
                 activeFielder = fieldTeam[index_2b];
+                console.log(`activeFielder 2B? ${activeFielder?.class}`)
+                console.log(`activeFielder 2B? ${activeFielder?.name}`)
               }
               let str_roll_f: number = Math.floor(Math.random() * (activeFielder!.strength*throwFactor) + 1);
               retStrings.push(`${activeFielder!.class} ${activeFielder!.name} throws with a strength of ${str_roll_f} against ${batter.name}'s speed of ${spd_roll_batter}.\n`);
@@ -1104,7 +1253,7 @@ function fieldAction(batter: PlayerStateStruct, fieldTeam: PlayerStateStruct[], 
             basesEarned[2] = 1;
           }
           else if (field_roll > spd_roll_2) { // runner2 thrown out at 3rd
-            basesEarned[2] = 0;
+            basesEarned[2] = -1;
             _outcounter += 1;
             retStrings.push(`${_baseResults.second!.name} is out at 3rd!\n`);
             retStrings.push(`That's an OUT!\n`); 
@@ -1114,7 +1263,7 @@ function fieldAction(batter: PlayerStateStruct, fieldTeam: PlayerStateStruct[], 
                 // 3B has ball because he caught it at third
                 //get index of 3B
                 throwFactor = getThrowFactor(13);
-                let index_3b = fieldTeam.findIndex((v) => {v.class === '3B'});
+                let index_3b = fieldTeam.findIndex(v => v.class === '3B');
                 activeFielder = fieldTeam[index_3b];
               }
               
@@ -1126,7 +1275,7 @@ function fieldAction(batter: PlayerStateStruct, fieldTeam: PlayerStateStruct[], 
                 retStrings.push(`${_baseResults.first!.name} beats the throw at 2nd!\n`)
               }
               else if (str_roll_f > spd_roll_1) { // runner1 thrown out at 2nd
-                basesEarned[1] = 0;
+                basesEarned[1] = -1;
                 _outcounter += 1;
                 retStrings.push(`${_baseResults.first!.name} is thrown out at 2nd!\n`);
                 retStrings.push(`That's an OUT!\n`); 
@@ -1136,7 +1285,7 @@ function fieldAction(batter: PlayerStateStruct, fieldTeam: PlayerStateStruct[], 
                   // 2B has ball because he caught it at second
                   //get index of 2B
                   throwFactor = getThrowFactor(13);
-                  let index_2b = fieldTeam.findIndex((v) => {v.class === '2B'});
+                  let index_2b = fieldTeam.findIndex(v => v.class === '2B');
                   activeFielder = fieldTeam[index_2b];
                   let str_roll_f: number = Math.floor(Math.random() * (activeFielder!.strength*throwFactor) + 1);
                   retStrings.push(`${activeFielder!.class} ${activeFielder!.name} throws with a strength of ${str_roll_f} against ${batter.name}'s speed of ${spd_roll_batter}.\n`);
@@ -1176,7 +1325,7 @@ function fieldAction(batter: PlayerStateStruct, fieldTeam: PlayerStateStruct[], 
             basesEarned[3] = 1;
           }
           else if (field_roll > spd_roll_3) { // runner3 thrown out at home
-            basesEarned[3] = 0;
+            basesEarned[3] = -1;
             _outcounter += 1;
             retStrings.push(`${_baseResults.third!.name} is out at home!\n`);
             retStrings.push(`That's an OUT!\n`); 
@@ -1186,7 +1335,7 @@ function fieldAction(batter: PlayerStateStruct, fieldTeam: PlayerStateStruct[], 
                 // C has ball because he caught it at home
                 //get index of C
                 throwFactor = getThrowFactor(13);
-                let index_c = fieldTeam.findIndex((v) => {v.class === 'C'});
+                let index_c = fieldTeam.findIndex(v => v.class === 'C');
                 activeFielder = fieldTeam[index_c];
               }
               let str_roll_f: number = Math.floor(Math.random() * (activeFielder!.strength*throwFactor) + 1);
@@ -1195,12 +1344,12 @@ function fieldAction(batter: PlayerStateStruct, fieldTeam: PlayerStateStruct[], 
                 basesEarned[0] = 1;
                 basesEarned[1] = 1;
                 basesEarned[2] = 1;
-                retStrings.push(`${_baseResults.first!.name} beats the throw at 3rd!\n`)
+                retStrings.push(`${_baseResults.second!.name} beats the throw at 3rd!\n`)
               }
               else if (str_roll_f > spd_roll_2) { // runner2 thrown out at 3rd
-                basesEarned[2] = 0;
+                basesEarned[2] = -1;
                 _outcounter += 1;
-                retStrings.push(`${_baseResults.first!.name} is thrown out at 3rd!\n`);
+                retStrings.push(`${_baseResults.second!.name} is thrown out at 3rd!\n`);
                 retStrings.push(`That's an OUT!\n`); 
                 retStrings.push(`It's a double play!\n`);
                 if (_outcounter < 3) { // if still less than 3 outs, try for triple play at 2nd
@@ -1208,7 +1357,7 @@ function fieldAction(batter: PlayerStateStruct, fieldTeam: PlayerStateStruct[], 
                   // 3B has ball because he caught it at third
                   //get index of 3B
                   throwFactor = getThrowFactor(13);
-                  let index_3b = fieldTeam.findIndex((v) => {v.class === '3B'});
+                  let index_3b = fieldTeam.findIndex(v => v.class === '3B');
                   activeFielder = fieldTeam[index_3b];
                   
                   let str_roll_f: number = Math.floor(Math.random() * (activeFielder!.strength*throwFactor) + 1);
@@ -1219,7 +1368,7 @@ function fieldAction(batter: PlayerStateStruct, fieldTeam: PlayerStateStruct[], 
                     retStrings.push(`${_baseResults.first!.name} beats the throw at 2nd!\n`)
                   }
                   else if (str_roll_f > spd_roll_1) { // runner1 thrown out at 2nd
-                    basesEarned[1] = 0;
+                    basesEarned[1] = -1;
                     _outcounter += 1;
                     retStrings.push(`${_baseResults.first!.name} is thrown out at 2nd!\n`);
                     retStrings.push(`That's an OUT!\n`); 
@@ -1293,72 +1442,75 @@ function fieldAction(batter: PlayerStateStruct, fieldTeam: PlayerStateStruct[], 
     }
     if (_outcounter < 3) {
       // GET HITS ON SCOREBOARD
-      if (basesEarned[0] === 1) {
-        retStrings.push(`${batter.name} hits a single.\n`)
-      }
-      if (basesEarned[0] === 2) {
-        retStrings.push(`${batter.name} hits a double.\n`)
-      }
-      if (basesEarned[0] === 3) {
-        retStrings.push(`${batter.name} hits a triple.\n`)
-      }
-
-      let r_1 = _baseResults.first;
-      let r_2 = _baseResults.second;
-      let r_3 = _baseResults.third;
-      if (_baseResults.third !== undefined) { // if there was a runner on third before the hit
-        if (basesEarned[3]! >= 1) {// if he earned at least 1 base, then he scored
+      _runsCounter += updateScoreboard(basesEarned, retStrings, batter, _baseResults, _runsCounter);
+      /**
+        if (basesEarned[0] === 1) {
+          retStrings.push(`${batter.name} hits a single.\n`)
+        }
+        if (basesEarned[0] === 2) {
+          retStrings.push(`${batter.name} hits a double.\n`)
+        }
+        if (basesEarned[0] === 3) {
+          retStrings.push(`${batter.name} hits a triple.\n`)
+        }
+  
+        let r_1 = _baseResults.first;
+        let r_2 = _baseResults.second;
+        let r_3 = _baseResults.third;
+        if (_baseResults.third !== undefined) { // if there was a runner on third before the hit
+          if (basesEarned[3]! >= 1) {// if he earned at least 1 base, then he scored
+            _runsCounter += 1;
+            retStrings.push(`${_baseResults.third.name} scores!!!\n`);
+            _baseResults.third = undefined;
+          }
+        }
+        if (_baseResults.second !== undefined) { // if there was a runner on second before the hit
+          if (basesEarned[2]! >= 2) {// if he earned at least 2 bases, then he scored
+            _runsCounter += 1;
+            retStrings.push(`${_baseResults.second.name} scores!!!\n`);
+            _baseResults.second = undefined;
+          }
+          else if (basesEarned[2]! === 1) {
+            retStrings.push(`${_baseResults.second.name} advances to third base.\n`);
+            _baseResults.third = r_2;
+            _baseResults.second = undefined;
+          }
+        }
+        if (_baseResults.first !== undefined) { // if there was a runner on first before the hit
+          if (basesEarned[1]! >= 3) {// if he earned at least 3 bases, then he scored
+            _runsCounter += 1;
+            retStrings.push(`${_baseResults.first.name} scores!!!\n`);
+            _baseResults.first = undefined;
+          }
+          else if (basesEarned[1]! === 2) {
+            retStrings.push(`${_baseResults.first.name} advances to third base.\n`);
+            _baseResults.third = r_1;
+            _baseResults.first = undefined;
+          }
+          else if (basesEarned[1]! === 1) {
+            retStrings.push(`${_baseResults.first.name} advances to second base.\n`);
+            _baseResults.second = r_1;
+            _baseResults.first = undefined;
+          }
+        }
+        if (basesEarned[0]! >= 4) {// if he earned at least 4 bases, then he scored
           _runsCounter += 1;
-          retStrings.push(`${_baseResults.third.name} scores!!!\n`);
-          _baseResults.third = undefined;
+          retStrings.push(`${batter.name} hits a Home Run!!!!!\n`);
+          retStrings.push(`${batter.name} scores!!!\n`);
         }
-      }
-      if (_baseResults.second !== undefined) { // if there was a runner on second before the hit
-        if (basesEarned[2]! >= 2) {// if he earned at least 2 bases, then he scored
-          _runsCounter += 1;
-          retStrings.push(`${_baseResults.second.name} scores!!!\n`);
-          _baseResults.second = undefined;
+        else if (basesEarned[0]! === 3) {
+          retStrings.push(`${batter.name} advances to third base.\n`);
+          _baseResults.third = batter;
         }
-        else if (basesEarned[2]! === 1) {
-          retStrings.push(`${_baseResults.second.name} advances to third base.\n`);
-          _baseResults.third = r_2;
-          _baseResults.second = undefined;
+        else if (basesEarned[0]! === 2) {
+          retStrings.push(`${batter.name} advances to second base.\n`);
+          _baseResults.second = batter;
         }
-      }
-      if (_baseResults.first !== undefined) { // if there was a runner on first before the hit
-        if (basesEarned[1]! >= 3) {// if he earned at least 3 bases, then he scored
-          _runsCounter += 1;
-          retStrings.push(`${_baseResults.first.name} scores!!!\n`);
-          _baseResults.first = undefined;
+        else if (basesEarned[0]! === 1) {
+          retStrings.push(`${batter.name} advances to first base.\n`);
+          _baseResults.first = batter;
         }
-        else if (basesEarned[1]! === 2) {
-          retStrings.push(`${_baseResults.first.name} advances to third base.\n`);
-          _baseResults.third = r_1;
-          _baseResults.first = undefined;
-        }
-        else if (basesEarned[1]! === 1) {
-          retStrings.push(`${_baseResults.first.name} advances to second base.\n`);
-          _baseResults.second = r_1;
-          _baseResults.first = undefined;
-        }
-      }
-      if (basesEarned[0]! >= 4) {// if he earned at least 4 bases, then he scored
-        _runsCounter += 1;
-        retStrings.push(`${batter.name} hits a Home Run!!!!!\n`);
-        retStrings.push(`${batter.name} scores!!!\n`);
-      }
-      else if (basesEarned[0]! === 3) {
-        retStrings.push(`${batter.name} advances to third base.\n`);
-        _baseResults.third = batter;
-      }
-      else if (basesEarned[0]! === 2) {
-        retStrings.push(`${batter.name} advances to second base.\n`);
-        _baseResults.second = batter;
-      }
-      else if (basesEarned[0]! === 1) {
-        retStrings.push(`${batter.name} advances to first base.\n`);
-        _baseResults.first = batter;
-      }
+      */
     }
     //retStrings.push(`Runners on base: 1: ${_baseResults.first} | 2: ${_baseResults.second} | 3: ${_baseResults.third}\n`)
   }
@@ -1496,14 +1648,15 @@ function fieldAction(batter: PlayerStateStruct, fieldTeam: PlayerStateStruct[], 
         }
       }
       //TODO: if throwFacter is > 2, do not run for extra bases
+      let ball_factor: number = Math.floor(Math.random() * 15 + 1); 
       let distance = hex_distance(hitLine[hitLine.length-1]!.position, throw_position); // get distance between fielder and base he's throwing to
       let throwFactor: number = getThrowFactor(distance); // debuff this throwFacter based on numTurns?
-      let distanceFactor: number = getDistanceFactor(distance); // or buff distanceFacter by numTurns?
+      //let distanceFactor: number = getDistanceFactor(distance); // or buff distanceFacter by numTurns?
       let str_roll_of: number = Math.floor(Math.random() * nearFielder.strength*throwFactor + 1); // OF throws with strength*throwFactor
       let spd_roll_runner: number = Math.floor(Math.random() * leadRunnerNow!.speed + 1);  // runner runs with speed
       retStrings.push(`The ball comes to a rest at position ${hitLine[hitLine.length-1]!.position.q}, ${hitLine[hitLine.length-1]!.position.r}, ${hitLine[hitLine.length-1]!.position.s}\n`)
       retStrings.push(`${nearFielder.name} recovers the ball in ${num_turns} turns.\n`)
-      retStrings.push(`${nearFielder.name} rolls throw strength of ${str_roll_of} vs ${leadRunnerNow?.name}'s speed roll of ${spd_roll_runner}\n`)
+      retStrings.push(`${nearFielder.name} rolls throw strength of ${str_roll_of} vs ${leadRunnerNow?.name}'s speed roll of ${spd_roll_runner} with a ball factor of ${ball_factor}\n`)
       if (str_roll_of <= spd_roll_runner) { // lead runner and trailing runners get an extra base
         basesEarned[0] += 1; //TODO: only need to increment lead runner and trailing runners
         basesEarned[1] += 1;
@@ -1511,13 +1664,13 @@ function fieldAction(batter: PlayerStateStruct, fieldTeam: PlayerStateStruct[], 
         basesEarned[3] += 1;
       }
       else if (str_roll_of > spd_roll_runner) {
-        if (str_roll_of >= spd_roll_runner*2 && str_roll_of > distanceFactor) { // critical running error! Thrown out. TODO: deal with other baserunners
+        if (str_roll_of >= (spd_roll_runner+ball_factor)*2 && str_roll_of > 30) { // critical running error! Thrown out. 
           let _base = basesEarned[highestIndex]! + highestIndex + 1;
           _outcounter += 1;
-          basesEarned[0] = 0;
+          basesEarned[highestIndex] = -1;
           console.log(`there are ${_outcounter} outs\n`)
           retStrings.push(`${leadRunnerNow?.name} is thrown out at base ${_base}\n`)
-          basesEarned[highestIndex] = 0; // lead runner was thrown out, but trailing runners still advance +1
+          //basesEarned[highestIndex] = 0; // lead runner was thrown out, but trailing runners still advance +1
           retStrings.push(`That's an OUT!\n`)
         }
         else { // held to bases earned while fielder was trying to get to the ball
@@ -1527,74 +1680,77 @@ function fieldAction(batter: PlayerStateStruct, fieldTeam: PlayerStateStruct[], 
       }
       // TODO: WHAT IF PLAYER SCORES BUT THEN OTHER RUNNER GETS OUT 3???
     console.log(`NOW there are ${_outcounter} outs\n`)
-    if (_outcounter < 3) { // this won't work because _outcounter does not keep up with state outcount when fieldaction is called
+    if (_outcounter < 3) { 
       // get hits on scoreboard
-      if (basesEarned[0] === 1) {
-        retStrings.push(`${batter.name} hits a single.\n`)
-      }
-      if (basesEarned[0] === 2) {
-        retStrings.push(`${batter.name} hits a double.\n`)
-      }
-      if (basesEarned[0] === 3) {
-        retStrings.push(`${batter.name} hits a triple.\n`)
-      }
-
-      let r_1 = _baseResults.first;
-      let r_2 = _baseResults.second;
-      let r_3 = _baseResults.third;
-      if (_baseResults.third !== undefined) { // if there was a runner on third before the hit
-        if (basesEarned[3]! >= 1) {// if he earned at least 1 base, then he scored
+      _runsCounter += updateScoreboard(basesEarned, retStrings, batter, _baseResults, _runsCounter);
+      /**
+        if (basesEarned[0] === 1) {
+          retStrings.push(`${batter.name} hits a single.\n`)
+        }
+        if (basesEarned[0] === 2) {
+          retStrings.push(`${batter.name} hits a double.\n`)
+        }
+        if (basesEarned[0] === 3) {
+          retStrings.push(`${batter.name} hits a triple.\n`)
+        }
+  
+        let r_1 = _baseResults.first;
+        let r_2 = _baseResults.second;
+        let r_3 = _baseResults.third;
+        if (_baseResults.third !== undefined) { // if there was a runner on third before the hit
+          if (basesEarned[3]! >= 1) {// if he earned at least 1 base, then he scored
+            _runsCounter += 1;
+            retStrings.push(`${_baseResults.third.name} scores!!!\n`);
+            _baseResults.third = undefined;
+          }
+        }
+        if (_baseResults.second !== undefined) { // if there was a runner on second before the hit
+          if (basesEarned[2]! >= 2) {// if he earned at least 2 bases, then he scored
+            _runsCounter += 1;
+            retStrings.push(`${_baseResults.second.name} scores!!!\n`);
+            _baseResults.second = undefined;
+          }
+          else if (basesEarned[2]! === 1) {
+            retStrings.push(`${_baseResults.second.name} advances to third base.\n`);
+            _baseResults.third = r_2;
+            _baseResults.second = undefined;
+          }
+        }
+        if (_baseResults.first !== undefined) { // if there was a runner on first before the hit
+          if (basesEarned[1]! >= 3) {// if he earned at least 3 bases, then he scored
+            _runsCounter += 1;
+            retStrings.push(`${_baseResults.first.name} scores!!!\n`);
+            _baseResults.first = undefined;
+          }
+          else if (basesEarned[1]! === 2) {
+            retStrings.push(`${_baseResults.first.name} advances to third base.\n`);
+            _baseResults.third = r_1;
+            _baseResults.first = undefined;
+          }
+          else if (basesEarned[1]! === 1) {
+            retStrings.push(`${_baseResults.first.name} advances to second base.\n`);
+            _baseResults.second = r_1;
+            _baseResults.first = undefined;
+          }
+        }
+        if (basesEarned[0]! >= 4) {// if he earned at least 4 bases, then he scored
           _runsCounter += 1;
-          retStrings.push(`${_baseResults.third.name} scores!!!\n`);
-          _baseResults.third = undefined;
+          retStrings.push(`${batter.name} hits a Home Run!!!!!\n`);
+          retStrings.push(`${batter.name} scores!!!\n`);
         }
-      }
-      if (_baseResults.second !== undefined) { // if there was a runner on second before the hit
-        if (basesEarned[2]! >= 2) {// if he earned at least 2 bases, then he scored
-          _runsCounter += 1;
-          retStrings.push(`${_baseResults.second.name} scores!!!\n`);
-          _baseResults.second = undefined;
+        else if (basesEarned[0]! === 3) {
+          retStrings.push(`${batter.name} advances to third base.\n`);
+          _baseResults.third = batter;
         }
-        else if (basesEarned[2]! === 1) {
-          retStrings.push(`${_baseResults.second.name} advances to third base.\n`);
-          _baseResults.third = r_2;
-          _baseResults.second = undefined;
+        else if (basesEarned[0]! === 2) {
+          retStrings.push(`${batter.name} advances to second base.\n`);
+          _baseResults.second = batter;
         }
-      }
-      if (_baseResults.first !== undefined) { // if there was a runner on first before the hit
-        if (basesEarned[1]! >= 3) {// if he earned at least 3 bases, then he scored
-          _runsCounter += 1;
-          retStrings.push(`${_baseResults.first.name} scores!!!\n`);
-          _baseResults.first = undefined;
+        else if (basesEarned[0]! === 1) {
+          retStrings.push(`${batter.name} advances to first base.\n`);
+          _baseResults.first = batter;
         }
-        else if (basesEarned[1]! === 2) {
-          retStrings.push(`${_baseResults.first.name} advances to third base.\n`);
-          _baseResults.third = r_1;
-          _baseResults.first = undefined;
-        }
-        else if (basesEarned[1]! === 1) {
-          retStrings.push(`${_baseResults.first.name} advances to second base.\n`);
-          _baseResults.second = r_1;
-          _baseResults.first = undefined;
-        }
-      }
-      if (basesEarned[0]! >= 4) {// if he earned at least 4 bases, then he scored
-        _runsCounter += 1;
-        retStrings.push(`${batter.name} hits a Home Run!!!!!\n`);
-        retStrings.push(`${batter.name} scores!!!\n`);
-      }
-      else if (basesEarned[0]! === 3) {
-        retStrings.push(`${batter.name} advances to third base.\n`);
-        _baseResults.third = batter;
-      }
-      else if (basesEarned[0]! === 2) {
-        retStrings.push(`${batter.name} advances to second base.\n`);
-        _baseResults.second = batter;
-      }
-      else if (basesEarned[0]! === 1) {
-        retStrings.push(`${batter.name} advances to first base.\n`);
-        _baseResults.first = batter;
-      }
+      */
     }
     
     //retStrings.push(`Runners on base: 1: ${_baseResults.first} | 2: ${_baseResults.second} | 3: ${_baseResults.third}\n`)
@@ -1661,9 +1817,9 @@ function getHexesAtDistance(distance: number): Hex[] {
 }
 
 /*
-  getFieldersInRange returns a PlayerStateStruct[] like:
-  fielders = [undefined, undefined, undefined, VALUE, VALUE, undefined...]
-  where index of VALUEs also refers to index of hitLine where that fielder can field the ball
+//  getFieldersInRange returns a PlayerStateStruct[] like:
+// fielders = [undefined, undefined, undefined, VALUE, VALUE, undefined...]
+//  where index of VALUEs also refers to index of hitLine where that fielder can field the ball
 */
 function getFieldersInRange(fieldTeam: PlayerStateStruct[], hitLine: Hex[]): PlayerStateStruct[] {
   let fielders: PlayerStateStruct[] = [];
@@ -1685,7 +1841,7 @@ function getFieldersInRange(fieldTeam: PlayerStateStruct[], hitLine: Hex[]): Pla
       if (hitLine[i]?.ballHeight !== Height.HIGH) { // if the ball at this hex is not high
         let dist = hex_distance(fielderHexPos[fielder.class as FieldPositions], hitLine[i]?.position!)
         // Corner IF can move 2 hex to snag passing ball
-        if (fielder.class === '1B' || fielder.class === '3B' || fielder.class === 'P') {
+        if (fielder.class === '1B' || fielder.class === '3B') {
           if (dist <= 2) {
             //fielders.push(fielder);
             fielders[i] = fielder;
@@ -1702,6 +1858,12 @@ function getFieldersInRange(fieldTeam: PlayerStateStruct[], hitLine: Hex[]): Pla
         // OF can move 5 hex to snag passing ball
         if (fielder.class === 'LF' || fielder.class === 'RF' || fielder.class === 'CF') {
           if (dist <= 5) {
+            //fielders.push(fielder);
+            fielders[i] = fielder;
+          }
+        }
+        if (fielder.class === 'P') { // should P reaction range be 1 or 2?
+          if (dist <= 2) {
             //fielders.push(fielder);
             fielders[i] = fielder;
           }
@@ -1825,6 +1987,93 @@ function getMoveSpeed(_player: PlayerStateStruct): number {
     }
   }
   return moves;
+}
+
+/*
+//  UpdateScoreboard only needs to return the number of runs scored. 
+//  Input parameters retStrings and _baseResults are directly mutated, so they don't need to be returned.
+*/
+function updateScoreboard(_basesEarned: number[], _retStrings: string[], _batter: PlayerStateStruct, __baseResults: BasesOccupied, __runsCounter: number): number { 
+  let _runsCounter_ = __runsCounter;
+
+  // runners that got out should be removed from baseResults NOT SURE IF NEEDED
+  if (_basesEarned[1] === -1) {
+    __baseResults.first = undefined;
+  }
+  if (_basesEarned[2] === -1) {
+    __baseResults.second = undefined;
+  }
+  if (_basesEarned[3] === -1) {
+    __baseResults.third = undefined;
+  }
+
+  if (_basesEarned[0] === 1) {
+    _retStrings.push(`${_batter.name} hits a single.\n`)
+  }
+  if (_basesEarned[0] === 2) {
+    _retStrings.push(`${_batter.name} hits a double.\n`)
+  }
+  if (_basesEarned[0] === 3) {
+    _retStrings.push(`${_batter.name} hits a triple.\n`)
+  }
+
+  let r_1 = __baseResults.first;
+  let r_2 = __baseResults.second;
+  let r_3 = __baseResults.third;
+  if (__baseResults.third !== undefined) { // if there was a runner on third before the hit
+    if (_basesEarned[3]! >= 1) {// if he earned at least 1 base, then he scored
+      _runsCounter_ += 1;
+      _retStrings.push(`${__baseResults.third.name} scores!!!\n`);
+      __baseResults.third = undefined;
+    }
+  }
+  if (__baseResults.second !== undefined) { // if there was a runner on second before the hit
+    if (_basesEarned[2]! >= 2) {// if he earned at least 2 bases, then he scored
+      _runsCounter_ += 1;
+      _retStrings.push(`${__baseResults.second.name} scores!!!\n`);
+      __baseResults.second = undefined;
+    }
+    else if (_basesEarned[2]! === 1) {
+      _retStrings.push(`${__baseResults.second.name} advances to third base.\n`);
+      __baseResults.third = r_2;
+      __baseResults.second = undefined;
+    }
+  }
+  if (__baseResults.first !== undefined) { // if there was a runner on first before the hit
+    if (_basesEarned[1]! >= 3) {// if he earned at least 3 bases, then he scored
+      _runsCounter_ += 1;
+      _retStrings.push(`${__baseResults.first.name} scores!!!\n`);
+      __baseResults.first = undefined;
+    }
+    else if (_basesEarned[1]! === 2) {
+      _retStrings.push(`${__baseResults.first.name} advances to third base.\n`);
+      __baseResults.third = r_1;
+      __baseResults.first = undefined;
+    }
+    else if (_basesEarned[1]! === 1) {
+      _retStrings.push(`${__baseResults.first.name} advances to second base.\n`);
+      __baseResults.second = r_1;
+      __baseResults.first = undefined;
+    }
+  }
+  if (_basesEarned[0]! >= 4) {// if he earned at least 4 bases, then he scored
+    _runsCounter_ += 1;
+    _retStrings.push(`${_batter.name} hits a Home Run!!!!!\n`);
+    _retStrings.push(`${_batter.name} scores!!!\n`);
+  }
+  else if (_basesEarned[0]! === 3) {
+    _retStrings.push(`${_batter.name} advances to third base.\n`);
+    __baseResults.third = _batter;
+  }
+  else if (_basesEarned[0]! === 2) {
+    _retStrings.push(`${_batter.name} advances to second base.\n`);
+    __baseResults.second = _batter;
+  }
+  else if (_basesEarned[0]! === 1) {
+    _retStrings.push(`${_batter.name} advances to first base.\n`);
+    __baseResults.first = _batter;
+  }
+  return _runsCounter_; 
 }
 
 function getNextStatPoint(proclivities: Proclivity): number {
