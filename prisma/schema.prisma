@@ -26,31 +26,31 @@ model Post {
 
 // for baseball sim
 model League {
-    id     String @id @default(cuid())
-    name   String
-    team   Team[]
-    teamId String
-    user   User   @relation(fields: [userId], references: [id])
-    userId String
+    id       String @id
+    name     String
+    teams    Team[]
+    myTeamId String
+    user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+    userId   String
 
     @@index([userId])
 }
 
+// TODO: DO NOT CREATE DEFAULT IDs HERE!!!
 model Team {
-    id          String   @id @default(cuid())
+    id          String   @id
     name        String
     gamesPlayed Int
     wins        Int
-    player      Player[]
-    League      League   @relation(fields: [leagueId], references: [id])
-    playerId    String
+    players     Player[]
+    League      League   @relation(fields: [leagueId], references: [id], onDelete: Cascade)
     leagueId    String
 
     @@index([leagueId])
 }
 
 model Player {
-    id           String @id @default(cuid())
+    id           String @id
     name         String
     age          Int
     strength     Int
@@ -68,7 +68,7 @@ model Player {
     classExp     Int
     classLvl     Int
 
-    Team   Team   @relation(fields: [teamId], references: [id])
+    Team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
     teamId String
 
     @@index([teamId])

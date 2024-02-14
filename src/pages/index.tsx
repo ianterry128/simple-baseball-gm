@@ -104,6 +104,11 @@ export default function Home() {
 
   const [selectedTeam, setSelectedTeam] = useState(0);
 
+  // set hook functions as const so it can be used inside event handler
+  const createLeagueConst = api.league.create.useMutation(); 
+  const createTeamConst = api.team.create.useMutation(); 
+  const createPlayerConst = api.player.create.useMutation(); 
+
 // FUNCTIONS HERE USE REACT HOOKS
   function createLeague () {
     setSelectedTeam(1);
@@ -225,6 +230,7 @@ export default function Home() {
       }
       teamsToAdd[m] = teamToAdd;
       teamNamesUsed[m] = _teamName;
+      
 
       m++;
     }
@@ -237,8 +243,38 @@ export default function Home() {
 
     // store info in React state
     setLeagueInfo(newLeague);
+    // store teams in database
+    for (let i=0; i<teamsToAdd.length; i++) {
+      // store players in database
+      for (let j=0; j<teamsToAdd[i]?.players.length!; j++) {
+        createPlayerConst.mutate({ 
+          id: teamsToAdd[i]?.players[j]?.id!,
+          name: teamsToAdd[i]?.players[j]?.name!,
+          age: teamsToAdd[i]?.players[j]?.age!,
+          strength: teamsToAdd[i]?.players[j]?.strength!,
+          strengthPot: teamsToAdd[i]?.players[j]?.strengthPot!,
+          speed: teamsToAdd[i]?.players[j]?.speed!,
+          speedPot: teamsToAdd[i]?.players[j]?.speedPot!,
+          precision: teamsToAdd[i]?.players[j]?.precision!,
+          precisionPot: teamsToAdd[i]?.players[j]?.precisionPot!,
+          contact: teamsToAdd[i]?.players[j]?.contact!,
+          contactPot: teamsToAdd[i]?.players[j]?.contactPot!,
+          class: teamsToAdd[i]?.players[j]?.class!,
+          potential: teamsToAdd[i]?.players[j]?.potential!,
+          experience: teamsToAdd[i]?.players[j]?.experience!,
+          level: teamsToAdd[i]?.players[j]?.level!,
+          classExp: teamsToAdd[i]?.players[j]?.classExp!,
+          classLvl: teamsToAdd[i]?.players[j]?.classLvl!,
+          teamId: teamsToAdd[i]?.id!,
+          });
+      }
+      createTeamConst.mutate({ id: teamsToAdd[i]?.id!, name: teamsToAdd[i]?.name!, gamesPlayed: 0, wins: 0, leagueId: newLeague.id});
+    }
+    // store league info in database
+    createLeagueConst.mutate({ id: newLeague.id, name: newLeague.name, myTeamId: newLeague.teams[0]?.id! });
   }
 
+ 
   /**
     function exhibition(team_home:TeamStateStruct, team_away:TeamStateStruct) {
       // set visibility of log

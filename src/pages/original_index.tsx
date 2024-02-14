@@ -46,7 +46,8 @@ interface TeamStateStruct {
 interface LeagueStateStruct {
   id: string,
   name: string,
-  teams: TeamStateStruct[]
+  teams: TeamStateStruct[],
+  //teamId: string
 }
 
 /**
