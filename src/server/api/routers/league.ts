@@ -7,7 +7,7 @@ import {
 } from "~/server/api/trpc";
 
 export const leagueRouter = createTRPCRouter({
-  create: protectedProcedure
+  create: protectedProcedure // write League to database
     .input(z.object({ 
       id: z.string(),
       name: z.string(), 
@@ -44,7 +44,11 @@ export const leagueRouter = createTRPCRouter({
       const league = await ctx.db.league.create({
         data: { id: input.id, name: input.name, myTeamId: input.myTeamId, userId: ctx.session.user.id },
       });
-
       return league;
     }),
+  
+  getByUserId: protectedProcedure.input(z.string()).query(async ({ ctx, input }) => {
+    const leaguesByUserId = await ctx.db.league.findMany({ where: { userId: input } })
+    return leaguesByUserId;
+  }),
 });

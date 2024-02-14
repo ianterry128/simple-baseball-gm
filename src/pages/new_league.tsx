@@ -273,30 +273,33 @@ export default function Home() {
     createLeagueConst.mutate({ id: newLeague.id, name: newLeague.name, myTeamId: newLeague.teams[0]?.id! });
   }
 
- 
-  /**
-    function exhibition(team_home:TeamStateStruct, team_away:TeamStateStruct) {
-      // set visibility of log
-      setIsLogActive(true);
-      setLogContents(['']);
-      let _localContents: string[] = [];
-  
-      // set league table visibility
-      setIsLeagueTableActive(false);
-      MatchSim(leagueInfo, team_home, team_away, _localContents)
-      setLogContents(_localContents);
-    }
-  */
-
   return (
     <>
     <div className="flex flex-col">
       <h1 className="text-center text-2xl">Welcome to Simple Baseball GM!</h1>
-      <div className="flex p-2">
-        <Link href="/new_league"
-          className="rounded-full transition-colors duration-200 hover:bg-green-500 
-        bg-green-700 text-center text-white shadow-sm font-bold px-10 py-5 w-52">New League
-        </Link>
+      <div className="flex p-2"> 
+        <form onSubmit={() => createLeague()}>
+          <ul className="flex flex-col gap-y-3">
+            <li className="flex gap-x-3">
+              <label htmlFor="league name">League Name:</label>
+              <input className="border-2 rounded-md"
+              type="text" id="league name" name="user_name" />
+            </li>
+            <li className="flex gap-x-3">
+              <label htmlFor="team name">Team Name:</label>
+              <input className="border-2 rounded-md"
+              type="text" id="team name" name="user_email" />
+            </li>
+            <li>
+              <button 
+                type="submit"
+                className="rounded-full transition-colors duration-200 hover:bg-green-500 
+              bg-green-700 text-white shadow-sm font-bold px-10 py-5 w-52">
+                Create League
+              </button>
+            </li>
+          </ul>
+  </form>
       </div>
       <div className="flex p-2 gap-4"> 
         {/* can have a table here showing the user's different leagues*/}
