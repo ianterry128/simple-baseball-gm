@@ -26,12 +26,14 @@ model Post {
 
 // for baseball sim
 model League {
-    id       String @id
-    name     String
-    teams    Team[]
-    myTeamId String
-    user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-    userId   String
+    id         String @id
+    name       String
+    teams      Team[]
+    myTeamId   String
+    myTeamName String
+    week       Int
+    user       User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+    userId     String
 
     @@index([userId])
 }

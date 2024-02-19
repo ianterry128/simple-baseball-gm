@@ -39,10 +39,12 @@ export const leagueRouter = createTRPCRouter({
       //League: z.object({}),
       leagueId: z.string()
     })), */
-      myTeamId: z.string() }))
+      myTeamId: z.string(),
+      myTeamName: z.string(),
+      week: z.number() }))
     .mutation(async ({ ctx, input }) => {
       const league = await ctx.db.league.create({
-        data: { id: input.id, name: input.name, myTeamId: input.myTeamId, userId: ctx.session.user.id },
+        data: { id: input.id, name: input.name, myTeamId: input.myTeamId, myTeamName: input.myTeamName, week: input.week, userId: ctx.session.user.id },
       });
       return league;
     }),

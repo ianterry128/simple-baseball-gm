@@ -1,4 +1,5 @@
 import { Player } from "@prisma/client";
+import { useQuery } from "@tanstack/react-query";
 import { Console } from "console";
 import { randomUUID } from "crypto";
 import { signIn, signOut, useSession } from "next-auth/react";
@@ -12,6 +13,7 @@ import { teamNames } from "~/data/names";
 
 import { api } from "~/utils/api";
 import { Position, hex_distance, hex_lineDraw } from "~/utils/hexUtil";
+import usePersistState from "~/utils/usePersistState";
 
 interface PlayerStateStruct {
     id: string,
@@ -71,7 +73,6 @@ interface Proclivity { // TODO: the properties must add up to === 1.0
 //type FieldPositions = '1B' | '2B' | 'SS' | '3B' | 'CF' | 'LF' | 'RF' | 'C' | 'P' ;
 
 export default function Home() {
-  const hello = api.post.hello.useQuery({ text: "from tRPC" });
   //const [playerInfo, setPlayerInfo] = useState<PlayerStateStruct[]>([]);
   //const [teamInfo, setTeamInfo] = useState<TeamStateStruct>();
   const [leagueInfo, setLeagueInfo] = useState<LeagueStateStruct>({
@@ -80,7 +81,40 @@ export default function Home() {
     teams: []
   });
   // LEAGUE TABLE STATE
-  const [isLeagueTableActive, setIsLeagueTableActive] = useState<boolean>(true);
+  const [isLeagueTableActive, setIsLeagueTableActive] = useState<boolean>(false);
+
+  const [isPlayingGame, setIsPlayingGame] = useState<boolean>(false);
+  // This preserves state of isPlayingGame on refresh
+  useEffect(() => {
+    const data = window.localStorage.getItem('isPlayingGame');
+    if (data !== null) setIsPlayingGame(JSON.parse(data))
+  }, [])   
+
+  useEffect(() => {
+    window.localStorage.setItem('isPlayingGame', JSON.stringify(isPlayingGame));
+  }, [isPlayingGame])
+  //
+
+  /**
+    function getInitial_IsPlayingGame(): boolean {
+      let ret_str = null;
+      useEffect(() => {
+        ret_str = localStorage.getItem('isPlayingGame');
+      })   
+      if (ret_str !== null && ret_str !== undefined) {
+        return JSON.parse(ret_str);
+      }
+      return false;
+    }
+    function setIsPlayingGame_wrapper(value: boolean) {
+      let value_str = JSON.stringify(value);
+      useEffect(() => {
+        localStorage.setItem('isPlayingGame', value_str);
+      })
+      setIsPlayingGame(value);
+    }
+  */
+  //setIsPlayingGame(initialState_isPlayingGame);
 
   const proclivities: {[key: string]: Proclivity} = {
     'slugger': {strength:0.50, speed:0.10, precision:0.10, contact:0.30},
@@ -109,170 +143,67 @@ export default function Home() {
 
 // FUNCTIONS HERE USE REACT HOOKS
 
-  function createLeague () {
-    setSelectedTeam(1);
-    const numTeams: number = 30;
-    let m: number = 0;
-    let teamsToAdd: TeamStateStruct[] = [];
-    let teamNamesUsed: string[] = [];
-    while (m < numTeams)
-    {
-      let newPlayers: PlayerStateStruct[] = [];
-      const numPlayers: number = 9;
-      let team_lvl_max = 16;
-      let n = 0;
-      while (n < numPlayers)
-      {
-        let newPlayer: PlayerStateStruct = {
-          id: crypto.randomUUID(),
-          name: '',
-          age: 0,
-          strength: 0,
-          strengthPot: 0,
-          speed: 0,
-          speedPot: 0,
-          precision: 0,
-          precisionPot: 0,
-          contact: 0,
-          contactPot: 0,
-          class: '',
-          potential: 0,
-          experience: 0,
-          level: 0,
-          classExp: 0,
-          classLvl: 0
-        }
-        const classesProclivities: {[key: string]: Proclivity} = {
-          '1B': proclivitiesArr[m%6]!,
-          '2B': proclivitiesArr[m%6]!,
-          'SS': proclivitiesArr[m%6]!,
-          '3B': proclivitiesArr[m%6]!,
-          'CF': proclivitiesArr[m%6]!,
-          'LF': proclivitiesArr[m%6]!,
-          'RF': proclivitiesArr[m%6]!,
-          'C': proclivitiesArr[m%6]!,
-          'P': proclivities['pitcher']!
-        }
-
-        const classesToGen: string[] = [
-          '1B',
-          '2B',
-          'SS',
-          '3B',
-          'CF',
-          'LF',
-          'RF',
-          'C',
-          'P'
-        ];
-        newPlayer.class = classesToGen[n]!;
-        let class_stat_proclivities = classesProclivities[newPlayer.class];
-        /**
-          let class_stat_proclivities: Proclivity = {
-            strength: 0.25,
-            speed: 0.25,
-            precision: 0.25,
-            contact: 0.25
-          }
-        */
-
-        const _name = generateName();
-        newPlayer.name = _name
-        newPlayer.age = Math.floor(Math.random() * (40 - 16) + 16);
-        // choose lvl of player
-        newPlayer.level = Math.floor(Math.random() * (30-5+1) + 5); // random lvl between 30 and 5
-        //team_lvl_max -= newPlayer.level; // to ensure every team has same total lvls across players
-        let numStatPoints = 16 + ((newPlayer.level-1)*3); // lvl 1 has 20 total stat points and each additional lvl has +3
-        // we start at 16, because each stat MUST have at least 1 point
-        newPlayer.strength = 1;
-        newPlayer.speed = 1;
-        newPlayer.precision = 1;
-        newPlayer.contact = 1;
-        let stat_to_add: StatPoint = Math.floor(Math.random() * (4-0+1) + 0);
-        for (let i=0; i<numStatPoints; i++) {
-          switch (stat_to_add) {
-            case StatPoint.STRENGTH:
-              newPlayer.strength += 1;
-              break;
-            case StatPoint.SPEED:
-              newPlayer.speed += 1;
-              break;
-            case StatPoint.PRECISION:
-              newPlayer.precision += 1;
-              break;
-            case StatPoint.CONTACT:
-              newPlayer.contact += 1;
-              break;
-          }
-          stat_to_add = getNextStatPoint(class_stat_proclivities ?? {strength:0.25, speed:0.25, precision:0.25, contact:0.25});
-          //stat_to_add = Math.floor(Math.random() * (3-0+1) + 0); // choose next stat to add
-        }
-        //newPlayer.strength = Math.floor(Math.random() * (30 - 1) + 1);
-        //newPlayer.speed = Math.floor(Math.random() * (30 - 1) + 1);
-        //newPlayer.precision = Math.floor(Math.random() * (30 - 1) + 1);
-        //newPlayer.contact = Math.floor(Math.random() * (30 - 1) + 1);
-
-        newPlayers[n] = newPlayer;
-        n++;
-      }
-      // ensure there are no duplicate team names
-      let _teamName = generateTeamName();
-      while (teamNamesUsed.includes(_teamName)) {
-        _teamName = generateTeamName();
-      }
-      let teamToAdd: TeamStateStruct = {
-        id: crypto.randomUUID(),
-        name: _teamName,
-        players: newPlayers,
-        wins: 0,
-        losses: 0,
-      }
-      teamsToAdd[m] = teamToAdd;
-      teamNamesUsed[m] = _teamName;
-      
-
-      m++;
-    }
-
-    let newLeague: LeagueStateStruct = {
-      id: crypto.randomUUID(),
-      name: 'Simple League',
-      teams: teamsToAdd
-    }
-
-    // store info in React state
-    setLeagueInfo(newLeague);
-    // store teams in database
-    for (let i=0; i<teamsToAdd.length; i++) {
-      // store players in database
-      for (let j=0; j<teamsToAdd[i]?.players.length!; j++) {
-        createPlayerConst.mutate({ 
-          id: teamsToAdd[i]?.players[j]?.id!,
-          name: teamsToAdd[i]?.players[j]?.name!,
-          age: teamsToAdd[i]?.players[j]?.age!,
-          strength: teamsToAdd[i]?.players[j]?.strength!,
-          strengthPot: teamsToAdd[i]?.players[j]?.strengthPot!,
-          speed: teamsToAdd[i]?.players[j]?.speed!,
-          speedPot: teamsToAdd[i]?.players[j]?.speedPot!,
-          precision: teamsToAdd[i]?.players[j]?.precision!,
-          precisionPot: teamsToAdd[i]?.players[j]?.precisionPot!,
-          contact: teamsToAdd[i]?.players[j]?.contact!,
-          contactPot: teamsToAdd[i]?.players[j]?.contactPot!,
-          class: teamsToAdd[i]?.players[j]?.class!,
-          potential: teamsToAdd[i]?.players[j]?.potential!,
-          experience: teamsToAdd[i]?.players[j]?.experience!,
-          level: teamsToAdd[i]?.players[j]?.level!,
-          classExp: teamsToAdd[i]?.players[j]?.classExp!,
-          classLvl: teamsToAdd[i]?.players[j]?.classLvl!,
-          teamId: teamsToAdd[i]?.id!,
-          });
-      }
-      createTeamConst.mutate({ id: teamsToAdd[i]?.id!, name: teamsToAdd[i]?.name!, gamesPlayed: 0, wins: 0, leagueId: newLeague.id});
-    }
-    // store league info in database
-    createLeagueConst.mutate({ id: newLeague.id, name: newLeague.name, myTeamId: newLeague.teams[0]?.id! });
+// COMPONENTS THAT REQUIRE STATE VARIABLES FROM HOME FUNCTION
+function MyLeaguesTable() {
+  if (isPlayingGame) {
+    return;
   }
 
+  const session = useSession();
+  const user = session.data?.user;
+  const leagueQuery = api.league.getByUserId.useQuery(user?.id!)
+  if (leagueQuery.isFetching) { // TODO: animated loading spinner?
+    return <h1>fetching...</h1>;
+  }
+  if (leagueQuery.isLoading) {
+    return <h1>loading...</h1>;
+  }
+  if (leagueQuery.data === undefined) {
+    return;
+  }
+  // this displays if user has not created any leagues
+  if (leagueQuery.data[0] === null || leagueQuery.data[0] === undefined) { 
+    return <h2>You have not yet created any Leagues</h2>;
+  }
+  
+  return (
+    <div>
+    <table className="table-auto border-2 border-spacing-2 p-8">
+      <caption>My Leagues</caption>
+      <thead>
+        <tr className="even:bg-gray-50 odd:bg-white">
+          <th>---</th>
+          <th>League</th>
+          <th>Team</th>
+          <th>Season</th>
+        </tr>
+      </thead>
+      <tbody>
+        {
+          leagueQuery.data?.map((item, index) => {
+            return (
+              <tr key={crypto.randomUUID()} className="even:bg-green-200 odd:bg-gray-50">
+                <td className="px-5 py-2">
+                  <button 
+                    onClick={() => { 
+                      setIsPlayingGame(true);
+                    }}
+                    className="block rounded-md transition-colors duration-200 hover:bg-green-500 
+                  bg-green-700 text-center justify-center text-white shadow-sm font-bold h-7 w-20">PLAY
+                  </button>
+                </td>
+                <td className="px-2">{item.name}</td>
+                <td className="px-2">{item.myTeamName}</td>
+                <td className="px-2">1</td>
+              </tr>
+            )
+          })
+        }
+      </tbody>
+    </table>
+  </div>
+  )
+}
  
   /**
     function exhibition(team_home:TeamStateStruct, team_away:TeamStateStruct) {
@@ -311,51 +242,7 @@ export default function Home() {
 }
 
 // Functions outside Home() do not require REACT hooks
-function MyLeaguesTable() {
-  const session = useSession();
-  const user = session.data?.user;
-  let userLeagues: {id: string, name: string, team: string}[] = []
-  const leagueQuery = api.league.getByUserId.useQuery(user?.id!)
-  if (leagueQuery.isFetching) { // TODO: animated loading spinner?
-    return <h1>fetching...</h1>;
-  }
-  if (leagueQuery.isLoading) {
-    return <h1>loading...</h1>;
-  }
-  if (leagueQuery.data === undefined) {
-    return;
-  }
- 
-  return (
-    <div>
-    <table className="table-auto border-2 border-spacing-2 p-8">
-      <caption>My Leagues</caption>
-      <thead>
-        <tr className="even:bg-gray-50 odd:bg-white">
-          <th>---</th>
-          <th>League</th>
-          <th>Team</th>
-          <th>Season</th>
-        </tr>
-      </thead>
-      <tbody>
-        {
-          leagueQuery.data?.map((item) => {
-            return (
-              <tr key={crypto.randomUUID()} className="even:bg-green-200 odd:bg-gray-50">
-                <td className="px-2">PLAY</td>
-                <td className="px-2">{item.name}</td>
-                <td className="px-2">{item.myTeamId}</td>
-                <td className="px-2">1</td>
-              </tr>
-            )
-          })
-        }
-      </tbody>
-    </table>
-  </div>
-  )
-}
+
 
 function generateName(): string {
   let surName: string = "";

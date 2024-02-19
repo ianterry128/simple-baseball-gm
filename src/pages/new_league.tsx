@@ -5,7 +5,7 @@ import { signIn, signOut, useSession } from "next-auth/react";
 import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { useEffect, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { number } from "zod";
 import { lastNames } from "~/data/names";
 import { teamNames } from "~/data/names";
@@ -101,6 +101,10 @@ export default function Home() {
   ]
 
   const [selectedTeam, setSelectedTeam] = useState(0);
+  const [leagueNameInput, setLeagueNameInput] = useState<string>('');
+  const [teamNameInput, setTeamNameInput] = useState<string>('');
+  const [warningTextLeague, setWarningTextLeague] = useState<string>('');
+  const [warningTextTeam, setWarningTextTeam] = useState<string>('');
 
   // set hook functions as const so it can be used inside event handler
   const createLeagueConst = api.league.create.useMutation(); 
@@ -108,8 +112,32 @@ export default function Home() {
   const createPlayerConst = api.player.create.useMutation(); 
 
 // FUNCTIONS HERE USE REACT HOOKS
-
-  function createLeague () {
+  const router = useRouter(); // used to navigate to Home Page
+  function createLeague (e: FormEvent) {
+    e.preventDefault(); // prevent page from refreshing on submit
+    // ensure inputs are not empty
+    if (leagueNameInput == null || leagueNameInput.trim().length === 0) {
+      setWarningTextLeague('League Name cannot be blank!')
+      if (teamNameInput == null || teamNameInput.trim().length === 0) {
+        setWarningTextTeam('Team Name cannot be blank!')
+      }
+      else {
+        setWarningTextTeam('')
+      }
+      return;
+    }
+    else {
+      setWarningTextLeague('')
+    }
+    if (teamNameInput == null || teamNameInput.trim().length === 0) {
+      setWarningTextTeam('Team Name cannot be blank!')
+      return;
+    }
+    else {
+      setWarningTextTeam('')
+    }
+    //
+    
     setSelectedTeam(1);
     const numTeams: number = 30;
     let m: number = 0;
@@ -217,6 +245,9 @@ export default function Home() {
       }
       // ensure there are no duplicate team names
       let _teamName = generateTeamName();
+      if (m === 0) {
+        _teamName = teamNameInput;
+      }
       while (teamNamesUsed.includes(_teamName)) {
         _teamName = generateTeamName();
       }
@@ -236,7 +267,7 @@ export default function Home() {
 
     let newLeague: LeagueStateStruct = {
       id: crypto.randomUUID(),
-      name: 'Simple League',
+      name: leagueNameInput,
       teams: teamsToAdd
     }
 
@@ -270,7 +301,8 @@ export default function Home() {
       createTeamConst.mutate({ id: teamsToAdd[i]?.id!, name: teamsToAdd[i]?.name!, gamesPlayed: 0, wins: 0, leagueId: newLeague.id});
     }
     // store league info in database
-    createLeagueConst.mutate({ id: newLeague.id, name: newLeague.name, myTeamId: newLeague.teams[0]?.id! });
+    createLeagueConst.mutate({ id: newLeague.id, name: newLeague.name, myTeamId: newLeague.teams[0]?.id!, myTeamName: teamNameInput, week: 0});
+    router.push('/') // this navigates to Home Page
   }
 
   return (
@@ -278,17 +310,36 @@ export default function Home() {
     <div className="flex flex-col">
       <h1 className="text-center text-2xl">Welcome to Simple Baseball GM!</h1>
       <div className="flex p-2"> 
-        <form onSubmit={() => createLeague()}>
+        <form onSubmit={createLeague}>
           <ul className="flex flex-col gap-y-3">
             <li className="flex gap-x-3">
               <label htmlFor="league name">League Name:</label>
-              <input className="border-2 rounded-md"
-              type="text" id="league name" name="user_name" />
+              <input 
+              className="border-2 rounded-md"
+              type="text" 
+              id="league_name" 
+              onChange={(e) => {
+                setLeagueNameInput(e.target.value);
+                if (e.target.value != null || leagueNameInput.trim().length !== 0) {
+                  setWarningTextLeague('')
+                }
+                }}
+              />
+              <h2 className="text-red-600" id="warning_league">{warningTextLeague}</h2>
             </li>
             <li className="flex gap-x-3">
               <label htmlFor="team name">Team Name:</label>
-              <input className="border-2 rounded-md"
-              type="text" id="team name" name="user_email" />
+              <input 
+              className="border-2 rounded-md"
+              type="text" 
+              id="team_name" 
+              onChange={(e) => {
+                setTeamNameInput(e.target.value)
+                if (e.target.value != null || leagueNameInput.trim().length !== 0) {
+                  setWarningTextTeam('')
+                }
+              }} />
+              <h2 className="text-red-600" id="warning_team">{warningTextTeam}</h2>
             </li>
             <li>
               <button 
@@ -302,8 +353,6 @@ export default function Home() {
   </form>
       </div>
       <div className="flex p-2 gap-4"> 
-        {/* can have a table here showing the user's different leagues*/}
-        <MyLeaguesTable />
       </div>
     </div>
     <div className="flex">
@@ -314,52 +363,6 @@ export default function Home() {
 }
 
 // Functions outside Home() do not require REACT hooks
-function MyLeaguesTable() {
-  const session = useSession();
-  const user = session.data?.user;
-  let userLeagues: {id: string, name: string, team: string}[] = []
-  const leagueQuery = api.league.getByUserId.useQuery(user?.id!)
-  if (leagueQuery.isFetching) { // TODO: animated loading spinner?
-    return <h1>fetching...</h1>;
-  }
-  if (leagueQuery.isLoading) {
-    return <h1>loading...</h1>;
-  }
-  if (leagueQuery.data === undefined) {
-    return;
-  }
- 
-  return (
-    <div>
-    <table className="table-auto border-2 border-spacing-2 p-8">
-      <caption>My Leagues</caption>
-      <thead>
-        <tr className="even:bg-gray-50 odd:bg-white">
-          <th>---</th>
-          <th>League</th>
-          <th>Team</th>
-          <th>Season</th>
-        </tr>
-      </thead>
-      <tbody>
-        {
-          leagueQuery.data?.map((item) => {
-            return (
-              <tr key={crypto.randomUUID()} className="even:bg-green-200 odd:bg-gray-50">
-                <td className="px-2">PLAY</td>
-                <td className="px-2">{item.name}</td>
-                <td className="px-2">{item.myTeamId}</td>
-                <td className="px-2">1</td>
-              </tr>
-            )
-          })
-        }
-      </tbody>
-    </table>
-  </div>
-  )
-}
-
 function generateName(): string {
   let surName: string = "";
    

@@ -25,7 +25,11 @@ export const teamRouter = createTRPCRouter({
       const team = await ctx.db.team.create({
         data: { id: input.id, name: input.name, gamesPlayed: input.gamesPlayed, wins: input.wins, leagueId: input.leagueId },
       });
-
       return team;
     }),
+
+  getTeamNameById: protectedProcedure.input(z.string()).query(async ({ ctx, input }) => {
+    const teamByTeamId = await ctx.db.team.findUnique({ where: { id: input } })
+    return teamByTeamId;
+  }),
 });
