@@ -28,24 +28,27 @@ model Post {
 model League {
     id         String @id
     name       String
-    teams      Team[]
+    teamsJson  Json
+    //teams      Team[]
     myTeamId   String
     myTeamName String
     week       Int
     user       User   @relation(fields: [userId], references: [id], onDelete: Cascade)
     userId     String
+    Team       Team[]
 
     @@index([userId])
 }
 
 // TODO: DO NOT CREATE DEFAULT IDs HERE!!!
 model Team {
-    id          String   @id
+    id          String @id
     name        String
     gamesPlayed Int
     wins        Int
-    players     Player[]
-    League      League   @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+    playersJson Json
+    //players     Player[]
+    League      League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
     leagueId    String
 
     @@index([leagueId])
@@ -70,7 +73,7 @@ model Player {
     classExp     Int
     classLvl     Int
 
-    Team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+    //Team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
     teamId String
 
     @@index([teamId])

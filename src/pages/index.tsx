@@ -1,4 +1,4 @@
-import { Player } from "@prisma/client";
+import { Player, Prisma } from "@prisma/client";
 import { useQuery } from "@tanstack/react-query";
 import { Console } from "console";
 import { randomUUID } from "crypto";
@@ -6,6 +6,7 @@ import { signIn, signOut, useSession } from "next-auth/react";
 import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/router";
+import { JSONArray } from "node_modules/superjson/dist/types";
 import { useEffect, useState } from "react";
 import { number } from "zod";
 import { lastNames } from "~/data/names";
@@ -13,7 +14,6 @@ import { teamNames } from "~/data/names";
 
 import { api } from "~/utils/api";
 import { Position, hex_distance, hex_lineDraw } from "~/utils/hexUtil";
-import usePersistState from "~/utils/usePersistState";
 
 interface PlayerStateStruct {
     id: string,
@@ -35,17 +35,35 @@ interface PlayerStateStruct {
     classLvl: number
 }
 
+/**
+  interface TeamStateStruct {
+    id: string,
+    name: string,
+    players: PlayerStateStruct[],
+    wins: number,
+    losses: number
+  }
+*/
 interface TeamStateStruct {
   id: string,
   name: string,
-  players: PlayerStateStruct[],
+  gamesPlayed: number,
   wins: number,
-  losses: number
+  playersJson: PlayerStateStruct[]
 }
 
 interface LeagueStateStruct {
   id: string,
   name: string,
+  teams: TeamStateStruct[]
+}
+
+interface GameDataStateStruct {
+  //league: LeagueStateStruct,
+  leagueId: string,
+  leageName: string,
+  myTeamId: string,
+  week: number,
   teams: TeamStateStruct[]
 }
 
@@ -83,17 +101,32 @@ export default function Home() {
   // LEAGUE TABLE STATE
   const [isLeagueTableActive, setIsLeagueTableActive] = useState<boolean>(false);
 
+  const [gameData, setGameData] = useState<GameDataStateStruct>({
+    //league: {id: '', name: '', teams: []},
+    leagueId: '',
+    leageName: '',
+    myTeamId: '',
+    week: 0,
+    teams: []
+  });
   const [isPlayingGame, setIsPlayingGame] = useState<boolean>(false);
-  // This preserves state of isPlayingGame on refresh
+  // This preserves state of isPlayingGame and gameData on refresh
+  // cannot test locally if React strict mode is enabled
   useEffect(() => {
-    const data = window.localStorage.getItem('isPlayingGame');
-    if (data !== null) setIsPlayingGame(JSON.parse(data))
+    const data_isPlayingGame = window.localStorage.getItem('isPlayingGame');
+    if (data_isPlayingGame !== null) setIsPlayingGame(JSON.parse(data_isPlayingGame))
+
+    const data_gameData = window.localStorage.getItem('gameData');
+    if (data_gameData !== null) setGameData(JSON.parse(data_gameData))
   }, [])   
 
   useEffect(() => {
     window.localStorage.setItem('isPlayingGame', JSON.stringify(isPlayingGame));
-  }, [isPlayingGame])
+
+    window.localStorage.setItem('gameData', JSON.stringify(gameData));
+  }, [isPlayingGame, gameData])
   //
+  
 
   /**
     function getInitial_IsPlayingGame(): boolean {
@@ -165,7 +198,7 @@ function MyLeaguesTable() {
   if (leagueQuery.data[0] === null || leagueQuery.data[0] === undefined) { 
     return <h2>You have not yet created any Leagues</h2>;
   }
-  
+
   return (
     <div>
     <table className="table-auto border-2 border-spacing-2 p-8">
@@ -179,6 +212,7 @@ function MyLeaguesTable() {
         </tr>
       </thead>
       <tbody>
+
         {
           leagueQuery.data?.map((item, index) => {
             return (
@@ -186,7 +220,26 @@ function MyLeaguesTable() {
                 <td className="px-5 py-2">
                   <button 
                     onClick={() => { 
+                      // set state that needs to persist for playing game
                       setIsPlayingGame(true);
+          
+                      // from https://www.prisma.io/docs/orm/prisma-client/special-fields-and-types/working-with-json-fields
+                      if (
+                        item?.teamsJson &&
+                        typeof item?.teamsJson === 'object' &&
+                        Array.isArray(item?.teamsJson)
+                      ) {
+                        const teamsObject = item?.teamsJson as Prisma.JsonArray
+                        setGameData({
+                          //league: {id: item.id, name: item.name, teams: item.teamsJson},
+                          leagueId: item.id,
+                          leageName: item.name,
+                          myTeamId: item.myTeamId,
+                          week: item.week,
+                          teams: JSON.parse(JSON.stringify(teamsObject))
+                        })
+                      }
+                      
                     }}
                     className="block rounded-md transition-colors duration-200 hover:bg-green-500 
                   bg-green-700 text-center justify-center text-white shadow-sm font-bold h-7 w-20">PLAY
@@ -224,10 +277,7 @@ function MyLeaguesTable() {
     <div className="flex flex-col">
       <h1 className="text-center text-2xl">Welcome to Simple Baseball GM!</h1>
       <div className="flex p-2">
-        <Link href="/new_league"
-          className="rounded-full transition-colors duration-200 hover:bg-green-500 
-        bg-green-700 text-center text-white shadow-sm font-bold px-10 py-5 w-52">New League
-        </Link>
+
       </div>
       <div className="flex p-2 gap-4"> 
         {/* can have a table here showing the user's different leagues*/}

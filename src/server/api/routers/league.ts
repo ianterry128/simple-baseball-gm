@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { z } from "zod";
 
 import {
@@ -11,6 +12,33 @@ export const leagueRouter = createTRPCRouter({
     .input(z.object({ 
       id: z.string(),
       name: z.string(), 
+      teamsJson: z.object({
+        id: z.string(),
+        name: z.string(),
+        gamesPlayed: z.number(),
+        wins: z.number(),
+        playersJson: z.object({
+          id: z.string(),
+          name: z.string(),
+          age: z.number(),
+          strength: z.number(),
+          strengthPot: z.number(),
+          speed: z.number(),
+          speedPot: z.number(),
+          precision: z.number(),
+          precisionPot: z.number(),
+          contact: z.number(),
+          contactPot: z.number(),
+          class: z.string(),
+          potential: z.number(),
+          experience: z.number(),
+          level: z.number(),
+          classExp: z.number(),
+          classLvl: z.number(),
+          teamId: z.string(),
+        }).array(),
+        leagueId: z.string(),
+      }).array(),
       /**
         teams: z.array(z.object({ 
             name: z.string(),
@@ -43,8 +71,9 @@ export const leagueRouter = createTRPCRouter({
       myTeamName: z.string(),
       week: z.number() }))
     .mutation(async ({ ctx, input }) => {
+      const _teamsJson = input.teamsJson as Prisma.JsonArray;
       const league = await ctx.db.league.create({
-        data: { id: input.id, name: input.name, myTeamId: input.myTeamId, myTeamName: input.myTeamName, week: input.week, userId: ctx.session.user.id },
+        data: { id: input.id, name: input.name, teamsJson: _teamsJson, myTeamId: input.myTeamId, myTeamName: input.myTeamName, week: input.week, userId: ctx.session.user.id },
       });
       return league;
     }),

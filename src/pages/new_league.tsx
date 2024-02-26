@@ -33,12 +33,22 @@ interface PlayerStateStruct {
     classLvl: number
 }
 
+/**
+  interface TeamStateStruct {
+    id: string,
+    name: string,
+    players: PlayerStateStruct[],
+    wins: number,
+    losses: number
+  }
+*/
+
 interface TeamStateStruct {
   id: string,
   name: string,
-  players: PlayerStateStruct[],
+  gamesPlayed: number,
   wins: number,
-  losses: number
+  playersJson: PlayerStateStruct[]
 }
 
 interface LeagueStateStruct {
@@ -254,9 +264,9 @@ export default function Home() {
       let teamToAdd: TeamStateStruct = {
         id: crypto.randomUUID(),
         name: _teamName,
-        players: newPlayers,
+        gamesPlayed: 0,
         wins: 0,
-        losses: 0,
+        playersJson: newPlayers,
       }
       teamsToAdd[m] = teamToAdd;
       teamNamesUsed[m] = _teamName;
@@ -276,33 +286,86 @@ export default function Home() {
     // store teams in database
     for (let i=0; i<teamsToAdd.length; i++) {
       // store players in database
-      for (let j=0; j<teamsToAdd[i]?.players.length!; j++) {
+      for (let j=0; j<teamsToAdd[i]?.playersJson.length!; j++) {
         createPlayerConst.mutate({ 
-          id: teamsToAdd[i]?.players[j]?.id!,
-          name: teamsToAdd[i]?.players[j]?.name!,
-          age: teamsToAdd[i]?.players[j]?.age!,
-          strength: teamsToAdd[i]?.players[j]?.strength!,
-          strengthPot: teamsToAdd[i]?.players[j]?.strengthPot!,
-          speed: teamsToAdd[i]?.players[j]?.speed!,
-          speedPot: teamsToAdd[i]?.players[j]?.speedPot!,
-          precision: teamsToAdd[i]?.players[j]?.precision!,
-          precisionPot: teamsToAdd[i]?.players[j]?.precisionPot!,
-          contact: teamsToAdd[i]?.players[j]?.contact!,
-          contactPot: teamsToAdd[i]?.players[j]?.contactPot!,
-          class: teamsToAdd[i]?.players[j]?.class!,
-          potential: teamsToAdd[i]?.players[j]?.potential!,
-          experience: teamsToAdd[i]?.players[j]?.experience!,
-          level: teamsToAdd[i]?.players[j]?.level!,
-          classExp: teamsToAdd[i]?.players[j]?.classExp!,
-          classLvl: teamsToAdd[i]?.players[j]?.classLvl!,
+          id: teamsToAdd[i]?.playersJson[j]?.id!,
+          name: teamsToAdd[i]?.playersJson[j]?.name!,
+          age: teamsToAdd[i]?.playersJson[j]?.age!,
+          strength: teamsToAdd[i]?.playersJson[j]?.strength!,
+          strengthPot: teamsToAdd[i]?.playersJson[j]?.strengthPot!,
+          speed: teamsToAdd[i]?.playersJson[j]?.speed!,
+          speedPot: teamsToAdd[i]?.playersJson[j]?.speedPot!,
+          precision: teamsToAdd[i]?.playersJson[j]?.precision!,
+          precisionPot: teamsToAdd[i]?.playersJson[j]?.precisionPot!,
+          contact: teamsToAdd[i]?.playersJson[j]?.contact!,
+          contactPot: teamsToAdd[i]?.playersJson[j]?.contactPot!,
+          class: teamsToAdd[i]?.playersJson[j]?.class!,
+          potential: teamsToAdd[i]?.playersJson[j]?.potential!,
+          experience: teamsToAdd[i]?.playersJson[j]?.experience!,
+          level: teamsToAdd[i]?.playersJson[j]?.level!,
+          classExp: teamsToAdd[i]?.playersJson[j]?.classExp!,
+          classLvl: teamsToAdd[i]?.playersJson[j]?.classLvl!,
           teamId: teamsToAdd[i]?.id!,
           });
       }
-      createTeamConst.mutate({ id: teamsToAdd[i]?.id!, name: teamsToAdd[i]?.name!, gamesPlayed: 0, wins: 0, leagueId: newLeague.id});
+      createTeamConst.mutate({ id: teamsToAdd[i]?.id!, name: teamsToAdd[i]?.name!, gamesPlayed: 0, wins: 0, playersJson: teamsToAdd[i]?.playersJson.map((v) => {
+        return {
+          id: v.id,
+          name: v.name,
+          age: v.age,
+          strength: v.strength,
+          strengthPot: v.strengthPot,
+          speed: v.speed,
+          speedPot: v.speedPot,
+          precision: v.precision,
+          precisionPot: v.precisionPot,
+          contact: v.contact,
+          contactPot: v.contactPot,
+          class: v.class,
+          potential: v.potential,
+          experience: v.experience,
+          level: v.level,
+          classExp: v.classExp,
+          classLvl: v.classLvl,
+          teamId: teamsToAdd[i]?.id!,
+        }
+      })!, leagueId: newLeague.id});
+      
     }
     // store league info in database
-    createLeagueConst.mutate({ id: newLeague.id, name: newLeague.name, myTeamId: newLeague.teams[0]?.id!, myTeamName: teamNameInput, week: 0});
+    createLeagueConst.mutate({ id: newLeague.id, name: newLeague.name, teamsJson: teamsToAdd.map((v) => {
+      return {
+        id: v.id,
+        name: v.name,
+        gamesPlayed: v.gamesPlayed,
+        wins: v.wins,
+        playersJson: v.playersJson.map((item) => {
+          return {
+            id: item.id,
+            name: item.name,
+            age: item.age,
+            strength: item.strength,
+            strengthPot: item.strengthPot,
+            speed: item.speed,
+            speedPot: item.speedPot,
+            precision: item.precision,
+            precisionPot: item.precisionPot,
+            contact: item.contact,
+            contactPot: item.contactPot,
+            class: item.class,
+            potential: item.potential,
+            experience: item.experience,
+            level: item.level,
+            classExp: item.classExp,
+            classLvl: item.classLvl,
+            teamId: v.id,
+          }
+        }),
+        leagueId: newLeague.id
+      }
+    }) , myTeamId: newLeague.teams[0]?.id!, myTeamName: teamNameInput, week: 0});
     router.push('/') // this navigates to Home Page
+    // TODO: before navigating to home page, save isGamePlaying in localstorage as true
   }
 
   return (
