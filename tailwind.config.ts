@@ -8,6 +8,10 @@ export default {
       fontFamily: {
         sans: ["var(--font-sans)", ...fontFamily.sans],
       },
+      screens: {
+        '3xl': '1600',
+        '4xl': '1920',
+      }
     },
   },
   plugins: [],

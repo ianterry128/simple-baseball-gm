@@ -9,6 +9,7 @@ import { useRouter } from "next/router";
 import { JSONArray } from "node_modules/superjson/dist/types";
 import { useEffect, useState } from "react";
 import { number } from "zod";
+import { FieldView } from "~/components/FieldView";
 import { lastNames } from "~/data/names";
 import { teamNames } from "~/data/names";
 
@@ -61,7 +62,7 @@ interface LeagueStateStruct {
 interface GameDataStateStruct {
   //league: LeagueStateStruct,
   leagueId: string,
-  leageName: string,
+  leagueName: string,
   myTeamId: string,
   week: number,
   teams: TeamStateStruct[]
@@ -101,10 +102,19 @@ export default function Home() {
   // LEAGUE TABLE STATE
   const [isLeagueTableActive, setIsLeagueTableActive] = useState<boolean>(false);
 
+  const [selectedTeam, setSelectedTeam] = useState(0);
+  function setSelectedTeamById(_id: string) {
+    let i: number = 0;
+    while (i < leagueInfo.teams.length && leagueInfo.teams[i]?.id !== _id) {
+      i++;
+    }
+    setSelectedTeam(i);
+  }
+
   const [gameData, setGameData] = useState<GameDataStateStruct>({
     //league: {id: '', name: '', teams: []},
     leagueId: '',
-    leageName: '',
+    leagueName: '',
     myTeamId: '',
     week: 0,
     teams: []
@@ -126,28 +136,7 @@ export default function Home() {
     window.localStorage.setItem('gameData', JSON.stringify(gameData));
   }, [isPlayingGame, gameData])
   //
-  
 
-  /**
-    function getInitial_IsPlayingGame(): boolean {
-      let ret_str = null;
-      useEffect(() => {
-        ret_str = localStorage.getItem('isPlayingGame');
-      })   
-      if (ret_str !== null && ret_str !== undefined) {
-        return JSON.parse(ret_str);
-      }
-      return false;
-    }
-    function setIsPlayingGame_wrapper(value: boolean) {
-      let value_str = JSON.stringify(value);
-      useEffect(() => {
-        localStorage.setItem('isPlayingGame', value_str);
-      })
-      setIsPlayingGame(value);
-    }
-  */
-  //setIsPlayingGame(initialState_isPlayingGame);
 
   const proclivities: {[key: string]: Proclivity} = {
     'slugger': {strength:0.50, speed:0.10, precision:0.10, contact:0.30},
@@ -166,8 +155,6 @@ export default function Home() {
     proclivities['strong fielder']!,
     proclivities['balanced']!
   ]
-
-  const [selectedTeam, setSelectedTeam] = useState(0);
 
   // set hook functions as const so it can be used inside event handler
   const createLeagueConst = api.league.create.useMutation(); 
@@ -233,7 +220,7 @@ function MyLeaguesTable() {
                         setGameData({
                           //league: {id: item.id, name: item.name, teams: item.teamsJson},
                           leagueId: item.id,
-                          leageName: item.name,
+                          leagueName: item.name,
                           myTeamId: item.myTeamId,
                           week: item.week,
                           teams: JSON.parse(JSON.stringify(teamsObject))
@@ -271,28 +258,129 @@ function MyLeaguesTable() {
       setLogContents(_localContents);
     }
   */
+function MainGameView() {
+  if (!isPlayingGame) return;
+
+  const _leagueInfo: LeagueStateStruct = {
+    id: gameData.leagueId,
+    name: gameData.leagueName,
+    teams: gameData.teams
+  }  
+
+  return (
+    <div>
+      <div className="flex flex-row p-2 gap-4">
+        <TeamDisplayTable 
+          leagueInfoProp={_leagueInfo}
+          teamIndexProp={0}
+          /> 
+        <FieldView />
+        <TeamDisplayTable 
+          leagueInfoProp={_leagueInfo}
+          teamIndexProp={selectedTeam}
+        /> 
+      </div>
+      <div className="flex flex-col">
+        <LeagueTeamsTable 
+        leagueInfoProp={_leagueInfo}
+        isActiveProp={false} />   
+      </div>
+    </div>
+  )
+}
+
+function LeagueTeamsTable({leagueInfoProp, isActiveProp} : {leagueInfoProp:LeagueStateStruct, isActiveProp:boolean}) {
+  return (
+      <div
+      style={{ display: isActiveProp ? "inline" : "none" }}>
+        <table className="table-auto border-2 border-spacing-2 p-8">
+          <caption>My League: {leagueInfoProp.name}</caption>
+          <thead>
+            <tr className="even:bg-gray-50 odd:bg-white">
+              <th>Name</th>
+              <th>Wins</th>
+              <th>Losses</th>
+            </tr>
+          </thead>
+          <tbody>
+            {
+              leagueInfoProp.teams.map((index) => {
+                return (
+                  <tr 
+                  key={index.id} 
+                  className="even:bg-green-200 odd:bg-gray-50 hover:bg-blue-600 hover:text-gray-50"
+                  onClick={() => {
+                    setSelectedTeamById(index.id);
+                  }}>
+                    <td>{index.name}</td>
+                    <td>{index.wins}</td>
+                    <td>{index.gamesPlayed - index.wins}</td>
+                  </tr>
+                )
+              })
+            }
+          </tbody>
+        </table>
+      </div>
+  )
+}
 
   return (
     <>
-    <div className="flex flex-col">
+    <div className="">
       <h1 className="text-center text-2xl">Welcome to Simple Baseball GM!</h1>
-      <div className="flex p-2">
-
-      </div>
-      <div className="flex p-2 gap-4"> 
+      <div className="min-h-screen p-2 gap-4"> 
         {/* can have a table here showing the user's different leagues*/}
         <MyLeaguesTable />
+        <MainGameView />
       </div>
     </div>
-    <div className="flex">
-      {/* perhaps have a footer here with some info about the developer */}
-    </div>  
     </>
   );
 }
 
 // Functions outside Home() do not require REACT hooks
 
+function TeamDisplayTable({leagueInfoProp, teamIndexProp} : {leagueInfoProp:LeagueStateStruct, teamIndexProp:number}) {
+  const captionText: string = teamIndexProp === 0 ? "My Team: " : "Opponent Team: "
+  return (
+      <div>
+        <table className="table-auto border-2 border-spacing-2 p-8">
+          <caption>{captionText} {leagueInfoProp.teams[teamIndexProp]?.name}</caption>
+          <thead>
+            <tr className="even:bg-gray-50 odd:bg-white">
+              <th>Name</th>
+              <th>Class</th>
+              <th>Str</th>
+              <th>Spd</th>
+              <th>Prc</th>
+              <th>Con</th>
+              <th>Lvl</th>
+              <th>Age</th>
+            </tr>
+          </thead>
+          <tbody>
+            {
+              leagueInfoProp.teams[teamIndexProp]?.playersJson.map((index) => {
+                return (
+                  <tr key={index.id} className="even:bg-green-200 odd:bg-gray-50">
+                    <td>{index.name}</td>
+                    <td>{index.class}</td>
+                    <td>{index.strength}</td>
+                    <td>{index.speed}</td>
+                    <td>{index.precision}</td>
+                    <td>{index.contact}</td>
+                    <td>{index.level}</td>
+                    <td>{index.age}</td>
+                  </tr>
+                )
+              })
+            }
+          </tbody>
+        </table>
+      </div>
+    )
+  }
 
 function generateName(): string {
   let surName: string = "";

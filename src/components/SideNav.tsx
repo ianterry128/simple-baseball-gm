@@ -5,8 +5,8 @@ export function SideNav() {
 const session = useSession();
 const user = session.data?.user;
 
-    return <nav className="sticky top-0 px-2 py-4">
-        <ul className="flex flex-col items-start gap-2 whitespace-nowrap">
+    return <nav className="sticky top-0 px-2 py-4 bg-neutral-500 w-full">
+        <ul className="flex flex-col overflow-hidden">
             <li>
                 <Link href="/">Home</Link>
             </li>

@@ -17,9 +17,7 @@ interface Hex {
   //hasBall: boolean,
 }
 
-let hexField = new Map<Position, Hex>();
-
-export default function Home() {
+export function FieldView() {
   const [hexCoord, setHexCoord] = useState<Position>({
     q: 0,
     r: 0,
@@ -30,8 +28,8 @@ export default function Home() {
   //const [placedOfCount, setPlacedOfCount] = useState<number>(0);
   //const [isPlacingOfState, setIsPlacingOfState] = useState<boolean>(false);
 
-  const canvas_w = 2560;
-  const canvas_h = 1440;
+  const canvas_w = 1300;
+  const canvas_h = 825;
 
   let placed_of_count = 0;
   let placed_mif_count = 0;
@@ -237,7 +235,7 @@ export default function Home() {
     <>
     <div className="flex flex-col">
       <h1 className="text-center text-2xl">Graphics worksheet</h1>
-      <h2>{hexCoord.q}, {hexCoord.r}, {hexCoord.s}</h2>
+      <h1>{hexCoord.q}, {hexCoord.r}, {hexCoord.s}</h1>
       <div className="flex p-2">
         <button 
               className="rounded-full transition-colors duration-200 hover:bg-green-500 
@@ -264,7 +262,7 @@ export default function Home() {
               Place Others
         </button>
       </div>
-      <div className="overflow-scroll flex p-2 gap-4 w-dvw h-dvh">
+      <div className="overflow-scroll flex p-2 gap-4 ">
         <canvas id="canvas" 
           className="border-2"
           width={canvas_w} 
