@@ -26,16 +26,17 @@ model Post {
 
 // for baseball sim
 model League {
-    id         String @id
-    name       String
-    teamsJson  Json
+    id           String @id
+    name         String
+    teamsJson    Json
     //teams      Team[]
-    myTeamId   String
-    myTeamName String
-    week       Int
-    user       User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-    userId     String
-    Team       Team[]
+    myTeamId     String
+    myTeamName   String
+    week         Int
+    scheduleJson Json
+    user         User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+    userId       String
+    Team         Team[]
 
     @@index([userId])
 }

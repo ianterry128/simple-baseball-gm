@@ -24,12 +24,12 @@ export function FieldView() {
     s: 0,
   });
   const [canvasState, setCanvasState] = useState<HTMLCanvasElement>();
-  const [hexSizeState, setHexSizeState] = useState<number>(10);
+  const [hexSizeState, setHexSizeState] = useState<number>(7);
   //const [placedOfCount, setPlacedOfCount] = useState<number>(0);
   //const [isPlacingOfState, setIsPlacingOfState] = useState<boolean>(false);
 
-  const canvas_w = 1300;
-  const canvas_h = 825;
+  const canvas_w = 900;
+  const canvas_h = 550;
 
   let placed_of_count = 0;
   let placed_mif_count = 0;
@@ -46,7 +46,7 @@ export function FieldView() {
     const canvas: HTMLCanvasElement = document.getElementById('canvas') as HTMLCanvasElement;
     setCanvasState(canvas);
     const ctx = canvas.getContext('2d');
-    const r = 10; // this determines size of each hex
+    const r = hexSizeState; // this determines size of each hex
     setHexSizeState(r);
     let home_pos: Position = {q:0, r:0, s:0};
     let first_pos: Position = {q:13, r:-13, s:0};
@@ -59,9 +59,9 @@ export function FieldView() {
 
     //drawHex(ctx!, x, y, r);
     //draw grass
-    drawSquare(ctx!, {q:l_post.q-7, r:l_post.r, s:l_post.s+7}, 
-      {q:center.q, r:center.r-7, s:center.s+7}, 
-      {q:r_post.q+7, r:r_post.r, s:r_post.s-7}, {q:home_pos.q, r:home_pos.r+7, s:home_pos.s-7}, r, '#48a82a');
+    drawSquare(ctx!, {q:l_post.q, r:l_post.r, s:l_post.s}, 
+      {q:center.q, r:center.r, s:center.s}, 
+      {q:r_post.q, r:r_post.r, s:r_post.s}, {q:home_pos.q, r:home_pos.r, s:home_pos.s}, r, '#48a82a');
 
     drawLine(ctx!, first_pos, second_pos, r, '#a88f32');
     drawLine(ctx!, second_pos, third_pos, r, '#a88f32');
@@ -233,40 +233,42 @@ export function FieldView() {
  
   return (
     <>
-    <div className="flex flex-col">
-      <h1 className="text-center text-2xl">Graphics worksheet</h1>
-      <h1>{hexCoord.q}, {hexCoord.r}, {hexCoord.s}</h1>
-      <div className="flex p-2">
-        <button 
-              className="rounded-full transition-colors duration-200 hover:bg-green-500 
-          bg-green-700 text-white shadow-sm font-bold px-10 py-5 w-52"
-              onClick={() => drawHexes(50,50)}>
-              Draw
-        </button>
-        <button 
-              className="rounded-full transition-colors duration-200 hover:bg-green-500 
-          bg-green-700 text-white shadow-sm font-bold px-10 py-5 w-52"
-              onClick={() => placeOutFielder()}>
-              Place Outfielder
-        </button>
-        <button 
-              className="rounded-full transition-colors duration-200 hover:bg-green-500 
-          bg-green-700 text-white shadow-sm font-bold px-10 py-5 w-52"
-              onClick={() => placeMiddleInfielder()}>
-              Place M-IF
-        </button>
-        <button 
-              className="rounded-full transition-colors duration-200 hover:bg-green-500 
-          bg-green-700 text-white shadow-sm font-bold px-10 py-5 w-52"
-              onClick={() => placeRange2Fielders()}>
-              Place Others
-        </button>
-      </div>
-      <div className="overflow-scroll flex p-2 gap-4 ">
-        <canvas id="canvas" 
-          className="border-2"
-          width={canvas_w} 
-          height={canvas_h}/>
+    <div className="overflow-x-auto">
+      <div className="flex flex-col">
+        <h1 className="text-center text-2xl">Graphics worksheet</h1>
+        <h1 className="text-center">{hexCoord.q}, {hexCoord.r}, {hexCoord.s}</h1>
+        <div className="flex flex-row p-2 justify-center">
+          <button 
+                className="rounded-full transition-colors duration-200 hover:bg-green-500 
+            bg-green-700 text-white shadow-sm font-bold px-10 py-5 w-52"
+                onClick={() => drawHexes(50,50)}>
+                Draw
+          </button>
+          <button 
+                className="rounded-full transition-colors duration-200 hover:bg-green-500 
+            bg-green-700 text-white shadow-sm font-bold px-10 py-5 w-52"
+                onClick={() => placeOutFielder()}>
+                Place Outfielder
+          </button>
+          <button 
+                className="rounded-full transition-colors duration-200 hover:bg-green-500 
+            bg-green-700 text-white shadow-sm font-bold px-10 py-5 w-52"
+                onClick={() => placeMiddleInfielder()}>
+                Place M-IF
+          </button>
+          <button 
+                className="rounded-full transition-colors duration-200 hover:bg-green-500 
+            bg-green-700 text-white shadow-sm font-bold px-10 py-5 w-52"
+                onClick={() => placeRange2Fielders()}>
+                Place Others
+          </button>
+        </div>
+        <div className="overflow-scroll flex p-2 gap-4 self-center">
+          <canvas id="canvas" 
+            className="border-2"
+            width={canvas_w} 
+            height={canvas_h}/>
+        </div>
       </div>
     </div>
     </>

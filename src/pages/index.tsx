@@ -56,7 +56,13 @@ interface TeamStateStruct {
 interface LeagueStateStruct {
   id: string,
   name: string,
-  teams: TeamStateStruct[]
+  teams: TeamStateStruct[],
+  schedule: { [key: number]: Matchup[]} // key is the week number and Matchup[] holds list of games for that week
+}
+
+interface Matchup { // store teamId of competing teams
+  homeTeam: string,
+  awayTeam: string
 }
 
 interface GameDataStateStruct {
@@ -65,9 +71,16 @@ interface GameDataStateStruct {
   leagueName: string,
   myTeamId: string,
   week: number,
-  teams: TeamStateStruct[]
+  phase: number,
+  teams: TeamStateStruct[],
+  schedule: { [key: number]: Matchup[]}
 }
 
+enum WeekPhase {
+  PREGAME = 0,
+  GAME = 1,
+  POSTGAME = 2
+}
 /**
   interface Position {
     q: number,
@@ -97,7 +110,8 @@ export default function Home() {
   const [leagueInfo, setLeagueInfo] = useState<LeagueStateStruct>({
     id: '',
     name: '',
-    teams: []
+    teams: [],
+    schedule: {},
   });
   // LEAGUE TABLE STATE
   const [isLeagueTableActive, setIsLeagueTableActive] = useState<boolean>(false);
@@ -117,7 +131,9 @@ export default function Home() {
     leagueName: '',
     myTeamId: '',
     week: 0,
-    teams: []
+    phase: 0,
+    teams: [],
+    schedule: {}
   });
   const [isPlayingGame, setIsPlayingGame] = useState<boolean>(false);
   // This preserves state of isPlayingGame and gameData on refresh
@@ -217,13 +233,16 @@ function MyLeaguesTable() {
                         Array.isArray(item?.teamsJson)
                       ) {
                         const teamsObject = item?.teamsJson as Prisma.JsonArray
+                        //const scheduleObject = item.scheduleJson as Prisma.JsonArray
                         setGameData({
                           //league: {id: item.id, name: item.name, teams: item.teamsJson},
                           leagueId: item.id,
                           leagueName: item.name,
                           myTeamId: item.myTeamId,
                           week: item.week,
-                          teams: JSON.parse(JSON.stringify(teamsObject))
+                          phase: WeekPhase.PREGAME, // change to reflect phase from database
+                          teams: JSON.parse(JSON.stringify(teamsObject)),
+                          schedule: JSON.parse(JSON.stringify(item.scheduleJson))
                         })
                       }
                       
@@ -264,27 +283,31 @@ function MainGameView() {
   const _leagueInfo: LeagueStateStruct = {
     id: gameData.leagueId,
     name: gameData.leagueName,
-    teams: gameData.teams
+    teams: gameData.teams,
+    schedule: gameData.schedule
   }  
 
   return (
-    <div>
-      <div className="flex flex-row p-2 gap-4">
-        <TeamDisplayTable 
-          leagueInfoProp={_leagueInfo}
-          teamIndexProp={0}
+    <div className="flex flex-row flex-wrap">
+
+        <div className="w-full sm:w-1/5 lg:w-1/5 px-1 bg-red-300">
+          <TeamDisplayTable 
+            leagueInfoProp={_leagueInfo}
+            teamIndexProp={0}
           /> 
-        <FieldView />
-        <TeamDisplayTable 
-          leagueInfoProp={_leagueInfo}
-          teamIndexProp={selectedTeam}
-        /> 
-      </div>
-      <div className="flex flex-col">
-        <LeagueTeamsTable 
-        leagueInfoProp={_leagueInfo}
-        isActiveProp={false} />   
-      </div>
+        </div>
+        <div className="w-full sm:w-3/5 lg:w-3/5 px-1 bg-orange-300">
+          <FieldView />
+        </div>
+        <div className="w-full sm:w-1/5 lg:w-1/5 px-1 bg-amber-200">
+          <TeamDisplayTable 
+            leagueInfoProp={_leagueInfo}
+            teamIndexProp={selectedTeam}
+          /> 
+        </div>
+      <LeagueTeamsTable
+      leagueInfoProp={_leagueInfo}
+      isActiveProp={true} />
     </div>
   )
 }
@@ -329,7 +352,7 @@ function LeagueTeamsTable({leagueInfoProp, isActiveProp} : {leagueInfoProp:Leagu
     <>
     <div className="">
       <h1 className="text-center text-2xl">Welcome to Simple Baseball GM!</h1>
-      <div className="min-h-screen p-2 gap-4"> 
+      <div className=""> 
         {/* can have a table here showing the user's different leagues*/}
         <MyLeaguesTable />
         <MainGameView />
@@ -344,7 +367,7 @@ function LeagueTeamsTable({leagueInfoProp, isActiveProp} : {leagueInfoProp:Leagu
 function TeamDisplayTable({leagueInfoProp, teamIndexProp} : {leagueInfoProp:LeagueStateStruct, teamIndexProp:number}) {
   const captionText: string = teamIndexProp === 0 ? "My Team: " : "Opponent Team: "
   return (
-      <div>
+      <div className="overflow-x-auto">
         <table className="table-auto border-2 border-spacing-2 p-8">
           <caption>{captionText} {leagueInfoProp.teams[teamIndexProp]?.name}</caption>
           <thead>

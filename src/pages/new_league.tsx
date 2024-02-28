@@ -1,4 +1,4 @@
-import { Player } from "@prisma/client";
+import { Player, Team } from "@prisma/client";
 import { Console } from "console";
 import { randomUUID } from "crypto";
 import { signIn, signOut, useSession } from "next-auth/react";
@@ -48,13 +48,19 @@ interface TeamStateStruct {
   name: string,
   gamesPlayed: number,
   wins: number,
-  playersJson: PlayerStateStruct[]
+  playersJson: PlayerStateStruct[],
 }
 
 interface LeagueStateStruct {
   id: string,
   name: string,
-  teams: TeamStateStruct[]
+  teams: TeamStateStruct[],
+  schedule: { [key: number]: Matchup[]} // key is the week number and Matchup[] holds list of games for that week
+}
+
+interface Matchup { // store teamId of competing teams
+  homeTeam: string,
+  awayTeam: string
 }
 
 /**
@@ -87,7 +93,8 @@ export default function Home() {
   const [leagueInfo, setLeagueInfo] = useState<LeagueStateStruct>({
     id: '',
     name: '',
-    teams: []
+    teams: [],
+    schedule: {}
   });
   // LEAGUE TABLE STATE
   const [isLeagueTableActive, setIsLeagueTableActive] = useState<boolean>(true);
@@ -278,7 +285,8 @@ export default function Home() {
     let newLeague: LeagueStateStruct = {
       id: crypto.randomUUID(),
       name: leagueNameInput,
-      teams: teamsToAdd
+      teams: teamsToAdd,
+      schedule: createSchedule(teamsToAdd)
     }
 
     // store info in React state
@@ -363,9 +371,62 @@ export default function Home() {
         }),
         leagueId: newLeague.id
       }
-    }) , myTeamId: newLeague.teams[0]?.id!, myTeamName: teamNameInput, week: 0});
+    }) , myTeamId: newLeague.teams[0]?.id!, myTeamName: teamNameInput, week: 0, scheduleJson: newLeague.schedule});
     router.push('/') // this navigates to Home Page
     // TODO: before navigating to home page, save isGamePlaying in localstorage as true
+    // TODO: make sure this finishes before returning to home page?? the problem is that after clicking "Create league" button, it returns to the home page and the league table doesn't render before the 
+    //       query finishes fetching
+  }
+
+  const schedule: { [key: number]: Matchup[]} = {}
+
+  function createSchedule(teams: TeamStateStruct[]): { [key: number]: Matchup[]} {
+    const num_weeks = 32;
+    const num_teams = teams.length;
+    let schedule: { [key: number]: Matchup[]} = {};
+    let indices: number[] = [];
+    for (let i=0, k=0, j=1; i<num_teams; i++) {
+      if (i % 2 === 0) {
+        indices[i] = k;
+        k++;
+      }
+      else {
+        indices[i] = num_teams-j;
+        j++;
+      }   
+    }
+
+    for (let w=0; w<num_weeks; w++) {
+      let matches: Matchup[] = [];
+      let num_matches = num_teams / 2;
+      let m = 0;
+
+      let h_ind = indices[0];
+      let a_ind = indices[1];
+      let i = 0;
+      while (m < num_matches) {
+        matches[m] = {
+          homeTeam: teams[h_ind!]?.id!,
+          awayTeam: teams[a_ind!]?.id!
+        }
+        //console.log(`home team: ${h_ind} vs away team: ${a_ind}`);
+        i += 2;
+        h_ind = indices[i];
+        a_ind = indices[i+1];
+        m += 1;
+      }
+      // edit indices based on berger algorithm - https://en.wikipedia.org/wiki/Round-robin_tournament#Scheduling_algorithm
+      for (let i=0; i < indices.length; i++) {
+        if (indices[i] !== num_teams-1) {
+          indices[i] = indices[i]! + (num_teams/2) >= (num_teams-1) ? 
+            indices[i]! + (num_teams/2) - (num_teams-1) : 
+            indices[i]! + (num_teams/2);
+        }
+      }
+      // add mathups for this week to schedule
+      schedule[w] = matches;
+    }
+    return schedule;
   }
 
   return (
