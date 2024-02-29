@@ -298,7 +298,7 @@ function MainGameView() {
     <div className="flex flex-row flex-wrap">
 
         <div className="w-full sm:w-1/5 lg:w-1/5 px-1 bg-red-300">
-          <TeamDisplayTable 
+          <TeamDisplayLineupChangeTable 
             leagueInfoProp={_leagueInfo}
             teamIndexProp={0}
           /> 
@@ -318,6 +318,102 @@ function MainGameView() {
     </div>
   )
 }
+
+/* 
+// team display table that allows reordering of batting order
+// IMPORTANT: batting order changes DO save to gameData state variable
+// TODO: I don't think this needs props... can just use gameData state variable directly
+*/
+function TeamDisplayLineupChangeTable({leagueInfoProp, teamIndexProp} : {leagueInfoProp:LeagueStateStruct, teamIndexProp:number}) {
+ 
+  function changeOrder(originalArray: PlayerStateStruct[], index: number, direction: string) {
+    let newIndex = index + (direction === "UP" ? (-1) : 1)
+    const movedItem = originalArray.find((value, _index) => _index === index);
+    const remainingItems = originalArray.filter((value, _index) => _index !== index);
+
+    const reorderedItems: PlayerStateStruct[] = [
+      ...remainingItems.slice(0, newIndex),
+      movedItem!,
+      ...remainingItems.slice(newIndex)
+    ];
+
+    const reordered_team: TeamStateStruct = {
+      id: gameData.teams[0]?.id!,
+      name: gameData.teams[0]?.name!,
+      gamesPlayed: gameData.teams[0]?.gamesPlayed!,
+      wins: gameData.teams[0]?.wins!,
+      playersJson: reorderedItems
+    }
+
+    setGameData({
+      leagueId: gameData.leagueId,
+      leagueName: gameData.leagueName,
+      myTeamId: gameData.myTeamId,
+      week: gameData.week,
+      phase: gameData.phase,
+      teams: [reordered_team, ...gameData.teams],
+      schedule: gameData.schedule
+    })
+  }
+
+  const captionText: string = teamIndexProp === 0 ? "My Team: " : "Opponent Team: "
+  return (
+      <div className="overflow-x-auto">
+        <table className="table-auto border-2 border-spacing-2 p-8">
+          <caption>{captionText} {leagueInfoProp.teams[teamIndexProp]?.name}</caption>
+          <thead>
+            <tr className="even:bg-gray-50 odd:bg-white">
+              <th>Batting Order</th>
+              <th></th>
+              <th>Name</th>
+              <th>Class</th>
+              <th>Str</th>
+              <th>Spd</th>
+              <th>Prc</th>
+              <th>Con</th>
+              <th>Lvl</th>
+              <th>Age</th>
+            </tr>
+          </thead>
+          <tbody>
+            {
+              leagueInfoProp.teams[teamIndexProp]?.playersJson.map((value, index) => {
+                return (
+                  <tr key={value.id} className="even:bg-green-200 odd:bg-gray-50">
+                    <td>{index+1}</td>
+                    <td>
+                      {
+                        index === 0 ? (
+                          <button onClick={() => changeOrder(leagueInfoProp.teams[0]?.playersJson!, index, "DOWN")}>v</button>
+                        ) :
+                          index === 8 ? (
+                            <button onClick={() => changeOrder(leagueInfoProp.teams[0]?.playersJson!, index, "UP")}>^</button> 
+                          ) :
+                            (
+                              <div>
+                                <button onClick={() => changeOrder(leagueInfoProp.teams[0]?.playersJson!, index, "UP")}>^</button> 
+                                <button onClick={() => changeOrder(leagueInfoProp.teams[0]?.playersJson!, index, "DOWN")}>v</button>
+                              </div>
+                            )
+                      }
+                    </td>
+                    <td>{value.name}</td>
+                    <td>{value.class}</td>
+                    <td>{value.strength}</td>
+                    <td>{value.speed}</td>
+                    <td>{value.precision}</td>
+                    <td>{value.contact}</td>
+                    <td>{value.level}</td>
+                    <td>{value.age}</td>
+                  </tr>
+                )
+              })
+            }
+          </tbody>
+        </table>
+      </div>
+    )
+  }
 
 function LeagueTeamsTable({leagueInfoProp, isActiveProp} : {leagueInfoProp:LeagueStateStruct, isActiveProp:boolean}) {
   return (
@@ -434,6 +530,7 @@ function TopBar() {
 }
 
 // Functions outside Home() do not require REACT hooks
+
 
 function TeamDisplayTable({leagueInfoProp, teamIndexProp} : {leagueInfoProp:LeagueStateStruct, teamIndexProp:number}) {
   const captionText: string = teamIndexProp === 0 ? "My Team: " : "Opponent Team: "
