@@ -58,6 +58,23 @@ interface LeagueStateStruct {
   schedule: { [key: number]: Matchup[]} // key is the week number and Matchup[] holds list of games for that week
 }
 
+interface GameDataStateStruct {
+  //league: LeagueStateStruct,
+  leagueId: string,
+  leagueName: string,
+  myTeamId: string,
+  week: number,
+  phase: number,
+  teams: TeamStateStruct[],
+  schedule: { [key: number]: Matchup[]}
+}
+
+enum WeekPhase {
+  PREGAME = 0,
+  GAME = 1,
+  POSTGAME = 2
+}
+
 interface Matchup { // store teamId of competing teams
   homeTeam: string,
   awayTeam: string
@@ -98,6 +115,34 @@ export default function Home() {
   });
   // LEAGUE TABLE STATE
   const [isLeagueTableActive, setIsLeagueTableActive] = useState<boolean>(true);
+
+  const [gameData, setGameData] = useState<GameDataStateStruct>({
+    //league: {id: '', name: '', teams: []},
+    leagueId: '',
+    leagueName: '',
+    myTeamId: '',
+    week: 0,
+    phase: 0,
+    teams: [],
+    schedule: {}
+  });
+  const [isPlayingGame, setIsPlayingGame] = useState<boolean>(false);
+  // This preserves state of isPlayingGame and gameData on refresh
+  // cannot test locally if React strict mode is enabled
+  useEffect(() => {
+    const data_isPlayingGame = window.localStorage.getItem('isPlayingGame');
+    if (data_isPlayingGame !== null) setIsPlayingGame(JSON.parse(data_isPlayingGame))
+
+    const data_gameData = window.localStorage.getItem('gameData');
+    if (data_gameData !== null) setGameData(JSON.parse(data_gameData))
+  }, [])   
+
+  useEffect(() => {
+    window.localStorage.setItem('isPlayingGame', JSON.stringify(isPlayingGame));
+
+    window.localStorage.setItem('gameData', JSON.stringify(gameData));
+  }, [isPlayingGame, gameData])
+  //
 
   const proclivities: {[key: string]: Proclivity} = {
     'slugger': {strength:0.50, speed:0.10, precision:0.10, contact:0.30},
@@ -372,10 +417,20 @@ export default function Home() {
         leagueId: newLeague.id
       }
     }) , myTeamId: newLeague.teams[0]?.id!, myTeamName: teamNameInput, week: 0, scheduleJson: newLeague.schedule});
+
+    // store league info in state variables
+    setGameData({
+      leagueId: newLeague.id,
+      leagueName: newLeague.name,
+      myTeamId: newLeague.teams[0]?.id!,
+      week: 0,
+      phase: WeekPhase.PREGAME,
+      teams: teamsToAdd,
+      schedule: newLeague.schedule
+    })
+    setIsPlayingGame(true);
+    
     router.push('/') // this navigates to Home Page
-    // TODO: before navigating to home page, save isGamePlaying in localstorage as true
-    // TODO: make sure this finishes before returning to home page?? the problem is that after clicking "Create league" button, it returns to the home page and the league table doesn't render before the 
-    //       query finishes fetching
   }
 
   const schedule: { [key: number]: Matchup[]} = {}

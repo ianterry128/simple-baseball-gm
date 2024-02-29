@@ -125,6 +125,8 @@ export default function Home() {
     setSelectedTeam(i);
   }
 
+  const [isViewSchedule, setIsViewSchedule] = useState<boolean>(false);
+
   const [gameData, setGameData] = useState<GameDataStateStruct>({
     //league: {id: '', name: '', teams: []},
     leagueId: '',
@@ -279,6 +281,11 @@ function MyLeaguesTable() {
   */
 function MainGameView() {
   if (!isPlayingGame) return;
+  if (isViewSchedule) {
+    return (
+      <ScheduleView />
+    );
+  }
 
   const _leagueInfo: LeagueStateStruct = {
     id: gameData.leagueId,
@@ -348,10 +355,74 @@ function LeagueTeamsTable({leagueInfoProp, isActiveProp} : {leagueInfoProp:Leagu
   )
 }
 
+function ScheduleView() {
+  const sched = Object.assign({}, gameData.schedule);
+  let mySched: {opponent: string | undefined, h_a: string, react_key: string}[] = []
+  for (let key in sched) {
+    let matchups: Matchup[] = sched[key]!;
+    for (let i=0; i<matchups.length; i++) {
+      if (matchups[i]?.awayTeam === gameData.myTeamId) {
+        // this is my match and I am away
+        // get opponent team name from id
+        let opp_id = matchups[i]?.homeTeam;
+        let opp_name = gameData.teams.find((value) => value.id === opp_id)?.name;
+        mySched[key] = {opponent: opp_name, h_a: 'A', react_key: crypto.randomUUID()}
+      }
+      else if (matchups[i]?.homeTeam === gameData.myTeamId) {
+        // this is my match and I am home
+        let opp_id = matchups[i]?.awayTeam;
+        let opp_name = gameData.teams.find((value) => value.id === opp_id)?.name;
+        mySched[key] = {opponent: opp_name, h_a: 'H', react_key: crypto.randomUUID()}
+      }
+    }
+  }
+
+  return (
+    <div className="overflow-x-auto">
+        <table className="table-auto border-2 border-spacing-2 p-8">
+          <caption>My Schedule</caption>
+          <thead>
+            <tr className="even:bg-gray-50 odd:bg-white">
+              <th>Week</th>
+              <th>Opponent</th>
+              <th>Home/Away</th>
+              <th>Win/Loss</th>
+            </tr>
+          </thead>
+          <tbody>
+            {
+              mySched.map((v, index) => {
+                return (
+                  <tr key={v.react_key} className="even:bg-green-200 odd:bg-gray-50">
+                    <td>{index}</td>
+                    <td>{v.opponent}</td>
+                    <td>{v.h_a}</td>
+                    <td>-</td>
+                  </tr>
+                )
+              })
+            }
+          </tbody>
+        </table>
+      </div>
+  )
+}
+
+function TopBar() {
+  return (
+    <div className="flex flex-row p-1 gap-3 bg-neutral-100">
+      <button onClick={() => setIsViewSchedule(false)}>Dashboard</button>
+      <button onClick={() => setIsViewSchedule(true)}>Schedule</button>
+    </div>
+  )
+}
+
+// This is the outermost HTML
   return (
     <>
     <div className="">
       <h1 className="text-center text-2xl">Welcome to Simple Baseball GM!</h1>
+      <TopBar />
       <div className=""> 
         {/* can have a table here showing the user's different leagues*/}
         <MyLeaguesTable />
