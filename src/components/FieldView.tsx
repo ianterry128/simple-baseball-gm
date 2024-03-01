@@ -17,7 +17,14 @@ interface Hex {
   //hasBall: boolean,
 }
 
-export function FieldView() {
+type FieldPositions = '1B' | '2B' | 'SS' | '3B' | 'CF' | 'LF' | 'RF' | 'C' | 'P' ;
+
+interface FieldViewProps {
+  fielderHexPos: Record<FieldPositions, Position>
+}
+
+
+export function FieldView(props: FieldViewProps) {
   const [hexCoord, setHexCoord] = useState<Position>({
     q: 0,
     r: 0,
@@ -42,7 +49,7 @@ export function FieldView() {
   const center_dist = 40;
   // FUNCTIONS HERE USE REACT HOOKS
 
-  function drawHexes(x: number, y: number) {
+  function drawHexes(x: number, y: number) { // TODO: think I don't need x and y parameters
     const canvas: HTMLCanvasElement = document.getElementById('canvas') as HTMLCanvasElement;
     setCanvasState(canvas);
     const ctx = canvas.getContext('2d');
@@ -158,6 +165,68 @@ export function FieldView() {
       drawHex(ctx, pixel.x, pixel.y, size, color);
     }
   }
+  /* This version of drawRing is for the Catcher */
+  function drawRing_C(ctx: CanvasRenderingContext2D, center_hex: Position, radius: number, size: number, color?: string) {
+    let hexes_to_draw: Position[] = hex_ring(center_hex, radius);
+    let pixel: Pixel = {x:0, y:0};
+
+    for (let i=6; i<hexes_to_draw.length-1; i++) {
+      pixel  = hex_to_pixel(hexes_to_draw[i]!, size, {x: canvas_w/2, y: canvas_h-hexSizeState});
+      drawHex(ctx, pixel.x, pixel.y, size, color);
+    }
+    //pixel  = hex_to_pixel({q:-1, r:0, s:1}, size, {x: canvas_w/2, y: canvas_h-hexSizeState});
+    //drawHex(ctx, pixel.x, pixel.y, size, color);
+    //pixel  = hex_to_pixel({q:1, r:-1, s:0}, size, {x: canvas_w/2, y: canvas_h-hexSizeState});
+    //drawHex(ctx, pixel.x, pixel.y, size, color);
+  }
+
+  function drawFieldersInitial(f_positions: Record<FieldPositions, Position>) {
+    /**
+      const fielderHexPos: Record<FieldPositions, Position> = {
+        '1B': {q:12,r:-15,s:3},
+        '2B': {q:6,r:-15,s:9},
+        'SS': {q:-4,r:-11,s:15},
+        '3B': {q:-12,r:-3,s:15},
+        'CF': {q:0,r:-25,s:25},
+        'LF': {q:-14,r:-10,s:24},
+        'RF': {q:14,r:-24,s:10},
+        'C': {q:0,r:0,s:0},
+        'P': {q:0,r:-7,s:7}
+      }
+    */
+    const canvas: HTMLCanvasElement = document.getElementById('canvas') as HTMLCanvasElement;
+    //setCanvasState(canvas);
+
+    for (const fp in f_positions) {
+      console.log(`fp = ${fp} and fielderhexpos[fp]= ${f_positions[fp as FieldPositions]}`)
+      if (fp === '1B' || fp === '3B') {
+        let pixel  = hex_to_pixel(f_positions[fp as FieldPositions], hexSizeState, {x: canvas_w/2, y: canvas_h-hexSizeState});
+        drawHex(canvas.getContext('2d')!, pixel.x, pixel.y, hexSizeState, 'purple');
+        drawRing(canvas.getContext('2d')!, f_positions[fp as FieldPositions], 2, hexSizeState, 'purple');
+      }
+      if (fp === '2B' || fp === 'SS') {
+        let pixel  = hex_to_pixel(f_positions[fp as FieldPositions], hexSizeState, {x: canvas_w/2, y: canvas_h-hexSizeState});
+        drawHex(canvas.getContext('2d')!, pixel.x, pixel.y, hexSizeState, 'blue');
+        drawRing(canvas.getContext('2d')!, f_positions[fp as FieldPositions], 3, hexSizeState, 'blue');
+      }
+      if (fp === 'LF' || fp === 'CF' || fp === 'RF') {
+        let pixel  = hex_to_pixel(f_positions[fp as FieldPositions], hexSizeState, {x: canvas_w/2, y: canvas_h-hexSizeState});
+        drawHex(canvas.getContext('2d')!, pixel.x, pixel.y, hexSizeState, 'red');
+        drawRing(canvas.getContext('2d')!, f_positions[fp as FieldPositions], 5, hexSizeState, 'red');
+      }
+      if (fp === 'P') {
+        let pixel  = hex_to_pixel(f_positions[fp as FieldPositions], hexSizeState, {x: canvas_w/2, y: canvas_h-hexSizeState});
+        drawHex(canvas.getContext('2d')!, pixel.x, pixel.y, hexSizeState, 'gold');
+        drawRing(canvas.getContext('2d')!, f_positions[fp as FieldPositions], 2, hexSizeState, 'gold');
+      }
+      if (fp === 'C') {
+        let pixel  = hex_to_pixel(f_positions[fp as FieldPositions], hexSizeState, {x: canvas_w/2, y: canvas_h-hexSizeState});
+        drawHex(canvas.getContext('2d')!, pixel.x, pixel.y, hexSizeState, 'black');
+        drawRing_C(canvas.getContext('2d')!, f_positions[fp as FieldPositions], 2, hexSizeState, 'black');
+      }
+    }
+
+  }
 
   // onClick
   function placeOutFielder() {
@@ -230,20 +299,18 @@ export function FieldView() {
     }
   }
 
- 
+ useEffect(() => { // TODO: why is left end of field cut off when I do it this way?
+  drawHexes(50,50);
+  drawFieldersInitial(props.fielderHexPos);
+ }, [])
+
   return (
     <>
     <div className="overflow-x-auto">
       <div className="flex flex-col">
         <h1 className="text-center text-2xl">Graphics worksheet</h1>
         <h1 className="text-center">{hexCoord.q}, {hexCoord.r}, {hexCoord.s}</h1>
-        <div className="flex flex-row p-2 justify-center">
-          <button 
-                className="rounded-full transition-colors duration-200 hover:bg-green-500 
-            bg-green-700 text-white shadow-sm font-bold px-10 py-5 w-52"
-                onClick={() => drawHexes(50,50)}>
-                Draw
-          </button>
+        <div className="flex flex-row p-2 margin-auto">
           <button 
                 className="rounded-full transition-colors duration-200 hover:bg-green-500 
             bg-green-700 text-white shadow-sm font-bold px-10 py-5 w-52"
@@ -263,9 +330,9 @@ export function FieldView() {
                 Place Others
           </button>
         </div>
-        <div className="overflow-scroll flex p-2 gap-4 self-center">
+        <div className="flex p-2 gap-4 margin-auto">
           <canvas id="canvas" 
-            className="border-2"
+            className="border-2 "
             width={canvas_w} 
             height={canvas_h}/>
         </div>

@@ -1798,8 +1798,8 @@ function getFieldersInRange(fieldTeam: PlayerStateStruct[], hitLine: Hex[]): Pla
   const fielderHexPos: Record<FieldPositions, Position> = {
     '1B': {q:12,r:-15,s:3},
     '2B': {q:6,r:-15,s:9},
-    'SS': {q:-6,r:-0,s:16},
-    '3B': {q:-10,r:-5,s:15},
+    'SS': {q:-4,r:-11,s:15},
+    '3B': {q:-12,r:-3,s:15},
     'CF': {q:0,r:-25,s:25},
     'LF': {q:-14,r:-10,s:24},
     'RF': {q:14,r:-24,s:10},

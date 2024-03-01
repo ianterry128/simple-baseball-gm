@@ -73,13 +73,28 @@ interface GameDataStateStruct {
   week: number,
   phase: number,
   teams: TeamStateStruct[],
-  schedule: { [key: number]: Matchup[]}
+  schedule: { [key: number]: Matchup[]},
+  fielderHexPos: Record<FieldPositions, Position>
 }
+
+type FieldPositions = '1B' | '2B' | 'SS' | '3B' | 'CF' | 'LF' | 'RF' | 'C' | 'P' ;
 
 enum WeekPhase {
   PREGAME = 0,
   GAME = 1,
   POSTGAME = 2
+}
+
+const default_fielderHexPos: Record<FieldPositions, Position> = {
+  '1B': {q:12,r:-15,s:3},
+  '2B': {q:6,r:-15,s:9},
+  'SS': {q:-4,r:-11,s:15},
+  '3B': {q:-12,r:-3,s:15},
+  'CF': {q:0,r:-25,s:25},
+  'LF': {q:-14,r:-10,s:24},
+  'RF': {q:14,r:-24,s:10},
+  'C': {q:0,r:0,s:0},
+  'P': {q:0,r:-7,s:7}
 }
 /**
   interface Position {
@@ -135,7 +150,8 @@ export default function Home() {
     week: 0,
     phase: 0,
     teams: [],
-    schedule: {}
+    schedule: {},
+    fielderHexPos: default_fielderHexPos
   });
   const [isPlayingGame, setIsPlayingGame] = useState<boolean>(false);
   // This preserves state of isPlayingGame and gameData on refresh
@@ -244,7 +260,8 @@ function MyLeaguesTable() {
                           week: item.week,
                           phase: WeekPhase.PREGAME, // change to reflect phase from database
                           teams: JSON.parse(JSON.stringify(teamsObject)),
-                          schedule: JSON.parse(JSON.stringify(item.scheduleJson))
+                          schedule: JSON.parse(JSON.stringify(item.scheduleJson)),
+                          fielderHexPos: default_fielderHexPos // make it so this updates to custom positions
                         })
                       }
                       
@@ -302,9 +319,15 @@ function MainGameView() {
             leagueInfoProp={_leagueInfo}
             teamIndexProp={0}
           /> 
+          <div className="flex flex-col">
+            <label>Set player field position:</label>
+            <button></button>
+          </div>
+          
         </div>
-        <div className="w-full sm:w-3/5 lg:w-3/5 px-1 bg-orange-300">
-          <FieldView />
+        <div className="w-full sm:w-3/5 lg:w-3/5 px-1 bg-orange-300 margin-auto">
+          <FieldView 
+          fielderHexPos={gameData.fielderHexPos}/>
         </div>
         <div className="w-full sm:w-1/5 lg:w-1/5 px-1 bg-amber-200">
           <TeamDisplayTable 
@@ -345,14 +368,17 @@ function TeamDisplayLineupChangeTable({leagueInfoProp, teamIndexProp} : {leagueI
       playersJson: reorderedItems
     }
 
+    const other_teams = gameData.teams.filter((value) => value.id !== gameData.myTeamId); // this gives every team except My Team
+
     setGameData({
       leagueId: gameData.leagueId,
       leagueName: gameData.leagueName,
       myTeamId: gameData.myTeamId,
       week: gameData.week,
       phase: gameData.phase,
-      teams: [reordered_team, ...gameData.teams],
-      schedule: gameData.schedule
+      teams: [reordered_team, ...other_teams], 
+      schedule: gameData.schedule,
+      fielderHexPos: gameData.fielderHexPos
     })
   }
 
