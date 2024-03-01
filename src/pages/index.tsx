@@ -16,6 +16,11 @@ import { teamNames } from "~/data/names";
 import { api } from "~/utils/api";
 import { Position, hex_distance, hex_lineDraw } from "~/utils/hexUtil";
 
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { library } from '@fortawesome/fontawesome-svg-core'
+import { faHouse, faArrowUp, faArrowLeft, faArrowRight, faArrowDown } from '@fortawesome/free-solid-svg-icons'
+library.add(faHouse, faArrowUp, faArrowLeft, faArrowRight, faArrowDown)
+
 interface PlayerStateStruct {
     id: string,
     name: string,
@@ -140,6 +145,33 @@ export default function Home() {
     setSelectedTeam(i);
   }
 
+  const [selectedPlayer, setSelectedPlayer] = useState({
+    id: '',
+    name: '',
+    age: 0,
+    strength: 0,
+    strengthPot: 0,
+    speed: 0,
+    speedPot: 0,
+    precision: 0,
+    precisionPot: 0,
+    contact: 0,
+    contactPot: 0,
+    class: '',
+    potential: 0,
+    experience: 0,
+    level: 0,
+    classExp: 0,
+    classLvl: 0
+  });
+  function setSelectedPlayerById(_id: string) {
+    let i: number = 0;
+    while (i < gameData.teams[0]!.playersJson.length && gameData.teams[0]!.playersJson[i]?.id !== _id) {
+      i++;
+    }
+    setSelectedPlayer(gameData.teams[0]?.playersJson[i]!);
+  }
+
   const [isViewSchedule, setIsViewSchedule] = useState<boolean>(false);
 
   const [gameData, setGameData] = useState<GameDataStateStruct>({
@@ -154,6 +186,162 @@ export default function Home() {
     fielderHexPos: default_fielderHexPos
   });
   const [isPlayingGame, setIsPlayingGame] = useState<boolean>(false);
+  function setGameData_FielderHexPos(f_pos: FieldPositions, direction: Position) {
+    if (f_pos === '1B') {
+      setGameData({
+        leagueId: gameData.leagueId,
+        leagueName: gameData.leagueName,
+        myTeamId: gameData.myTeamId,
+        week: gameData.week,
+        phase: gameData.phase, // change to reflect phase from database
+        teams: gameData.teams,
+        schedule: gameData.schedule,
+        fielderHexPos: {
+          '1B': {q: gameData.fielderHexPos['1B'].q + direction.q, r:gameData.fielderHexPos['1B'].r + direction.r, s: gameData.fielderHexPos['1B'].s + direction.s},
+          '2B': gameData.fielderHexPos['2B'],
+          'SS': gameData.fielderHexPos['SS'],
+          '3B': gameData.fielderHexPos['3B'],
+          'CF': gameData.fielderHexPos['CF'],
+          'LF': gameData.fielderHexPos['LF'],
+          'RF': gameData.fielderHexPos['RF'],
+          'C': {q:0,r:0,s:0},
+          'P': {q:0,r:-7,s:7}
+        } // make it so this updates to custom positions
+      })
+    }
+    if (f_pos === '2B') {
+      setGameData({
+        leagueId: gameData.leagueId,
+        leagueName: gameData.leagueName,
+        myTeamId: gameData.myTeamId,
+        week: gameData.week,
+        phase: gameData.phase, // change to reflect phase from database
+        teams: gameData.teams,
+        schedule: gameData.schedule,
+        fielderHexPos: {
+          '1B': gameData.fielderHexPos['1B'],
+          '2B': {q: gameData.fielderHexPos['2B'].q + direction.q, r:gameData.fielderHexPos['2B'].r + direction.r, s: gameData.fielderHexPos['2B'].s + direction.s},
+          'SS': gameData.fielderHexPos['SS'],
+          '3B': gameData.fielderHexPos['3B'],
+          'CF': gameData.fielderHexPos['CF'],
+          'LF': gameData.fielderHexPos['LF'],
+          'RF': gameData.fielderHexPos['RF'],
+          'C': {q:0,r:0,s:0},
+          'P': {q:0,r:-7,s:7}
+        } // make it so this updates to custom positions
+      })
+    }
+    if (f_pos === 'SS') {
+      setGameData({
+        leagueId: gameData.leagueId,
+        leagueName: gameData.leagueName,
+        myTeamId: gameData.myTeamId,
+        week: gameData.week,
+        phase: gameData.phase, // change to reflect phase from database
+        teams: gameData.teams,
+        schedule: gameData.schedule,
+        fielderHexPos: {
+          '1B': gameData.fielderHexPos['1B'],
+          '2B': gameData.fielderHexPos['2B'],
+          'SS': {q: gameData.fielderHexPos['SS'].q + direction.q, r:gameData.fielderHexPos['SS'].r + direction.r, s: gameData.fielderHexPos['SS'].s + direction.s},
+          '3B': gameData.fielderHexPos['3B'],
+          'CF': gameData.fielderHexPos['CF'],
+          'LF': gameData.fielderHexPos['LF'],
+          'RF': gameData.fielderHexPos['RF'],
+          'C': {q:0,r:0,s:0},
+          'P': {q:0,r:-7,s:7}
+        } // make it so this updates to custom positions
+      })
+    }
+    if (f_pos === '3B') {
+      setGameData({
+        leagueId: gameData.leagueId,
+        leagueName: gameData.leagueName,
+        myTeamId: gameData.myTeamId,
+        week: gameData.week,
+        phase: gameData.phase, // change to reflect phase from database
+        teams: gameData.teams,
+        schedule: gameData.schedule,
+        fielderHexPos: {
+          '1B': gameData.fielderHexPos['1B'],
+          '2B': gameData.fielderHexPos['2B'],
+          'SS': gameData.fielderHexPos['SS'],
+          '3B': {q: gameData.fielderHexPos['3B'].q + direction.q, r:gameData.fielderHexPos['3B'].r + direction.r, s: gameData.fielderHexPos['3B'].s + direction.s},
+          'CF': gameData.fielderHexPos['CF'],
+          'LF': gameData.fielderHexPos['LF'],
+          'RF': gameData.fielderHexPos['RF'],
+          'C': {q:0,r:0,s:0},
+          'P': {q:0,r:-7,s:7}
+        } // make it so this updates to custom positions
+      })
+    }
+    if (f_pos === 'CF') {
+      setGameData({
+        leagueId: gameData.leagueId,
+        leagueName: gameData.leagueName,
+        myTeamId: gameData.myTeamId,
+        week: gameData.week,
+        phase: gameData.phase, // change to reflect phase from database
+        teams: gameData.teams,
+        schedule: gameData.schedule,
+        fielderHexPos: {
+          '1B': gameData.fielderHexPos['1B'],
+          '2B': gameData.fielderHexPos['2B'],
+          'SS': gameData.fielderHexPos['SS'],
+          '3B': gameData.fielderHexPos['3B'],
+          'CF': {q: gameData.fielderHexPos['CF'].q + direction.q, r:gameData.fielderHexPos['CF'].r + direction.r, s: gameData.fielderHexPos['CF'].s + direction.s},
+          'LF': gameData.fielderHexPos['LF'],
+          'RF': gameData.fielderHexPos['RF'],
+          'C': {q:0,r:0,s:0},
+          'P': {q:0,r:-7,s:7}
+        } // make it so this updates to custom positions
+      })
+    }
+    if (f_pos === 'LF') {
+      setGameData({
+        leagueId: gameData.leagueId,
+        leagueName: gameData.leagueName,
+        myTeamId: gameData.myTeamId,
+        week: gameData.week,
+        phase: gameData.phase, // change to reflect phase from database
+        teams: gameData.teams,
+        schedule: gameData.schedule,
+        fielderHexPos: {
+          '1B': gameData.fielderHexPos['1B'],
+          '2B': gameData.fielderHexPos['2B'],
+          'SS': gameData.fielderHexPos['SS'],
+          '3B': gameData.fielderHexPos['3B'],
+          'CF': gameData.fielderHexPos['CF'],
+          'LF': {q: gameData.fielderHexPos['LF'].q + direction.q, r:gameData.fielderHexPos['LF'].r + direction.r, s: gameData.fielderHexPos['LF'].s + direction.s},
+          'RF': gameData.fielderHexPos['RF'],
+          'C': {q:0,r:0,s:0},
+          'P': {q:0,r:-7,s:7}
+        } // make it so this updates to custom positions
+      })
+    }
+    if (f_pos === 'RF') {
+      setGameData({
+        leagueId: gameData.leagueId,
+        leagueName: gameData.leagueName,
+        myTeamId: gameData.myTeamId,
+        week: gameData.week,
+        phase: gameData.phase, // change to reflect phase from database
+        teams: gameData.teams,
+        schedule: gameData.schedule,
+        fielderHexPos: {
+          '1B': gameData.fielderHexPos['1B'],
+          '2B': gameData.fielderHexPos['2B'],
+          'SS': gameData.fielderHexPos['SS'],
+          '3B': gameData.fielderHexPos['3B'],
+          'CF': gameData.fielderHexPos['CF'],
+          'LF': gameData.fielderHexPos['LF'],
+          'RF': {q: gameData.fielderHexPos['RF'].q + direction.q, r:gameData.fielderHexPos['RF'].r + direction.r, s: gameData.fielderHexPos['RF'].s + direction.s},
+          'C': {q:0,r:0,s:0},
+          'P': {q:0,r:-7,s:7}
+        } // make it so this updates to custom positions
+      })
+    }
+  }
   // This preserves state of isPlayingGame and gameData on refresh
   // cannot test locally if React strict mode is enabled
   useEffect(() => {
@@ -320,8 +508,30 @@ function MainGameView() {
             teamIndexProp={0}
           /> 
           <div className="flex flex-col">
-            <label>Set player field position:</label>
-            <button></button>
+            <label>Set player field position: {selectedPlayer.class} {selectedPlayer.name}</label>
+            <div className="flex flex-row">
+              <FontAwesomeIcon 
+                className='p-1 -rotate-45' icon={['fas', 'arrow-up']}
+                onClick={() => setGameData_FielderHexPos(selectedPlayer.class as FieldPositions, {q:-1, r:0, s:1})} />
+              <FontAwesomeIcon 
+                className='p-1' icon={['fas', 'arrow-up']}
+                onClick={() => setGameData_FielderHexPos(selectedPlayer.class as FieldPositions, {q:0, r:-1, s:1})} />
+              <FontAwesomeIcon 
+                className='p-1 rotate-45' icon={['fas', 'arrow-up']}
+                onClick={() => setGameData_FielderHexPos(selectedPlayer.class as FieldPositions, {q:1, r:-1, s:0})} />
+            </div>
+            <div className="flex flex-row">
+              <FontAwesomeIcon 
+                className='p-1 rotate-45' icon={['fas', 'arrow-down']}
+                onClick={() => setGameData_FielderHexPos(selectedPlayer.class as FieldPositions, {q:-1, r:1, s:0})} />
+              <FontAwesomeIcon 
+                className='p-1' icon={['fas', 'arrow-down']}
+                onClick={() => setGameData_FielderHexPos(selectedPlayer.class as FieldPositions, {q:0, r:1, s:-1})} />
+              <FontAwesomeIcon 
+                className='p-1 -rotate-45' icon={['fas', 'arrow-down']}
+                onClick={() => setGameData_FielderHexPos(selectedPlayer.class as FieldPositions, {q:1, r:0, s:-1})} />
+            </div>
+            
           </div>
           
         </div>
@@ -405,7 +615,11 @@ function TeamDisplayLineupChangeTable({leagueInfoProp, teamIndexProp} : {leagueI
             {
               leagueInfoProp.teams[teamIndexProp]?.playersJson.map((value, index) => {
                 return (
-                  <tr key={value.id} className="even:bg-green-200 odd:bg-gray-50">
+                  <tr key={value.id} 
+                  className="even:bg-green-200 odd:bg-gray-50 hover:bg-blue-600 hover:text-gray-50"
+                  onClick={() => {
+                    setSelectedPlayerById(value.id);
+                  }}>
                     <td>{index+1}</td>
                     <td>
                       {
