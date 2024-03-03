@@ -139,7 +139,7 @@ export default function Home() {
   const [selectedTeam, setSelectedTeam] = useState(0);
   function setSelectedTeamById(_id: string) {
     let i: number = 0;
-    while (i < leagueInfo.teams.length && leagueInfo.teams[i]?.id !== _id) {
+    while (i < gameData.teams.length && gameData.teams[i]?.id !== _id) {
       i++;
     }
     setSelectedTeam(i);
@@ -499,6 +499,19 @@ function MainGameView() {
     schedule: gameData.schedule
   }  
 
+  let opp_team_id: string = '';
+  let my_sched_index = 0;
+  let i = 0;
+  while (i< gameData.schedule[gameData.week]!.length && opp_team_id === ''){
+    if (gameData.schedule[gameData.week]![i]!.awayTeam === gameData.myTeamId) {
+      opp_team_id = gameData.schedule[gameData.week]![i]!.homeTeam;
+    }
+    if (gameData.schedule[gameData.week]![i]!.homeTeam === gameData.myTeamId) {
+      opp_team_id = gameData.schedule[gameData.week]![i]!.awayTeam;
+    }
+  }
+  setSelectedTeamById(opp_team_id); // this will cause second teamdisplaytable to show opponent team of the current week
+
   return (
     <div className="flex flex-row flex-wrap">
 
@@ -536,6 +549,7 @@ function MainGameView() {
           
         </div>
         <div className="w-full sm:w-3/5 lg:w-3/5 px-1 bg-orange-300 margin-auto">
+          <h1 className="text-center">Week {gameData.week}</h1>
           <FieldView 
           fielderHexPos={gameData.fielderHexPos}/>
         </div>
@@ -749,6 +763,12 @@ function TopBar() {
     <div className="flex flex-row p-1 gap-3 bg-neutral-100">
       <button onClick={() => setIsViewSchedule(false)}>Dashboard</button>
       <button onClick={() => setIsViewSchedule(true)}>Schedule</button>
+      <button 
+      className="transition-colors duration-200 hover:bg-green-400 
+      bg-green-600 text-center text-white shadow-sm"
+      /*onClick={() => }*/>
+        Sim Game{` >>`}
+      </button>
     </div>
   )
 }
