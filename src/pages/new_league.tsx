@@ -104,7 +104,6 @@ interface Proclivity { // TODO: the properties must add up to === 1.0
 //type FieldPositions = '1B' | '2B' | 'SS' | '3B' | 'CF' | 'LF' | 'RF' | 'C' | 'P' ;
 
 export default function Home() {
-  const hello = api.post.hello.useQuery({ text: "from tRPC" });
   //const [playerInfo, setPlayerInfo] = useState<PlayerStateStruct[]>([]);
   //const [teamInfo, setTeamInfo] = useState<TeamStateStruct>();
   const [leagueInfo, setLeagueInfo] = useState<LeagueStateStruct>({
@@ -429,7 +428,7 @@ export default function Home() {
       schedule: newLeague.schedule
     })
     setIsPlayingGame(true);
-    
+
     router.push('/') // this navigates to Home Page
   }
 

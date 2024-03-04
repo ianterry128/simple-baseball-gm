@@ -198,7 +198,7 @@ export function FieldView(props: FieldViewProps) {
     //setCanvasState(canvas);
 
     for (const fp in f_positions) {
-      console.log(`fp = ${fp} and fielderhexpos[fp]= ${f_positions[fp as FieldPositions]}`)
+      //console.log(`fp = ${fp} and fielderhexpos[fp]= ${f_positions[fp as FieldPositions]}`)
       if (fp === '1B' || fp === '3B') {
         let pixel  = hex_to_pixel(f_positions[fp as FieldPositions], hexSizeState, {x: canvas_w/2, y: canvas_h-hexSizeState});
         drawHex(canvas.getContext('2d')!, pixel.x, pixel.y, hexSizeState, 'purple');
