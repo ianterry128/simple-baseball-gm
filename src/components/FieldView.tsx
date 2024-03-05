@@ -20,9 +20,22 @@ interface Hex {
 type FieldPositions = '1B' | '2B' | 'SS' | '3B' | 'CF' | 'LF' | 'RF' | 'C' | 'P' ;
 
 interface FieldViewProps {
-  fielderHexPos: Record<FieldPositions, Position>
+  fielderHexPos: Record<FieldPositions, Position>,
+  numInnings: number,
+  isLogActive: boolean,
+  logContents: string[]
 }
 
+// SCOREBOARD STUFF
+type SB_BasesOccupied = {
+  first: string,
+  second: string,
+  third: string
+}
+// these are used for scoreboard during game simulation
+let __homeInningRuns: string[] = []; 
+let __awayInningRuns: string[] = [];
+//
 
 export function FieldView(props: FieldViewProps) {
   const [hexCoord, setHexCoord] = useState<Position>({
@@ -32,8 +45,54 @@ export function FieldView(props: FieldViewProps) {
   });
   const [canvasState, setCanvasState] = useState<HTMLCanvasElement>();
   const [hexSizeState, setHexSizeState] = useState<number>(7);
-  //const [placedOfCount, setPlacedOfCount] = useState<number>(0);
-  //const [isPlacingOfState, setIsPlacingOfState] = useState<boolean>(false);
+
+  // LOG STATE VARIABLES
+  //const [logContents, setLogContents] = useState<string[]>([]);
+  const [logIndex, setLogIndex] = useState<number>(0);
+  const [isLogPaused, setIsLogPaused] = useState<boolean>(true);
+  const [logInterval, setLogInterval] = useState<number>(1500);
+  const [logSpeedTxt, setLogSpeedTxt] = useState<string>('Speed >');
+  /**
+    function appendLogContents(_text: string) {
+      setLogContents([
+        ...logContents,
+        _text
+      ]);
+    }
+  */
+  //const [isLogActive, setIsLogActive] = useState<boolean>(false);
+  
+  // SCOREBOARD STATE VARIABLES
+  const [sb_teamHome, setSb_teamHome] = useState<string>('');
+  const [sb_teamAway, setSb_teamAway] = useState<string>('');
+  const [sb_runsHome, setSb_runsHome] = useState<number>(0);
+  const [sb_runsAway, setSb_runsAway] = useState<number>(0);
+  const [sb_inning, setSb_inning] = useState<number>(0);
+  const [sb_inningHalf, setSb_inningHalf] = useState<string>('');
+  const [sb_hitsHome, setSb_hitsHome] = useState<number>(0);
+  const [sb_hitsAway, setSb_hitsAway] = useState<number>(0);
+  const [sb_errHome, setSb_errHome] = useState<number>(0);
+  const [sb_errAway, setSb_errAway] = useState<number>(0);
+  const [sb_outs, setSb_outs] = useState<number>(0);
+  const [sb_batter, setSb_batter] = useState<string>('');
+  const [sb_homeInningRuns, setSb_homeInningRuns] = useState<string[]>(__homeInningRuns);
+  const [sb_awayInningRuns, setSb_awayInningRuns] = useState<string[]>(__awayInningRuns);
+  const [sb_hasInningRunsRun, setSb_hasInningRunsRun] = useState<boolean>(false);
+  const [sb_baseRunners, setSb_baseRunners] = useState<SB_BasesOccupied>({
+    first: 'none',
+    second: 'none',
+    third: 'none'
+  });
+
+  if (!sb_hasInningRunsRun) {
+    for (let i=0; i<props.numInnings; i++) {
+      __awayInningRuns[i] = '-';
+      __homeInningRuns[i] = '-';
+    }
+    setSb_hasInningRunsRun(true);
+  }
+  // SCOREBOARD STATE VARIABLES
+  
 
   const canvas_w = 900;
   const canvas_h = 550;
@@ -228,81 +287,333 @@ export function FieldView(props: FieldViewProps) {
 
   }
 
-  // onClick
-  function placeOutFielder() {
-    canvasState?.addEventListener('mousedown', placeOutfielderEventFunc);
-    placed_of_count = 0;
-  }
-  
-  function placeOutfielderEventFunc(event: MouseEvent) {
-    if (placed_of_count < 3) {
-      const bb = canvasState!.getBoundingClientRect();
-      const x = Math.floor( (event.clientX - bb.left) / bb.width * canvasState!.width );
-      const y = Math.floor( (event.clientY - bb.top) / bb.height * canvasState!.height );
-      let place_pos: Position = pixel_to_hex({x:x, y:y}, hexSizeState, {x: canvas_w/2, y: canvas_h-hexSizeState});
-  
-      //draw player
-      let pixel  = hex_to_pixel(place_pos, hexSizeState, {x: canvas_w/2, y: canvas_h-hexSizeState});
-      drawHex(canvasState?.getContext('2d')!, pixel.x, pixel.y, hexSizeState, 'red');
-      drawRing(canvasState?.getContext('2d')!, place_pos, 5, hexSizeState, 'red');
-      placed_of_count += 1;
-      if (placed_of_count === 3) {
-        canvasState?.removeEventListener('mousedown', placeOutfielderEventFunc);
-      }
-    }
-    console.log(`placedOfCount = ${placed_of_count}`);
-  }
+  // COMPONENTS
+  interface MatchLogProps3 {
+    isActive?: boolean;
+    _homeInningRuns: string[];
+    _awayInningRuns: string[]
+}
 
-  function placeMiddleInfielder() {
-    canvasState?.addEventListener('mousedown', placeMiddleInfielderEventFunc);
-    placed_mif_count = 0;
-  }
-  
-  function placeMiddleInfielderEventFunc(event: MouseEvent) {
-    if (placed_mif_count < 2) {
-      const bb = canvasState!.getBoundingClientRect();
-      const x = Math.floor( (event.clientX - bb.left) / bb.width * canvasState!.width );
-      const y = Math.floor( (event.clientY - bb.top) / bb.height * canvasState!.height );
-      let place_pos: Position = pixel_to_hex({x:x, y:y}, hexSizeState, {x: canvas_w/2, y: canvas_h-hexSizeState});
-  
-      //draw player
-      let pixel  = hex_to_pixel(place_pos, hexSizeState, {x: canvas_w/2, y: canvas_h-hexSizeState});
-      drawHex(canvasState?.getContext('2d')!, pixel.x, pixel.y, hexSizeState, 'blue');
-      drawRing(canvasState?.getContext('2d')!, place_pos, 3, hexSizeState, 'blue');
-      placed_mif_count += 1;
-      if (placed_mif_count === 2) {
-        canvasState?.removeEventListener('mousedown', placeMiddleInfielderEventFunc);
-      }
-    }
-  }
+function MatchTextLog3(props_matchlog: MatchLogProps3) {
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      if (!isLogPaused) {
+        // update scoreboard state variables here
+        setLogIndex(c => c + 1); 
+        let str = props.logContents[logIndex];
+        if (str?.includes('steps up')) { // set batter TODO: do this a better way
+          let batter = str.split(' ', 1);
+          setSb_batter(batter[0]!);  
+        }
+        if (str?.includes('Inning')) { // update inning info
+          let half = str.substring(0,3)==='Top' ? 'Top' : 'Bottom'
+          setSb_inningHalf(half);
+          if (half==='Top') {
 
-  function placeRange2Fielders() {
-    canvasState?.addEventListener('mousedown', placeRange2FieldersEventFunc);
-    placed_r2_count = 0;
-  }
-  
-  function placeRange2FieldersEventFunc(event: MouseEvent) {
-    if (placed_r2_count < 4) {
-      const bb = canvasState!.getBoundingClientRect();
-      const x = Math.floor( (event.clientX - bb.left) / bb.width * canvasState!.width );
-      const y = Math.floor( (event.clientY - bb.top) / bb.height * canvasState!.height );
-      let place_pos: Position = pixel_to_hex({x:x, y:y}, hexSizeState, {x: canvas_w/2, y: canvas_h-hexSizeState});
-  
-      //draw player
-      let pixel  = hex_to_pixel(place_pos, hexSizeState, {x: canvas_w/2, y: canvas_h-hexSizeState});
-      drawHex(canvasState?.getContext('2d')!, pixel.x, pixel.y, hexSizeState, 'purple');
-      drawRing(canvasState?.getContext('2d')!, place_pos, 2, hexSizeState, 'purple');
-      placed_r2_count += 1;
-      if (placed_r2_count === 4) {
-        canvasState?.removeEventListener('mousedown', placeRange2FieldersEventFunc);
+            setSb_inning(n => n+1); // increment inning
+            // set Away inning runs to 0
+            // the increment doesn't register until next tick,
+            //so we use sb_inning instead of sb_inning-1
+            props_matchlog._awayInningRuns[sb_inning] = '0'; 
+            setSb_awayInningRuns(props_matchlog._awayInningRuns);
+            props_matchlog._homeInningRuns[sb_inning] = '-'; // this is in case of extra innings, to keep rows the same length during top of inning
+          }
+          else if (half==='Bottom') {
+            // set Home inning runs to 0
+            props_matchlog._homeInningRuns[sb_inning-1] = '0';
+            setSb_homeInningRuns(props_matchlog._homeInningRuns);
+          }
+          setSb_outs(0); // reset outs to 0 when sides change
+          let baseReset: SB_BasesOccupied = { //reset bases when sides change
+            first: 'none',
+            second: 'none',
+            third: 'none'
+          }
+          setSb_baseRunners(baseReset);
+        }
+        if (str?.includes('strikes out')) { // strikeout
+          setSb_outs(n => n+1);
+        }
+        if (str?.includes('an OUT!')) {
+          setSb_outs(n => n+1);
+        }
+        if (str?.includes('out at')) {
+          let curBases = sb_baseRunners;
+          let _runner = str.split(' ', 1)[0];
+          // which base was this runner previously on (if any)?
+          let firstBaseString: string = (sb_baseRunners.first === _runner) ? 'none' : curBases.first;
+          let secondBaseString: string = (sb_baseRunners.second === _runner) ? 'none' : curBases.second;
+          let thirdBaseString: string = (sb_baseRunners.third === _runner) ? 'none' : curBases.third;
+          let newBases: SB_BasesOccupied = {
+            first: firstBaseString,
+            second: secondBaseString,
+            third: thirdBaseString
+          }
+          setSb_baseRunners(newBases);
+        }
+        if (str?.includes('missed')) { // record errors
+          if (sb_inningHalf === 'Top') { // in top of the inning, Home team is in field
+            setSb_errHome(n => n+1);
+          }
+          else {
+            setSb_errAway(n => n+1);
+          }
+        }
+        if (str?.includes('runners advance')) { // update baserunners
+          let curBases = sb_baseRunners;
+          let newBases: SB_BasesOccupied = {
+            first: sb_batter,
+            second: curBases.first,
+            third: curBases.second
+          }
+          setSb_baseRunners(newBases);
+          if (sb_inningHalf === 'Top') { // and record hits
+            setSb_hitsAway(n => n+1);
+          }
+          else {
+            setSb_hitsHome(n => n+1);
+          }
+        }
+        if (str?.includes('hits a')) { // update hits NEW
+          if (sb_inningHalf === 'Top') { // and record hits
+            setSb_hitsAway(n => n+1);
+          }
+          else {
+            setSb_hitsHome(n => n+1);
+          }
+        }
+        if (str?.includes('advances to third base')) { // update baserunners TODO
+          let curBases = sb_baseRunners;
+          let _runner = str.split(' ', 1)[0];
+          // which base was this runner previously on (if any)?
+          let firstBaseString: string = (sb_baseRunners.first === _runner) ? 'none' : curBases.first;
+          let secondBaseString: string = (sb_baseRunners.second === _runner) ? 'none' : curBases.second;
+          let newBases: SB_BasesOccupied = {
+            first: firstBaseString,
+            second: secondBaseString,
+            third: _runner!
+          }
+          setSb_baseRunners(newBases);
+        }
+        if (str?.includes('advances to second base')) { // update baserunners TODO
+          let curBases = sb_baseRunners;
+          let _runner = str.split(' ', 1)[0];
+          // which base was this batter previously on (if any)?
+          let firstBaseString: string = (sb_baseRunners.first === _runner) ? 'none' : curBases.first;
+          let newBases: SB_BasesOccupied = {
+            first: firstBaseString,
+            second: _runner!,
+            third: curBases.third
+          }
+          setSb_baseRunners(newBases);
+        }
+        if (str?.includes('advances to first base')) { // update baserunners TODO
+          let curBases = sb_baseRunners;
+          let _runner = str.split(' ', 1)[0];
+          let newBases: SB_BasesOccupied = {
+            first: _runner!,
+            second: curBases.second,
+            third: curBases.third
+          }
+          setSb_baseRunners(newBases);
+        }
+        if (str?.includes('scores')) {
+          if (sb_inningHalf === 'Top') { // in top of the inning, Away team is at bat
+            setSb_runsAway(n => n+1); // increment Away total runs
+            // increment Away inning runs
+            props_matchlog._awayInningRuns[sb_inning-1] = (parseInt(props_matchlog._awayInningRuns[sb_inning-1]!) + 1).toString();
+            setSb_awayInningRuns(props_matchlog._awayInningRuns);
+          }
+          else {
+            setSb_runsHome(n => n+1); // increment Home total runs
+            // increment Home inning runs
+            props_matchlog._homeInningRuns[sb_inning-1] = (parseInt(props_matchlog._homeInningRuns[sb_inning-1]!) + 1).toString();
+            setSb_homeInningRuns(props_matchlog._homeInningRuns);
+          }
+          // set baserunners
+          let curBases = sb_baseRunners;
+          let newBases: SB_BasesOccupied = {
+            first: curBases.first,
+            second: curBases.second,
+            third: curBases.third
+          }
+          let _player = str.split(' ', 1)[0];
+          if (curBases.first === _player) {
+            newBases.first = 'none';
+          }
+          else if (curBases.second === _player) {
+            newBases.second = 'none';
+          }
+          else if (curBases.third === _player) {
+            newBases.third = 'none';
+          }
+          setSb_baseRunners(newBases);
+        }
       }
+    }, logInterval);
+    return () => clearInterval(intervalId);
+  }, []);
+
+    return (
+        <div
+        className="flex flex-col p-2"
+        style={{ visibility: props_matchlog.isActive ? "visible" : "hidden" }}
+        >
+        <div className="flex p-2">
+          <button 
+              className="rounded-full transition-colors duration-200 hover:bg-green-500 
+          bg-green-700 text-white shadow-sm font-bold px-10 py-5 w-52"
+              onClick={() => {
+                isLogPaused ? setIsLogPaused(false) : setIsLogPaused(true)
+              }} >
+              Start/Pause Log
+          </button>
+          <button 
+              className="rounded-full transition-colors duration-200 hover:bg-green-500 
+          bg-green-700 text-white shadow-sm font-bold px-10 py-5 w-52"
+              onClick={() => {
+                if (logInterval === 1500) {
+                  setLogInterval(1000);
+                  setLogSpeedTxt("Speed >>");
+                }
+                else if (logInterval === 1000) {
+                  setLogInterval(500);
+                  setLogSpeedTxt("Speed >>>");
+                }
+                else if (logInterval === 500) {
+                  setLogInterval(1500);
+                  setLogSpeedTxt("Speed >");
+                }
+              }} 
+              >
+                {logSpeedTxt}
+          </button>
+        </div>
+        <Scoreboard></Scoreboard>
+            <textarea
+            className="flex border-4 gap-2 w-full"
+            id="log2"
+            readOnly
+            autoFocus
+            rows={5}
+            cols={130}
+            value={props.logContents?.slice(0, logIndex).reverse()}
+            >
+            </textarea>
+        </div>
+    )
+}
+
+  function Scoreboard() {
+    //create header row and inningRun columns
+    let headerArr = [' '];
+    //let inningRuns = []
+    for (let i=0; i < __awayInningRuns.length; i++) {
+      headerArr.push(`${i+1}`);
+      //inningRuns.push('-');
     }
+    headerArr.push('R');
+    headerArr.push('H');
+    headerArr.push('E');
+    return (
+      <div
+      className="flex p-1"
+      >
+        <table className="table-auto border-2 border-spacing-2 px-8">
+        <caption>`{sb_inningHalf} of the {sb_inning} inning`</caption>
+        <thead>
+        <tr className="even:bg-gray-50 odd:bg-white">
+          {
+            headerArr.map((v, index) => {
+              if (index <= __awayInningRuns.length) {
+                return (
+                  <th 
+                  className="px-2 font-light"
+                  key={crypto.randomUUID()}>{v}</th>
+                )
+              }
+              else {
+                return (
+                  <th 
+                  className="px-2 font-bold"
+                  key={crypto.randomUUID()}>{v}</th>
+                )
+              }    
+            })
+          }
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Home</td>
+            {
+              sb_homeInningRuns.map((v) => {
+                return (
+                  <td
+                  className="px-2" 
+                  key={crypto.randomUUID()}>{v}</td>
+                )
+              })
+            }
+            <td className="px-2 font-bold" >{sb_runsHome}</td>
+            <td className="px-2 font-bold" >{sb_hitsHome}</td>
+            <td className="px-2 font-bold" >{sb_errHome}</td>
+          </tr>
+          <tr>
+            <td>Away</td>
+            {
+              sb_awayInningRuns.map((v) => {
+                return (
+                  <td
+                  className="px-2" 
+                  key={crypto.randomUUID()}>{v}</td>
+                )
+              })
+            }
+            <td className="px-2 font-bold" >{sb_runsAway}</td>
+            <td className="px-2 font-bold" >{sb_hitsAway}</td>
+            <td className="px-2 font-bold" >{sb_errAway}</td>
+          </tr>
+        </tbody>
+      </table>
+      <div className="p-2">
+      <h1>Outs: {sb_outs}</h1>
+      <h1>1st: {sb_baseRunners.first}</h1>
+      <h1>2nd: {sb_baseRunners.second}</h1>
+      <h1>3rd: {sb_baseRunners.third}</h1>
+      </div>
+      </div>
+  )
   }
 
  useEffect(() => { // TODO: why is left end of field cut off when I do it this way?
   drawHexes(50,50);
   drawFieldersInitial(props.fielderHexPos);
  }, [])
+ if (props.isLogActive) {
+  return (
+    <>
+    <div className="overflow-x-auto">
+      <div className="flex flex-col">
+        <h1 className="text-center text-2xl">Graphics worksheet</h1>
+        <h1 className="text-center">{hexCoord.q}, {hexCoord.r}, {hexCoord.s}</h1>
+        <div className="flex flex-row p-2 margin-auto">
+          <MatchTextLog3
+          isActive={props.isLogActive}
+          _homeInningRuns={__homeInningRuns}
+          _awayInningRuns={__awayInningRuns} />
+        </div>
+        <div className="flex p-2 gap-4 margin-auto">
+          <canvas id="canvas" 
+            className="border-2 "
+            width={canvas_w} 
+            height={canvas_h}/>
+        </div>
+      </div>
+    </div>
+    </>
+  );
+ }
 
   return (
     <>
@@ -311,24 +622,6 @@ export function FieldView(props: FieldViewProps) {
         <h1 className="text-center text-2xl">Graphics worksheet</h1>
         <h1 className="text-center">{hexCoord.q}, {hexCoord.r}, {hexCoord.s}</h1>
         <div className="flex flex-row p-2 margin-auto">
-          <button 
-                className="rounded-full transition-colors duration-200 hover:bg-green-500 
-            bg-green-700 text-white shadow-sm font-bold px-10 py-5 w-52"
-                onClick={() => placeOutFielder()}>
-                Place Outfielder
-          </button>
-          <button 
-                className="rounded-full transition-colors duration-200 hover:bg-green-500 
-            bg-green-700 text-white shadow-sm font-bold px-10 py-5 w-52"
-                onClick={() => placeMiddleInfielder()}>
-                Place M-IF
-          </button>
-          <button 
-                className="rounded-full transition-colors duration-200 hover:bg-green-500 
-            bg-green-700 text-white shadow-sm font-bold px-10 py-5 w-52"
-                onClick={() => placeRange2Fielders()}>
-                Place Others
-          </button>
         </div>
         <div className="flex p-2 gap-4 margin-auto">
           <canvas id="canvas" 

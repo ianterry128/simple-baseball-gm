@@ -152,6 +152,25 @@ type FieldActionResults = {
   runsScored: number
 }
 
+type MatchSimResults = { // key is player_id
+  home_win: boolean,
+  player_matchStats: { [key: string]: playerMatchStats }
+}
+interface playerMatchStats {
+  at_bats: number,
+  runs: number,
+  walks: number,
+  hits: number,
+  doubles: number,
+  triples: number,
+  home_runs: number,
+  rbi: number,
+  strike_outs: number,
+  errors: number,
+  k: number,
+  ip: number
+}
+
 export default function Home() {
   // STATE VARIABLES ---
   const [leagueInfo, setLeagueInfo] = useState<LeagueStateStruct>({
@@ -204,6 +223,7 @@ export default function Home() {
   // needed for game simulation
   const [logContents, setLogContents] = useState<string[]>([]);
   const [numInnings, setNumInnings] = useState<number>(9); // this controls number of innings played per game
+  const [isLogActive, setIsLogActive] = useState<boolean>(false);
   // ---
   // PERSISTANT STATE VARIABLES ~~~
   const [gameData, setGameData] = useState<GameDataStateStruct>({
@@ -419,7 +439,7 @@ export default function Home() {
 // FUNCTIONS HERE USE REACT HOOKS
 function exhibition(team_home:TeamStateStruct, team_away:TeamStateStruct) {
   // set visibility of log
-  //setIsLogActive(true);
+  setIsLogActive(true);
   setLogContents(['']);
   let _localContents: string[] = [];
 
@@ -431,8 +451,9 @@ function exhibition(team_home:TeamStateStruct, team_away:TeamStateStruct) {
 
 /*
   // MatchSim returns TRUE if Home team wins. If Away team wins, return FALSE.
+  // return stats like AB, Hits, K, Put-outs, Errors
   */
-  function MatchSim(gameDataProp:GameDataStateStruct, team_home:TeamStateStruct, team_away:TeamStateStruct, _logContents: string[]): boolean {
+  function MatchSim(gameDataProp:GameDataStateStruct, team_home:TeamStateStruct, team_away:TeamStateStruct, _logContents: string[]): MatchSimResults {
     let _num_innings = numInnings;
     let currentInning: number = 1;
     let outCount = 0;
@@ -443,22 +464,56 @@ function exhibition(team_home:TeamStateStruct, team_away:TeamStateStruct) {
     let pitchResults: PitchResults = {outCounter:0, pitchLogContents:[], hitLine:[]};
     let basesOccupied: BasesOccupied = {first:undefined, second:undefined, third:undefined};
     let fieldActionResults: FieldActionResults = {outCounter:0, fieldActionLogContents:[], baseResults: basesOccupied, runsScored: 0};
+    let _playerMatchStats: {[key: string]: playerMatchStats} = {};
   
     let isMyTeam_Home: boolean = false;
     let isMyTeam_Away: boolean = false;
     let home_lineup: PlayerStateStruct[] = [];
     let away_lineup: PlayerStateStruct[] = [];
-    if (team_home.id === gameData.myTeamId) {
+    if (team_home.id === gameData.myTeamId) { // my team is the home team
       home_lineup = team_home.playersJson;
       away_lineup = createLineup(team_away);
       isMyTeam_Home = true;
+      for (let i=0; i<team_home.playersJson.length; i++) {
+        _playerMatchStats[team_home.playersJson[i]?.id!] = {
+          at_bats: 0,
+          runs: 0,
+          walks: 0,
+          hits: 0,
+          doubles: 0,
+          triples: 0,
+          home_runs: 0,
+          rbi: 0,
+          strike_outs: 0,
+          errors: 0,
+          k: 0,
+          ip: 0
+        }
+      }
+      
     }
-    else if (team_away.id === gameData.myTeamId) {
+    else if (team_away.id === gameData.myTeamId) { // my team is the away team
       home_lineup = createLineup(team_home);
       away_lineup = team_away.playersJson;
       isMyTeam_Away = true;
+      for (let i=0; i<team_away.playersJson.length; i++) {
+        _playerMatchStats[team_away.playersJson[i]?.id!] = {
+          at_bats: 0,
+          runs: 0,
+          walks: 0,
+          hits: 0,
+          doubles: 0,
+          triples: 0,
+          home_runs: 0,
+          rbi: 0,
+          strike_outs: 0,
+          errors: 0,
+          k: 0,
+          ip: 0
+        }
+      }
     }
-    else {
+    else { // my team is not playing this match
       home_lineup = createLineup(team_home);
       away_lineup = createLineup(team_away);
     }
@@ -515,7 +570,7 @@ function exhibition(team_home:TeamStateStruct, team_away:TeamStateStruct) {
       basesOccupied = {first:undefined, second:undefined, third:undefined};
       if (homeScore > awayScore && currentInning === _num_innings) { // game is over if the Home team is ahead going into the bottom of the 9th
         _logContents.push(`The Home Team ${team_home.name} win!!!\n`)
-        return true;
+        return {home_win:true, player_matchStats:_playerMatchStats};
       }
       // Bottom of the inning
       _logContents.push(`Bottom of Inning ${currentInning} begins...\n`)
@@ -530,10 +585,10 @@ function exhibition(team_home:TeamStateStruct, team_away:TeamStateStruct) {
         // What happens after a hit? (or miss)
         if (pitchResults.hitLine.length > 0) { // if hitline.length >1 then the ball was hit
           if (isMyTeam_Away) {
-            fieldActionResults = fieldAction(away_lineup[away_bat_cur]!, home_lineup, pitchResults.hitLine, basesOccupied, outCount, gameDataProp, true) // input batter, field team, hitline,
+            fieldActionResults = fieldAction(home_lineup[home_bat_cur]!, away_lineup, pitchResults.hitLine, basesOccupied, outCount, gameDataProp, true) // input batter, field team, hitline,
           }
           else if (!isMyTeam_Away) {
-            fieldActionResults = fieldAction(away_lineup[away_bat_cur]!, home_lineup, pitchResults.hitLine, basesOccupied, outCount, gameDataProp, false) // input batter, field team, hitline,
+            fieldActionResults = fieldAction(home_lineup[home_bat_cur]!, away_lineup, pitchResults.hitLine, basesOccupied, outCount, gameDataProp, false) // input batter, field team, hitline,
           }
           // output outcount, scoreToAdd, baseRanTo
           outCount += fieldActionResults.outCounter - outCount;
@@ -561,10 +616,10 @@ function exhibition(team_home:TeamStateStruct, team_away:TeamStateStruct) {
     }
     if (homeScore > awayScore) {
       _logContents.push(`The Home Team ${team_home.name} win!!!\n`)
-      return true;
+      return {home_win:true, player_matchStats:_playerMatchStats};
     }
     _logContents.push(`The Away Team ${team_away.name} win!!!\n`)
-    return false;
+    return {home_win:false, player_matchStats:_playerMatchStats};
     //setLogContents(_localContents);
   }
 
@@ -682,6 +737,9 @@ function MainGameView() {
       <ScheduleView />
     );
   }
+  if (gameData.phase === WeekPhase.POSTGAME) {
+    return ( <PostGameView />)
+  }
 
   const _leagueInfo: LeagueStateStruct = {
     id: gameData.leagueId,
@@ -744,7 +802,10 @@ function MainGameView() {
         <div className="w-full sm:w-3/5 lg:w-3/5 px-1 bg-orange-300 margin-auto">
           <h1 className="text-center">Week {gameData.week}</h1>
           <FieldView 
-          fielderHexPos={gameData.fielderHexPos}/>
+          fielderHexPos={gameData.fielderHexPos}
+          numInnings={numInnings}
+          isLogActive={isLogActive}
+          logContents={logContents}/>
         </div>
         <div className="w-full sm:w-1/5 lg:w-1/5 px-1 bg-amber-200">
           <TeamDisplayTable 
@@ -951,6 +1012,49 @@ function ScheduleView() {
   )
 }
 
+function PostGameView() {
+  const captionText: string = `My Team: ${gameData.teams[0]?.name}`
+
+  return (
+    <div className="overflow-x-auto">
+        <table className="table-auto border-2 border-spacing-2 p-8">
+          <caption>{captionText}</caption>
+          <thead>
+            <tr className="even:bg-gray-50 odd:bg-white">
+              <th>Name</th>
+              <th>Class</th>
+              <th>Str</th>
+              <th>Spd</th>
+              <th>Prc</th>
+              <th>Con</th>
+              <th>Lvl</th>
+              <th>Age</th>
+              <th>Exp gained</th>
+            </tr>
+          </thead>
+          <tbody>
+            {
+              gameData.teams[0]?.playersJson.map((index) => {
+                return (
+                  <tr key={index.id} className="even:bg-green-200 odd:bg-gray-50">
+                    <td>{index.name}</td>
+                    <td>{index.class}</td>
+                    <td>{index.strength}</td>
+                    <td>{index.speed}</td>
+                    <td>{index.precision}</td>
+                    <td>{index.contact}</td>
+                    <td>{index.level}</td>
+                    <td>{index.age}</td>
+                  </tr>
+                )
+              })
+            }
+          </tbody>
+        </table>
+      </div>
+  )
+}
+
 function TopBar() {
   let isMyTeamHome: boolean = true;
   let opp_team: TeamStateStruct = {
@@ -962,12 +1066,12 @@ function TopBar() {
   }
   const my_team: TeamStateStruct = getTeamById(gameData.myTeamId)!;
   let opp_team_id: string = '';
-  console.log("it ran the BEFORE part");
+  //console.log("it ran the BEFORE part");
   if (gameData.schedule[gameData.week] === undefined) return; 
-  console.log("it ran the AFTER part");
+  //console.log("it ran the AFTER part");
   let i = 0;
   while (i< gameData.schedule[gameData.week]!.length && opp_team_id === ''){
-    console.log(`its on loop # ${i}`)
+    //console.log(`its on loop # ${i}`)
     if (gameData.schedule[gameData.week]![i]!.awayTeam === gameData.myTeamId) {
       opp_team_id = gameData.schedule[gameData.week]![i]!.homeTeam;
       opp_team = getTeamById(opp_team_id)!;
@@ -985,15 +1089,63 @@ function TopBar() {
     <div className="flex flex-row p-1 gap-3 bg-neutral-100">
       <button onClick={() => setIsViewSchedule(false)}>Dashboard</button>
       <button onClick={() => setIsViewSchedule(true)}>Schedule</button>
-      <button 
-      className="transition-colors duration-200 hover:bg-green-400 
-      bg-green-600 text-center text-white shadow-sm"
-      onClick={() => { // TODO: Will this work?
-        if (isMyTeamHome) exhibition(my_team, opp_team);
-        else if (!isMyTeamHome) exhibition(opp_team, my_team);
-      }}>
-        Sim Game{` >>`}
-      </button>
+      {gameData.phase === WeekPhase.PREGAME ? (
+        <button 
+        className="transition-colors duration-200 hover:bg-green-400 
+        bg-green-600 text-center text-white shadow-sm"
+        onClick={() => { // TODO: Will this work?
+          if (isMyTeamHome) exhibition(my_team, opp_team);
+          else if (!isMyTeamHome) exhibition(opp_team, my_team);
+          setGameData({
+            leagueId: gameData.leagueId,
+            leagueName: gameData.leagueName,
+            myTeamId: gameData.myTeamId,
+            week: gameData.week,
+            phase: WeekPhase.GAME,
+            teams: gameData.teams, 
+            schedule: gameData.schedule,
+            fielderHexPos: gameData.fielderHexPos
+          })
+        }}>
+          Sim Game{` >>`}
+        </button>
+        ) : (gameData.phase === WeekPhase.GAME ? (
+          <button 
+          className="transition-colors duration-200 hover:bg-green-400 
+          bg-green-600 text-center text-white shadow-sm"
+          onClick={() => { // TODO: Will this work?
+            setGameData({
+              leagueId: gameData.leagueId,
+              leagueName: gameData.leagueName,
+              myTeamId: gameData.myTeamId,
+              week: gameData.week,
+              phase: WeekPhase.POSTGAME,
+              teams: gameData.teams, 
+              schedule: gameData.schedule,
+              fielderHexPos: gameData.fielderHexPos
+            })
+          }}>
+            Gain EXP{` >>`}
+          </button>
+        ) : (
+          <button 
+          className="transition-colors duration-200 hover:bg-green-400 
+          bg-green-600 text-center text-white shadow-sm"
+          onClick={() => { // TODO: Will this work?
+            setGameData({
+              leagueId: gameData.leagueId,
+              leagueName: gameData.leagueName,
+              myTeamId: gameData.myTeamId,
+              week: gameData.week,
+              phase: WeekPhase.PREGAME,
+              teams: gameData.teams, 
+              schedule: gameData.schedule,
+              fielderHexPos: gameData.fielderHexPos
+            })
+          }}>
+            Save and Go to Next Week{` >>`}
+          </button>
+        ))}
     </div>
   )
 }
