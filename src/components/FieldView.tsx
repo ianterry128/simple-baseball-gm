@@ -22,7 +22,7 @@ type FieldPositions = '1B' | '2B' | 'SS' | '3B' | 'CF' | 'LF' | 'RF' | 'C' | 'P'
 interface FieldViewProps {
   fielderHexPos: Record<FieldPositions, Position>,
   numInnings: number,
-  isLogActive: boolean,
+  phase: number,
   logContents: string[]
 }
 
@@ -590,7 +590,7 @@ function MatchTextLog3(props_matchlog: MatchLogProps3) {
   drawHexes(50,50);
   drawFieldersInitial(props.fielderHexPos);
  }, [])
- if (props.isLogActive) {
+ if (props.phase === 1) {
   return (
     <>
     <div className="overflow-x-auto">
@@ -599,7 +599,7 @@ function MatchTextLog3(props_matchlog: MatchLogProps3) {
         <h1 className="text-center">{hexCoord.q}, {hexCoord.r}, {hexCoord.s}</h1>
         <div className="flex flex-row p-2 margin-auto">
           <MatchTextLog3
-          isActive={props.isLogActive}
+          isActive={true}
           _homeInningRuns={__homeInningRuns}
           _awayInningRuns={__awayInningRuns} />
         </div>

@@ -168,7 +168,8 @@ interface playerMatchStats {
   strike_outs: number,
   errors: number,
   k: number,
-  ip: number
+  ip: number,
+  runs_allowed: number
 }
 
 export default function Home() {
@@ -221,9 +222,10 @@ export default function Home() {
   const [isViewSchedule, setIsViewSchedule] = useState<boolean>(false);
 
   // needed for game simulation
-  const [logContents, setLogContents] = useState<string[]>([]);
+  
   const [numInnings, setNumInnings] = useState<number>(9); // this controls number of innings played per game
-  const [isLogActive, setIsLogActive] = useState<boolean>(false);
+  //const [isLogActive, setIsLogActive] = useState<boolean>(false);
+
   // ---
   // PERSISTANT STATE VARIABLES ~~~
   const [gameData, setGameData] = useState<GameDataStateStruct>({
@@ -394,6 +396,8 @@ export default function Home() {
       })
     }
   }
+  const [logContents, setLogContents] = useState<string[]>([]);
+  const [lastMatchStats, setLastMatchStats] = useState<{ [key: string]: playerMatchStats }>({});
   // ~~~
   // This preserves state of isPlayingGame and gameData on refresh
   // cannot test locally if React strict mode is enabled
@@ -403,13 +407,23 @@ export default function Home() {
 
     const data_gameData = window.localStorage.getItem('gameData');
     if (data_gameData !== null) setGameData(JSON.parse(data_gameData))
+
+    const data_logContents = window.localStorage.getItem('logContents');
+    if (data_logContents !== null) setLogContents(JSON.parse(data_logContents))
+
+    const data_lastMatchStats = window.localStorage.getItem('lastMatchStats');
+    if (data_lastMatchStats !== null) setLastMatchStats(JSON.parse(data_lastMatchStats))
   }, [])   
 
   useEffect(() => {
     window.localStorage.setItem('isPlayingGame', JSON.stringify(isPlayingGame));
 
     window.localStorage.setItem('gameData', JSON.stringify(gameData));
-  }, [isPlayingGame, gameData])
+
+    window.localStorage.setItem('logContents', JSON.stringify(logContents));
+
+    window.localStorage.setItem('lastMatchStats', JSON.stringify(lastMatchStats));
+  }, [isPlayingGame, gameData, logContents, lastMatchStats])
   //
 
 
@@ -439,14 +453,15 @@ export default function Home() {
 // FUNCTIONS HERE USE REACT HOOKS
 function exhibition(team_home:TeamStateStruct, team_away:TeamStateStruct) {
   // set visibility of log
-  setIsLogActive(true);
+  //setIsLogActive(true);
   setLogContents(['']);
   let _localContents: string[] = [];
 
   // set league table visibility
   //setIsLeagueTableActive(false);
-  MatchSim(gameData, team_home, team_away, _localContents)
+  const results = MatchSim(gameData, team_home, team_away, _localContents);
   setLogContents(_localContents);
+  setLastMatchStats(results.player_matchStats)
 }
 
 /*
@@ -487,7 +502,8 @@ function exhibition(team_home:TeamStateStruct, team_away:TeamStateStruct) {
           strike_outs: 0,
           errors: 0,
           k: 0,
-          ip: 0
+          ip: 0,
+          runs_allowed: 0
         }
       }
       
@@ -509,7 +525,8 @@ function exhibition(team_home:TeamStateStruct, team_away:TeamStateStruct) {
           strike_outs: 0,
           errors: 0,
           k: 0,
-          ip: 0
+          ip: 0,
+          runs_allowed: 0
         }
       }
     }
@@ -540,10 +557,22 @@ function exhibition(team_home:TeamStateStruct, team_away:TeamStateStruct) {
         pitchResults = pitch(team_home.playersJson[home_p_index]!, team_away.playersJson[away_bat_cur]!);
         pitchResults.pitchLogContents.forEach((v) => { // log pitch log contents
           _logContents.push(v);
+          if (v.includes('strikes out')) {
+            if (isMyTeam_Home) {
+              _playerMatchStats[team_home.playersJson[home_p_index]!.id]!.k += 1; // add to my Pitcher's K count
+            }
+            else if (isMyTeam_Away) {
+              _playerMatchStats[team_away.playersJson[away_bat_cur]!.id]!.strike_outs += 1; // add to this batter's SO count
+            }
+          }
         });
+        // add at-bat to my batters stats
+        if (isMyTeam_Away) {
+          _playerMatchStats[team_away.playersJson[away_bat_cur]!.id]!.at_bats += 1;
+        }
         // What happens after a hit? (or miss)
         if (pitchResults.hitLine.length > 0) { // if hitline.length >1 then the ball was hit
-          if (isMyTeam_Home) {
+          if (isMyTeam_Home) { //TODO: can just call this in one place with the boolean parameter as isMyTeam_Home
             fieldActionResults = fieldAction(away_lineup[away_bat_cur]!, home_lineup, pitchResults.hitLine, basesOccupied, outCount, gameDataProp, true) // input batter, field team, hitline,
           }
           else if (!isMyTeam_Home) {
@@ -555,6 +584,38 @@ function exhibition(team_home:TeamStateStruct, team_away:TeamStateStruct) {
           awayScore += fieldActionResults.runsScored;
           fieldActionResults.fieldActionLogContents.forEach((v) => { // log field action log contents
             _logContents.push(v);
+            if (v.includes('hits a')) {
+              if (isMyTeam_Home) { // increment fielding stats
+                if (v.includes('missed')) {
+                  // get id of player that made error
+                  const fielder_class_name: string[] = v.split(' ', 2)
+                  const fielder_ind = getPlayerIndex(fielder_class_name[0] as FieldPositions)
+                  _playerMatchStats[home_lineup[fielder_ind]!.id]!.errors += 1;
+                }
+              }
+              else if (isMyTeam_Away) { // increment batting stats
+                _playerMatchStats[team_away.playersJson[away_bat_cur]!.id]!.hits += 1;
+                if (v.includes('double')) {
+                  _playerMatchStats[team_away.playersJson[away_bat_cur]!.id]!.doubles += 1;
+                }
+                if (v.includes('triple')) {
+                  _playerMatchStats[team_away.playersJson[away_bat_cur]!.id]!.triples += 1;
+                }
+                if (v.includes('Home Run')) {
+                  _playerMatchStats[team_away.playersJson[away_bat_cur]!.id]!.home_runs += 1;
+                }
+              }
+            }
+            if (v.includes('scores')) {
+              if (isMyTeam_Home) { // increment pitcher's runs_allowed
+                _playerMatchStats[home_lineup[home_p_index]!.id]!.runs_allowed += 1;
+              }
+              else if (isMyTeam_Away) { // increment runners runs scored
+                const runner_name: string[] = v.split(' ', 1);
+                const runner_ind = getPlayerIndex_byName(runner_name[0]!);
+                _playerMatchStats[away_lineup[runner_ind]!.id]!.runs += 1;
+              }
+            }
           });
         }
         else {
@@ -581,7 +642,19 @@ function exhibition(team_home:TeamStateStruct, team_away:TeamStateStruct) {
         pitchResults = pitch(team_away.playersJson[away_p_index]!, team_home.playersJson[home_bat_cur]!);
         pitchResults.pitchLogContents.forEach((v) => { // log pitch log contents
           _logContents.push(v);
+          if (v.includes('strikes out')) {
+            if (isMyTeam_Home) {
+              _playerMatchStats[team_home.playersJson[home_bat_cur]!.id]!.strike_outs += 1; // add to this batter's SO count
+            }
+            else if (isMyTeam_Away) {
+              _playerMatchStats[team_away.playersJson[away_p_index]!.id]!.k += 1; // add to my Pitcher's k count
+            }
+          }
         });
+        // add at-bat to my batters stats
+        if (isMyTeam_Home) {
+          _playerMatchStats[team_home.playersJson[home_bat_cur]!.id]!.at_bats += 1;
+        }
         // What happens after a hit? (or miss)
         if (pitchResults.hitLine.length > 0) { // if hitline.length >1 then the ball was hit
           if (isMyTeam_Away) {
@@ -596,6 +669,39 @@ function exhibition(team_home:TeamStateStruct, team_away:TeamStateStruct) {
           homeScore += fieldActionResults.runsScored;
           fieldActionResults.fieldActionLogContents.forEach((v) => { // log field action log contents
             _logContents.push(v);
+            if (v.includes('hits a')) {
+              if (isMyTeam_Home) { // increment batting stats
+                _playerMatchStats[team_home.playersJson[home_bat_cur]!.id]!.hits += 1;
+                if (v.includes('double')) {
+                  _playerMatchStats[team_home.playersJson[home_bat_cur]!.id]!.doubles += 1;
+                }
+                if (v.includes('triple')) {
+                  _playerMatchStats[team_home.playersJson[home_bat_cur]!.id]!.triples += 1;
+                }
+                if (v.includes('Home Run')) {
+                  _playerMatchStats[team_home.playersJson[home_bat_cur]!.id]!.home_runs += 1;
+                }
+                
+              }
+              else if (isMyTeam_Away) { // increment fielding stats
+                if (v.includes('missed')) {
+                  // get id of player that made error
+                  const fielder_class_name: string[] = v.split(' ', 2)
+                  const fielder_ind = getPlayerIndex(fielder_class_name[0] as FieldPositions)
+                  _playerMatchStats[away_lineup[fielder_ind]!.id]!.errors += 1;
+                }
+              }
+            }
+            if (v.includes('scores')) {
+              if (isMyTeam_Home) { // increment runners runs scored
+                const runner_name: string[] = v.split(' ', 1);
+                const runner_ind = getPlayerIndex_byName(runner_name[0]!);
+                _playerMatchStats[home_lineup[runner_ind]!.id]!.runs += 1;
+              }
+              else if (isMyTeam_Away) { // increment pitcher's runs_allowed
+                _playerMatchStats[away_lineup[away_p_index]!.id]!.runs_allowed += 1;
+              }
+            }
           });
         }
         else {
@@ -614,6 +720,9 @@ function exhibition(team_home:TeamStateStruct, team_away:TeamStateStruct) {
       }
       currentInning++;
     }
+    //for (const key_id in _playerMatchStats) {
+     // _playerMatchStats[key_id]!.at_bats = _playerMatchStats[key_id]?.hits! + _playerMatchStats[key_id]?.strike_outs!;
+    //}
     if (homeScore > awayScore) {
       _logContents.push(`The Home Team ${team_home.name} win!!!\n`)
       return {home_win:true, player_matchStats:_playerMatchStats};
@@ -738,7 +847,8 @@ function MainGameView() {
     );
   }
   if (gameData.phase === WeekPhase.POSTGAME) {
-    return ( <PostGameView />)
+    return ( 
+    <PostGameView />)
   }
 
   const _leagueInfo: LeagueStateStruct = {
@@ -804,7 +914,7 @@ function MainGameView() {
           <FieldView 
           fielderHexPos={gameData.fielderHexPos}
           numInnings={numInnings}
-          isLogActive={isLogActive}
+          phase={gameData.phase}
           logContents={logContents}/>
         </div>
         <div className="w-full sm:w-1/5 lg:w-1/5 px-1 bg-amber-200">
@@ -1034,17 +1144,70 @@ function PostGameView() {
           </thead>
           <tbody>
             {
-              gameData.teams[0]?.playersJson.map((index) => {
+              gameData.teams[0]?.playersJson.map((value, index) => {
+                // get stats corresponding to this player
+                let _matchStats: playerMatchStats = lastMatchStats[value.id]!;
+                const exp_gained: number = _matchStats.at_bats + _matchStats.hits + _matchStats.doubles + (_matchStats.triples*2) + (_matchStats.home_runs*3) +
+                 _matchStats.rbi +_matchStats.errors;
                 return (
-                  <tr key={index.id} className="even:bg-green-200 odd:bg-gray-50">
-                    <td>{index.name}</td>
-                    <td>{index.class}</td>
-                    <td>{index.strength}</td>
-                    <td>{index.speed}</td>
-                    <td>{index.precision}</td>
-                    <td>{index.contact}</td>
-                    <td>{index.level}</td>
-                    <td>{index.age}</td>
+                  <tr key={value.id} className="even:bg-green-200 odd:bg-gray-50 text-center">
+                    <td className="px-2">{value.name}</td>
+                    <td className="px-2">{value.class}</td>
+                    <td className="px-2">{value.strength}</td>
+                    <td className="px-2">{value.speed}</td>
+                    <td className="px-2">{value.precision}</td>
+                    <td className="px-2">{value.contact}</td>
+                    <td className="px-2">{value.level}</td>
+                    <td className="px-2">{value.age}</td>
+                    <td className="px-2">{exp_gained}</td>
+                  </tr>
+                )
+              })
+            }
+          </tbody>
+        </table>
+        
+        <table className="table-auto border-2 border-spacing-2 p-8">
+          <caption>{captionText}</caption>
+          <thead>
+            <tr className="even:bg-gray-50 odd:bg-white">
+              <th className="px-2">Name</th>
+              <th className="px-2">Class</th>
+              <th className="px-2">AB</th>
+              <th className="px-2">R</th>
+              <th className="px-2">Hits</th>
+              <th className="px-2">2B</th>
+              <th className="px-2">3B</th>
+              <th className="px-2">HR</th>
+              <th className="px-2">RBI</th>
+              <th className="px-2">SO</th>
+              <th className="px-2">ERR</th>
+              <th className="px-2">IP</th>
+              <th className="px-2">K</th>
+              <th className="px-2">RA</th>
+            </tr>
+          </thead>
+          <tbody>
+            {
+              gameData.teams[0]?.playersJson.map((value, index) => {
+                // get stats corresponding to this player
+                let _matchStats: playerMatchStats = lastMatchStats[value.id]!
+                return (
+                  <tr key={value.id} className="even:bg-green-200 odd:bg-gray-50 text-center">
+                    <td>{value.name}</td>
+                    <td>{value.class}</td>
+                    <td>{_matchStats.at_bats}</td>
+                    <td>{_matchStats.runs}</td>
+                    <td>{_matchStats.hits}</td>
+                    <td>{_matchStats.doubles}</td>
+                    <td>{_matchStats.triples}</td>
+                    <td>{_matchStats.home_runs}</td>
+                    <td>{_matchStats.rbi}</td>
+                    <td>{_matchStats.strike_outs}</td>
+                    <td>{_matchStats.errors}</td>
+                    <td>{_matchStats.ip}</td>
+                    <td>{_matchStats.k}</td>
+                    <td>{_matchStats.runs_allowed}</td>
                   </tr>
                 )
               })
@@ -1052,10 +1215,12 @@ function PostGameView() {
           </tbody>
         </table>
       </div>
+      
   )
 }
 
 function TopBar() {
+  if (!isPlayingGame) return;
   let isMyTeamHome: boolean = true;
   let opp_team: TeamStateStruct = {
     id: '',
@@ -1124,6 +1289,7 @@ function TopBar() {
               schedule: gameData.schedule,
               fielderHexPos: gameData.fielderHexPos
             })
+            setLogContents([]);
           }}>
             Gain EXP{` >>`}
           </button>
@@ -1142,6 +1308,8 @@ function TopBar() {
               schedule: gameData.schedule,
               fielderHexPos: gameData.fielderHexPos
             })
+            setLastMatchStats({});
+            //setLogContents([]);
           }}>
             Save and Go to Next Week{` >>`}
           </button>
@@ -1238,6 +1406,30 @@ function getPlayerIndex(position: FieldPositions, team?: TeamStateStruct, player
   else if (players !== undefined) {  // else do this if team was input as PlayerStateStruct[]
     while (i < players.length) {
       if (players[i]?.class === position) {
+        index = i;
+        return index;
+      }
+      i++;
+    }
+  }  
+  return index;
+}
+
+function getPlayerIndex_byName(name: string, team?: TeamStateStruct, players?: PlayerStateStruct[]): number {
+  let i = 0;
+  let index = 0;
+  if (team !== undefined) {  // do this if team was input as TeamStateStruct
+    while (i < team.playersJson.length) {
+      if (team.playersJson[i]?.name === name) {
+        index = i;
+        return index;
+      }
+      i++;
+    }
+  }
+  else if (players !== undefined) {  // else do this if team was input as PlayerStateStruct[]
+    while (i < players.length) {
+      if (players[i]?.name === name) {
         index = i;
         return index;
       }
