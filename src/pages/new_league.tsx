@@ -66,8 +66,11 @@ interface GameDataStateStruct {
   week: number,
   phase: number,
   teams: TeamStateStruct[],
-  schedule: { [key: number]: Matchup[]}
+  schedule: { [key: number]: Matchup[]},
+  fielderHexPos: Record<FieldPositions, Position>
 }
+
+type FieldPositions = '1B' | '2B' | 'SS' | '3B' | 'CF' | 'LF' | 'RF' | 'C' | 'P' ;
 
 enum WeekPhase {
   PREGAME = 0,
@@ -101,6 +104,18 @@ interface Proclivity { // TODO: the properties must add up to === 1.0
   contact: number
 }
 
+const default_fielderHexPos: Record<FieldPositions, Position> = {
+  '1B': {q:12,r:-15,s:3},
+  '2B': {q:6,r:-15,s:9},
+  'SS': {q:-4,r:-11,s:15},
+  '3B': {q:-12,r:-3,s:15},
+  'CF': {q:0,r:-25,s:25},
+  'LF': {q:-14,r:-10,s:24},
+  'RF': {q:14,r:-24,s:10},
+  'C': {q:0,r:0,s:0},
+  'P': {q:0,r:-7,s:7}
+}
+
 //type FieldPositions = '1B' | '2B' | 'SS' | '3B' | 'CF' | 'LF' | 'RF' | 'C' | 'P' ;
 
 export default function Home() {
@@ -123,7 +138,8 @@ export default function Home() {
     week: 0,
     phase: 0,
     teams: [],
-    schedule: {}
+    schedule: {},
+    fielderHexPos: default_fielderHexPos
   });
   const [isPlayingGame, setIsPlayingGame] = useState<boolean>(false);
   // This preserves state of isPlayingGame and gameData on refresh
@@ -232,14 +248,14 @@ export default function Home() {
           classLvl: 0
         }
         const classesProclivities: {[key: string]: Proclivity} = {
-          '1B': proclivitiesArr[m%6]!,
-          '2B': proclivitiesArr[m%6]!,
-          'SS': proclivitiesArr[m%6]!,
-          '3B': proclivitiesArr[m%6]!,
-          'CF': proclivitiesArr[m%6]!,
-          'LF': proclivitiesArr[m%6]!,
-          'RF': proclivitiesArr[m%6]!,
-          'C': proclivitiesArr[m%6]!,
+          '1B': proclivitiesArr[Math.floor(Math.random() * 7)]!,
+          '2B': proclivitiesArr[Math.floor(Math.random() * 7)]!,
+          'SS': proclivitiesArr[Math.floor(Math.random() * 7)]!,
+          '3B': proclivitiesArr[Math.floor(Math.random() * 7)]!,
+          'CF': proclivitiesArr[Math.floor(Math.random() * 7)]!,
+          'LF': proclivitiesArr[Math.floor(Math.random() * 7)]!,
+          'RF': proclivitiesArr[Math.floor(Math.random() * 7)]!,
+          'C': proclivitiesArr[Math.floor(Math.random() * 7)]!,
           'P': proclivities['pitcher']!
         }
 
@@ -425,7 +441,8 @@ export default function Home() {
       week: 0,
       phase: WeekPhase.PREGAME,
       teams: teamsToAdd,
-      schedule: newLeague.schedule
+      schedule: newLeague.schedule,
+      fielderHexPos: default_fielderHexPos
     })
     setIsPlayingGame(true);
 

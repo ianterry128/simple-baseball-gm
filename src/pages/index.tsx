@@ -8,7 +8,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import { JSONArray } from "node_modules/superjson/dist/types";
 import { useEffect, useState } from "react";
-import { number } from "zod";
+import { number, object } from "zod";
 import { FieldView } from "~/components/FieldView";
 import { lastNames } from "~/data/names";
 import { teamNames } from "~/data/names";
@@ -167,7 +167,10 @@ interface playerMatchStats {
   rbi: number,
   strike_outs: number,
   errors: number,
+  assists: number,
+  putouts: number,
   k: number,
+  walks_allowed: number,
   ip: number,
   runs_allowed: number
 }
@@ -451,7 +454,7 @@ export default function Home() {
   const createPlayerConst = api.player.create.useMutation(); 
 
 // FUNCTIONS HERE USE REACT HOOKS
-function exhibition(team_home:TeamStateStruct, team_away:TeamStateStruct) {
+function exhibition(team_home:TeamStateStruct, team_away:TeamStateStruct): boolean {
   // set visibility of log
   //setIsLogActive(true);
   setLogContents(['']);
@@ -461,7 +464,8 @@ function exhibition(team_home:TeamStateStruct, team_away:TeamStateStruct) {
   //setIsLeagueTableActive(false);
   const results = MatchSim(gameData, team_home, team_away, _localContents);
   setLogContents(_localContents);
-  setLastMatchStats(results.player_matchStats)
+  setLastMatchStats(results.player_matchStats);
+  return results.home_win;
 }
 
 /*
@@ -501,7 +505,10 @@ function exhibition(team_home:TeamStateStruct, team_away:TeamStateStruct) {
           rbi: 0,
           strike_outs: 0,
           errors: 0,
+          assists: 0,
+          putouts: 0,
           k: 0,
+          walks_allowed: 0,
           ip: 0,
           runs_allowed: 0
         }
@@ -524,7 +531,10 @@ function exhibition(team_home:TeamStateStruct, team_away:TeamStateStruct) {
           rbi: 0,
           strike_outs: 0,
           errors: 0,
+          assists: 0,
+          putouts: 0,
           k: 0,
+          walks_allowed: 0,
           ip: 0,
           runs_allowed: 0
         }
@@ -537,15 +547,6 @@ function exhibition(team_home:TeamStateStruct, team_away:TeamStateStruct) {
      
     let home_p_index: number = getPlayerIndex('P', team_home);
     let away_p_index: number = getPlayerIndex('P', team_away);
-  
-    // set visibility of log
-    //setIsLogActive(true);
-    //setLogContents(['']);
-    //let _localContents: string[] = [];
-
-    // set league table visibility
-    //setIsLeagueTableActive(false);
-    // set initial scoreboard info
     
     while (currentInning <= _num_innings) {
       // Top of the inning
@@ -565,12 +566,20 @@ function exhibition(team_home:TeamStateStruct, team_away:TeamStateStruct) {
               _playerMatchStats[team_away.playersJson[away_bat_cur]!.id]!.strike_outs += 1; // add to this batter's SO count
             }
           }
+          if (v.includes('walks')) {
+            if (isMyTeam_Home) {
+              _playerMatchStats[team_home.playersJson[home_p_index]!.id]!.walks_allowed += 1; // add to my Pitcher's walks allowed
+            }
+            else if (isMyTeam_Away) {
+              _playerMatchStats[team_away.playersJson[away_bat_cur]!.id]!.walks += 1; // add to this batter's walk count
+            }
+          }
         });
         // add at-bat to my batters stats
         if (isMyTeam_Away) {
           _playerMatchStats[team_away.playersJson[away_bat_cur]!.id]!.at_bats += 1;
         }
-        // What happens after a hit? (or miss)
+        // What happens after a hit? (or miss) (or walk)
         if (pitchResults.hitLine.length > 0) { // if hitline.length >1 then the ball was hit
           if (isMyTeam_Home) { //TODO: can just call this in one place with the boolean parameter as isMyTeam_Home
             fieldActionResults = fieldAction(away_lineup[away_bat_cur]!, home_lineup, pitchResults.hitLine, basesOccupied, outCount, gameDataProp, true) // input batter, field team, hitline,
@@ -582,18 +591,10 @@ function exhibition(team_home:TeamStateStruct, team_away:TeamStateStruct) {
           outCount += fieldActionResults.outCounter - outCount;
           basesOccupied = fieldActionResults.baseResults;
           awayScore += fieldActionResults.runsScored;
-          fieldActionResults.fieldActionLogContents.forEach((v) => { // log field action log contents
+          fieldActionResults.fieldActionLogContents.forEach((v, index, arr) => { // log field action log contents
             _logContents.push(v);
             if (v.includes('hits a')) {
-              if (isMyTeam_Home) { // increment fielding stats
-                if (v.includes('missed')) {
-                  // get id of player that made error
-                  const fielder_class_name: string[] = v.split(' ', 2)
-                  const fielder_ind = getPlayerIndex(fielder_class_name[0] as FieldPositions)
-                  _playerMatchStats[home_lineup[fielder_ind]!.id]!.errors += 1;
-                }
-              }
-              else if (isMyTeam_Away) { // increment batting stats
+              if (isMyTeam_Away) { // increment batting stats
                 _playerMatchStats[team_away.playersJson[away_bat_cur]!.id]!.hits += 1;
                 if (v.includes('double')) {
                   _playerMatchStats[team_away.playersJson[away_bat_cur]!.id]!.doubles += 1;
@@ -606,20 +607,135 @@ function exhibition(team_home:TeamStateStruct, team_away:TeamStateStruct) {
                 }
               }
             }
+            if (v.includes('missed')) { // increment errors
+              if (isMyTeam_Home) {
+                // get id of player that made error
+                const fielder_class_name: string[] = v.split(' ', 2)
+                const fielder_ind = getPlayerIndex(fielder_class_name[0] as FieldPositions, team_home)
+                _playerMatchStats[home_lineup[fielder_ind]!.id]!.errors += 1;
+              }
+            }
             if (v.includes('scores')) {
               if (isMyTeam_Home) { // increment pitcher's runs_allowed
                 _playerMatchStats[home_lineup[home_p_index]!.id]!.runs_allowed += 1;
               }
               else if (isMyTeam_Away) { // increment runners runs scored
                 const runner_name: string[] = v.split(' ', 1);
-                const runner_ind = getPlayerIndex_byName(runner_name[0]!);
+                const runner_ind = getPlayerIndex_byName(runner_name[0]!, team_away);
+                _playerMatchStats[away_lineup[runner_ind]!.id]!.runs += 1;
+                _playerMatchStats[team_away.playersJson[away_bat_cur]!.id]!.rbi += 1;
+              }
+            }
+            // increment assists and putouts
+            if (isMyTeam_Home) {
+              if (v.includes('thrown out at 1st')) { 
+                // increment assists
+                const fielder_class_name: string[] = arr[index-1]!.split(' ', 1); // gets the fielder class and name from the previous line
+                const fielder_ind = getPlayerIndex(fielder_class_name[0]?.substring(1) as FieldPositions, team_home);
+                _playerMatchStats[home_lineup[fielder_ind]!.id]!.assists += 1;
+                // increment putouts
+                let po_ind = getPlayerIndex('1B', team_home);
+                if (fielder_class_name[0]?.substring(1) === '1B') {
+                  po_ind = getPlayerIndex('P', team_home); // if 1B fielded the ball, then P covered first base
+                }
+                _playerMatchStats[home_lineup[po_ind]!.id]!.putouts += 1;
+              }
+              if (v.includes('thrown out at 2nd')) { 
+                // increment assists
+                const fielder_class_name: string[] = arr[index-1]!.split(' ', 1); // gets the fielder class and name from the previous line
+                const fielder_ind = getPlayerIndex(fielder_class_name[0]?.substring(1) as FieldPositions, team_home);
+                _playerMatchStats[home_lineup[fielder_ind]!.id]!.assists += 1;
+                // increment putouts
+                // TODO: PO could be either 2B or SS depending on who made the assist
+                let po_ind = getPlayerIndex('2B', team_home);
+                if (fielder_class_name[0]?.substring(1) === '1B' || fielder_class_name[0]?.substring(1) === '2B' || fielder_class_name[0]?.substring(1) === 'RF') {
+                  po_ind = getPlayerIndex('SS', team_home); // if 1B or 2B or RF made the fielded the ball, then SS covered second base
+                }
+                _playerMatchStats[home_lineup[po_ind]!.id]!.putouts += 1;
+              }
+              if (v.includes('out at 3rd')) { 
+                // increment assists
+                const fielder_class_name: string[] = arr[index-1]!.split(' ', 1); // gets the fielder class and name from the previous line
+                const fielder_ind = getPlayerIndex(fielder_class_name[0]?.substring(1) as FieldPositions, team_home);
+                _playerMatchStats[home_lineup[fielder_ind]!.id]!.assists += 1;
+                // increment putouts
+                const po_ind = getPlayerIndex('3B', team_home);
+                _playerMatchStats[home_lineup[po_ind]!.id]!.putouts += 1;
+              }
+              if (v.includes('out at home')) { 
+                // increment assists
+                const fielder_class_name: string[] = arr[index-1]!.split(' ', 1); // gets the fielder class and name from the previous line
+                const fielder_ind = getPlayerIndex(fielder_class_name[0]?.substring(1) as FieldPositions, team_home);
+                _playerMatchStats[home_lineup[fielder_ind]!.id]!.assists += 1;
+                // increment putouts
+                const po_ind = getPlayerIndex('C', team_home);
+                _playerMatchStats[home_lineup[po_ind]!.id]!.putouts += 1;
+              }
+              if (v.includes('thrown out at base 1')) {
+                // increment assists
+                const fielder_class_name: string[] = arr[index-1]!.split(' ', 1); // gets the fielder class and name from the previous line
+                const fielder_ind = getPlayerIndex(fielder_class_name[0]?.substring(1) as FieldPositions, team_home);
+                _playerMatchStats[home_lineup[fielder_ind]!.id]!.assists += 1;
+                // increment putouts
+                let po_ind = getPlayerIndex('1B');
+                if (fielder_class_name[0]?.substring(1) === '1B') po_ind = getPlayerIndex('P', team_home);
+                _playerMatchStats[home_lineup[po_ind]!.id]!.putouts += 1;
+              }
+              if (v.includes('thrown out at base 2')) {
+                // increment assists
+                const fielder_class_name: string[] = arr[index-1]!.split(' ', 1); // gets the fielder class and name from the previous line
+                const fielder_ind = getPlayerIndex(fielder_class_name[0]?.substring(1) as FieldPositions, team_home);
+                _playerMatchStats[home_lineup[fielder_ind]!.id]!.assists += 1;
+                // increment putouts
+                let po_ind = getPlayerIndex('2B', team_home);
+                if (fielder_class_name[0]?.substring(1) === '1B' || fielder_class_name[0]?.substring(1) === '2B' || fielder_class_name[0]?.substring(1) === 'RF') {
+                  po_ind = getPlayerIndex('SS', team_home);
+                }
+                _playerMatchStats[home_lineup[po_ind]!.id]!.putouts += 1;
+              }
+              if (v.includes('thrown out at base 3')) {
+                // increment assists
+                const fielder_class_name: string[] = arr[index-1]!.split(' ', 1); // gets the fielder class and name from the previous line
+                const fielder_ind = getPlayerIndex(fielder_class_name[0]?.substring(1) as FieldPositions, team_home);
+                _playerMatchStats[home_lineup[fielder_ind]!.id]!.assists += 1;
+                // increment putouts
+                let po_ind = getPlayerIndex('3B', team_home);
+                if (fielder_class_name[0]?.substring(1) === '3B') po_ind = getPlayerIndex('P', team_home);
+                _playerMatchStats[home_lineup[po_ind]!.id]!.putouts += 1;
+              }
+              if (v.includes('thrown out at base 4')) {
+                // increment assists
+                const fielder_class_name: string[] = arr[index-1]!.split(' ', 1); // gets the fielder class and name from the previous line
+                const fielder_ind = getPlayerIndex(fielder_class_name[0]?.substring(1) as FieldPositions, team_home);
+                _playerMatchStats[home_lineup[fielder_ind]!.id]!.assists += 1;
+                // increment putouts
+                let po_ind = getPlayerIndex('C', team_home);
+                if (fielder_class_name[0]?.substring(1) === 'C') po_ind = getPlayerIndex('P', team_home);
+                _playerMatchStats[home_lineup[po_ind]!.id]!.putouts += 1;
+              }
+            }  
+          });
+        }
+        else if (pitchResults.outCounter === 0 && pitchResults.hitLine.length === 0) { // batter was walked
+          let walkResults: FieldActionResults = updateScoreboard_walk(basesOccupied, away_lineup[away_bat_cur]!);
+          basesOccupied = walkResults.baseResults;
+          awayScore += walkResults.runsScored;
+          walkResults.fieldActionLogContents.forEach((v) => {
+            _logContents.push(v);
+            if (v.includes('scores')) {
+              if (isMyTeam_Home) { // increment pitcher's runs_allowed
+                _playerMatchStats[home_lineup[home_p_index]!.id]!.runs_allowed += 1;
+              }
+              else if (isMyTeam_Away) { // increment runners runs scored
+                const runner_name: string[] = v.split(' ', 1);
+                const runner_ind = getPlayerIndex_byName(runner_name[0]!, team_away);
                 _playerMatchStats[away_lineup[runner_ind]!.id]!.runs += 1;
               }
             }
-          });
+          })
         }
-        else {
-          outCount += pitchResults.outCounter;
+        else if (pitchResults.outCounter === 1){
+          outCount += pitchResults.outCounter; // strike-out
         }
         //_localContents.push(`~~~ Home: ${homeScore} Away: ${awayScore} ||| Outs: ${outCount} ~~~\n`)
         //_localContents.push(...pitchResults.pitchLogContents);
@@ -650,6 +766,14 @@ function exhibition(team_home:TeamStateStruct, team_away:TeamStateStruct) {
               _playerMatchStats[team_away.playersJson[away_p_index]!.id]!.k += 1; // add to my Pitcher's k count
             }
           }
+          if (v.includes('walks')) {
+            if (isMyTeam_Home) {
+              _playerMatchStats[team_home.playersJson[home_bat_cur]!.id]!.walks += 1; // add to my batter's walk count
+            }
+            else if (isMyTeam_Away) {
+              _playerMatchStats[team_away.playersJson[away_p_index]!.id]!.walks_allowed += 1; // add to my Pitcher's walks allowed
+            }
+          }
         });
         // add at-bat to my batters stats
         if (isMyTeam_Home) {
@@ -667,7 +791,7 @@ function exhibition(team_home:TeamStateStruct, team_away:TeamStateStruct) {
           outCount += fieldActionResults.outCounter - outCount;
           basesOccupied = fieldActionResults.baseResults;
           homeScore += fieldActionResults.runsScored;
-          fieldActionResults.fieldActionLogContents.forEach((v) => { // log field action log contents
+          fieldActionResults.fieldActionLogContents.forEach((v, index, arr) => { // log field action log contents
             _logContents.push(v);
             if (v.includes('hits a')) {
               if (isMyTeam_Home) { // increment batting stats
@@ -683,28 +807,135 @@ function exhibition(team_home:TeamStateStruct, team_away:TeamStateStruct) {
                 }
                 
               }
-              else if (isMyTeam_Away) { // increment fielding stats
-                if (v.includes('missed')) {
-                  // get id of player that made error
-                  const fielder_class_name: string[] = v.split(' ', 2)
-                  const fielder_ind = getPlayerIndex(fielder_class_name[0] as FieldPositions)
-                  _playerMatchStats[away_lineup[fielder_ind]!.id]!.errors += 1;
-                }
+            }
+            if (v.includes('missed')) { // increment errors
+              if (isMyTeam_Away) {
+                // get id of player that made error
+                const fielder_class_name: string[] = v.split(' ', 2)
+                const fielder_ind = getPlayerIndex(fielder_class_name[0] as FieldPositions, team_away)
+                _playerMatchStats[away_lineup[fielder_ind]!.id]!.errors += 1;
               }
             }
             if (v.includes('scores')) {
-              if (isMyTeam_Home) { // increment runners runs scored
+              if (isMyTeam_Home) { // increment runners runs scored and batter's rbi
                 const runner_name: string[] = v.split(' ', 1);
-                const runner_ind = getPlayerIndex_byName(runner_name[0]!);
+                const runner_ind = getPlayerIndex_byName(runner_name[0]!, team_home);
                 _playerMatchStats[home_lineup[runner_ind]!.id]!.runs += 1;
+                _playerMatchStats[team_home.playersJson[home_bat_cur]!.id]!.rbi += 1;
               }
               else if (isMyTeam_Away) { // increment pitcher's runs_allowed
                 _playerMatchStats[away_lineup[away_p_index]!.id]!.runs_allowed += 1;
               }
             }
+            // increment assists and putouts
+            if (isMyTeam_Away) {
+              if (v.includes('thrown out at 1st')) { 
+                // increment assists
+                const fielder_class_name: string[] = arr[index-1]!.split(' ', 1); // gets the fielder class and name from the previous line
+                const fielder_ind = getPlayerIndex(fielder_class_name[0]?.substring(1) as FieldPositions, team_away);
+                _playerMatchStats[away_lineup[fielder_ind]!.id]!.assists += 1;
+                // increment putouts
+                let po_ind = getPlayerIndex('1B', team_away);
+                if (fielder_class_name[0]?.substring(1) === '1B') {
+                  po_ind = getPlayerIndex('P', team_away); // if 1B fielded the ball, then P covered first base
+                }
+                _playerMatchStats[away_lineup[po_ind]!.id]!.putouts += 1;
+              }
+              if (v.includes('thrown out at 2nd')) { 
+                // increment assists
+                const fielder_class_name: string[] = arr[index-1]!.split(' ', 1); // gets the fielder class and name from the previous line
+                const fielder_ind = getPlayerIndex(fielder_class_name[0]?.substring(1) as FieldPositions, team_away);
+                _playerMatchStats[away_lineup[fielder_ind]!.id]!.assists += 1;
+                // increment putouts
+                // TODO: PO could be either 2B or SS depending on who made the assist
+                let po_ind = getPlayerIndex('2B', team_away);
+                if (fielder_class_name[0]?.substring(1) === '1B' || fielder_class_name[0]?.substring(1) === '2B' || fielder_class_name[0]?.substring(1) === 'RF') {
+                  po_ind = getPlayerIndex('SS', team_away); // if 1B or 2B or RF made the fielded the ball, then SS covered second base
+                }
+                _playerMatchStats[away_lineup[po_ind]!.id]!.putouts += 1;
+              }
+              if (v.includes('out at 3rd')) { 
+                // increment assists
+                const fielder_class_name: string[] = arr[index-1]!.split(' ', 1); // gets the fielder class and name from the previous line
+                const fielder_ind = getPlayerIndex(fielder_class_name[0]?.substring(1) as FieldPositions, team_away);
+                _playerMatchStats[away_lineup[fielder_ind]!.id]!.assists += 1;
+                // increment putouts
+                const po_ind = getPlayerIndex('3B', team_away);
+                _playerMatchStats[away_lineup[po_ind]!.id]!.putouts += 1;
+              }
+              if (v.includes('out at home')) { 
+                // increment assists
+                const fielder_class_name: string[] = arr[index-1]!.split(' ', 1); // gets the fielder class and name from the previous line
+                const fielder_ind = getPlayerIndex(fielder_class_name[0]?.substring(1) as FieldPositions, team_away);
+                _playerMatchStats[away_lineup[fielder_ind]!.id]!.assists += 1;
+                // increment putouts
+                const po_ind = getPlayerIndex('C', team_away);
+                _playerMatchStats[away_lineup[po_ind]!.id]!.putouts += 1;
+              }
+              if (v.includes('thrown out at base 1')) {
+                // increment assists
+                const fielder_class_name: string[] = arr[index-1]!.split(' ', 1); // gets the fielder class and name from the previous line
+                const fielder_ind = getPlayerIndex(fielder_class_name[0]?.substring(1) as FieldPositions, team_away);
+                _playerMatchStats[away_lineup[fielder_ind]!.id]!.assists += 1;
+                // increment putouts
+                let po_ind = getPlayerIndex('1B', team_away);
+                if (fielder_class_name[0]?.substring(1) === '1B') po_ind = getPlayerIndex('P', team_away);
+                _playerMatchStats[away_lineup[po_ind]!.id]!.putouts += 1;
+              }
+              if (v.includes('thrown out at base 2')) {
+                // increment assists
+                const fielder_class_name: string[] = arr[index-1]!.split(' ', 1); // gets the fielder class and name from the previous line
+                const fielder_ind = getPlayerIndex(fielder_class_name[0]?.substring(1) as FieldPositions, team_away);
+                _playerMatchStats[away_lineup[fielder_ind]!.id]!.assists += 1;
+                // increment putouts
+                let po_ind = getPlayerIndex('2B', team_away);
+                if (fielder_class_name[0]?.substring(1) === '1B' || fielder_class_name[0]?.substring(1) === '2B' || fielder_class_name[0]?.substring(1) === 'RF') {
+                  po_ind = getPlayerIndex('SS', team_away);
+                }
+                _playerMatchStats[away_lineup[po_ind]!.id]!.putouts += 1;
+              }
+              if (v.includes('thrown out at base 3')) {
+                // increment assists
+                const fielder_class_name: string[] = arr[index-1]!.split(' ', 1); // gets the fielder class and name from the previous line
+                const fielder_ind = getPlayerIndex(fielder_class_name[0]?.substring(1) as FieldPositions, team_away);
+                _playerMatchStats[away_lineup[fielder_ind]!.id]!.assists += 1;
+                // increment putouts
+                let po_ind = getPlayerIndex('3B', team_away);
+                if (fielder_class_name[0]?.substring(1) === '3B') po_ind = getPlayerIndex('P', team_away);
+                _playerMatchStats[away_lineup[po_ind]!.id]!.putouts += 1;
+              }
+              if (v.includes('thrown out at base 4')) {
+                // increment assists
+                const fielder_class_name: string[] = arr[index-1]!.split(' ', 1); // gets the fielder class and name from the previous line
+                const fielder_ind = getPlayerIndex(fielder_class_name[0]?.substring(1) as FieldPositions, team_away);
+                _playerMatchStats[away_lineup[fielder_ind]!.id]!.assists += 1;
+                // increment putouts
+                let po_ind = getPlayerIndex('C', team_away);
+                if (fielder_class_name[0]?.substring(1) === 'C') po_ind = getPlayerIndex('P', team_away);
+                _playerMatchStats[away_lineup[po_ind]!.id]!.putouts += 1;
+              }
+            }  
           });
         }
-        else {
+        else if (pitchResults.outCounter === 0 && pitchResults.hitLine.length === 0) { // batter was walked
+          let walkResults: FieldActionResults = updateScoreboard_walk(basesOccupied, home_lineup[home_bat_cur]!);
+          basesOccupied = walkResults.baseResults;
+          homeScore += walkResults.runsScored;
+          walkResults.fieldActionLogContents.forEach((v) => {
+            _logContents.push(v);
+            if (v.includes('scores')) {
+              if (isMyTeam_Home) { // increment runners runs scored
+                const runner_name: string[] = v.split(' ', 1);
+                const runner_ind = getPlayerIndex_byName(runner_name[0]!, team_home);
+                _playerMatchStats[home_lineup[runner_ind]!.id]!.runs += 1;  
+              }
+              else if (isMyTeam_Away) { // increment pitcher's runs_allowed
+                _playerMatchStats[away_lineup[away_p_index]!.id]!.runs_allowed += 1;
+              }
+            }
+          })
+        }
+        else if (pitchResults.outCounter === 1) {
           outCount += pitchResults.outCounter;
         }
         //_localContents.push(`~~~ Home: ${homeScore} Away: ${awayScore} ||| Outs: ${outCount} ~~~\n`)
@@ -715,6 +946,7 @@ function exhibition(team_home:TeamStateStruct, team_away:TeamStateStruct) {
       }
       outCount = 0;
       basesOccupied = {first:undefined, second:undefined, third:undefined};
+      // play extra innings if game is tied
       if (currentInning === _num_innings && homeScore === awayScore) {
         _num_innings += 1;
       }
@@ -846,9 +1078,11 @@ function MainGameView() {
       <ScheduleView />
     );
   }
+  let my_team_index = getTeamIndex(gameData.myTeamId, gameData.teams);
   if (gameData.phase === WeekPhase.POSTGAME) {
     return ( 
-    <PostGameView />)
+    <PostGameView 
+    MyTeamIndex={my_team_index}/>)
   }
 
   const _leagueInfo: LeagueStateStruct = {
@@ -858,6 +1092,7 @@ function MainGameView() {
     schedule: gameData.schedule
   }  
 
+  
   let opp_team_id: string = '';
   let my_sched_index = 0;
   let i = 0;
@@ -868,6 +1103,7 @@ function MainGameView() {
     if (gameData.schedule[gameData.week]![i]!.homeTeam === gameData.myTeamId) {
       opp_team_id = gameData.schedule[gameData.week]![i]!.awayTeam;
     }
+    i++;
   }
   useEffect(() => {
     setSelectedTeamById(opp_team_id); // this will cause second teamdisplaytable to show opponent team of the current week
@@ -879,7 +1115,7 @@ function MainGameView() {
         <div className="w-full sm:w-1/5 lg:w-1/5 px-1 bg-red-300">
           <TeamDisplayLineupChangeTable 
             leagueInfoProp={_leagueInfo}
-            teamIndexProp={0}
+            teamIndexProp={my_team_index}
           /> 
           <div className="flex flex-col">
             <label>Set player field position: {selectedPlayer.class} {selectedPlayer.name}</label>
@@ -1034,6 +1270,13 @@ function TeamDisplayLineupChangeTable({leagueInfoProp, teamIndexProp} : {leagueI
   }
 
 function LeagueTeamsTable({leagueInfoProp, isActiveProp} : {leagueInfoProp:LeagueStateStruct, isActiveProp:boolean}) {
+
+  let sorted_teams: TeamStateStruct[] = [...leagueInfoProp.teams];
+  sorted_teams = sorted_teams.sort((a, b) => {
+    if (b.wins < a.wins) return -1;
+    if (b.wins > a.wins) return 1;
+    return 0;
+  });
   return (
       <div
       style={{ display: isActiveProp ? "inline" : "none" }}>
@@ -1048,7 +1291,7 @@ function LeagueTeamsTable({leagueInfoProp, isActiveProp} : {leagueInfoProp:Leagu
           </thead>
           <tbody>
             {
-              leagueInfoProp.teams.map((index) => {
+              sorted_teams.map((index) => {
                 return (
                   <tr 
                   key={index.id} 
@@ -1122,7 +1365,7 @@ function ScheduleView() {
   )
 }
 
-function PostGameView() {
+function PostGameView({MyTeamIndex} : {MyTeamIndex: number}) {
   const captionText: string = `My Team: ${gameData.teams[0]?.name}`
 
   return (
@@ -1144,13 +1387,13 @@ function PostGameView() {
           </thead>
           <tbody>
             {
-              gameData.teams[0]?.playersJson.map((value, index) => {
+              gameData.teams[MyTeamIndex]?.playersJson.map((value, index) => {
                 // get stats corresponding to this player
                 let _matchStats: playerMatchStats = lastMatchStats[value.id]!;
                 const exp_gained: number = _matchStats.at_bats + _matchStats.hits + _matchStats.doubles + (_matchStats.triples*2) + (_matchStats.home_runs*3) +
-                 _matchStats.rbi +_matchStats.errors;
+                 _matchStats.rbi + _matchStats.runs + _matchStats.errors + _matchStats.assists + _matchStats.putouts;
                 return (
-                  <tr key={value.id} className="even:bg-green-200 odd:bg-gray-50 text-center">
+                  <tr key={value.id} className="even:bg-green-200 odd:bg-gray-50 hover:bg-blue-600 hover:text-gray-50 text-center">
                     <td className="px-2">{value.name}</td>
                     <td className="px-2">{value.class}</td>
                     <td className="px-2">{value.strength}</td>
@@ -1172,42 +1415,50 @@ function PostGameView() {
           <thead>
             <tr className="even:bg-gray-50 odd:bg-white">
               <th className="px-2">Name</th>
-              <th className="px-2">Class</th>
-              <th className="px-2">AB</th>
-              <th className="px-2">R</th>
-              <th className="px-2">Hits</th>
-              <th className="px-2">2B</th>
-              <th className="px-2">3B</th>
-              <th className="px-2">HR</th>
-              <th className="px-2">RBI</th>
-              <th className="px-2">SO</th>
-              <th className="px-2">ERR</th>
-              <th className="px-2">IP</th>
-              <th className="px-2">K</th>
-              <th className="px-2">RA</th>
+              <th className="px-2 border-r-2">Class</th>
+              <th className="px-2 bg-amber-100">AB</th>
+              <th className="px-2 bg-amber-100">R</th>
+              <th className="px-2 bg-amber-100">Hits</th>
+              <th className="px-2 bg-amber-100">2B</th>
+              <th className="px-2 bg-amber-100">3B</th>
+              <th className="px-2 bg-amber-100">HR</th>
+              <th className="px-2 bg-amber-100">RBI</th>
+              <th className="px-2 bg-amber-100">BB</th>
+              <th className="px-2 bg-amber-100">SO</th>
+              <th className="px-2 bg-blue-100">ERR</th>
+              <th className="px-2 bg-blue-100">A</th>
+              <th className="px-2 bg-blue-100 border-r-2">PO</th>
+              <th className="px-2 bg-red-100">IP</th>
+              <th className="px-2 bg-red-100">BB</th>
+              <th className="px-2 bg-red-100">K</th>
+              <th className="px-2 bg-red-100">RA</th>
             </tr>
           </thead>
           <tbody>
             {
-              gameData.teams[0]?.playersJson.map((value, index) => {
+              gameData.teams[MyTeamIndex]?.playersJson.map((value, index) => {
                 // get stats corresponding to this player
                 let _matchStats: playerMatchStats = lastMatchStats[value.id]!
                 return (
-                  <tr key={value.id} className="even:bg-green-200 odd:bg-gray-50 text-center">
-                    <td>{value.name}</td>
-                    <td>{value.class}</td>
-                    <td>{_matchStats.at_bats}</td>
-                    <td>{_matchStats.runs}</td>
-                    <td>{_matchStats.hits}</td>
-                    <td>{_matchStats.doubles}</td>
-                    <td>{_matchStats.triples}</td>
-                    <td>{_matchStats.home_runs}</td>
-                    <td>{_matchStats.rbi}</td>
-                    <td>{_matchStats.strike_outs}</td>
-                    <td>{_matchStats.errors}</td>
-                    <td>{_matchStats.ip}</td>
-                    <td>{_matchStats.k}</td>
-                    <td>{_matchStats.runs_allowed}</td>
+                  <tr key={value.id} className="even:bg-green-200 odd:bg-gray-50 hover:bg-black hover:bg-opacity-1 hover:text-gray-100 text-center">
+                    <td className="bg-opacity-50">{value.name}</td>
+                    <td className="bg-opacity-50 border-r-2">{value.class}</td>
+                    <td className="bg-amber-50 bg-opacity-50">{_matchStats.at_bats}</td>
+                    <td className="bg-amber-50 bg-opacity-50">{_matchStats.runs}</td>
+                    <td className="bg-amber-50 bg-opacity-50">{_matchStats.hits}</td>
+                    <td className="bg-amber-50 bg-opacity-50">{_matchStats.doubles}</td>
+                    <td className="bg-amber-50 bg-opacity-50">{_matchStats.triples}</td>
+                    <td className="bg-amber-50 bg-opacity-50">{_matchStats.home_runs}</td>
+                    <td className="bg-amber-50 bg-opacity-50">{_matchStats.rbi}</td>
+                    <td className="bg-amber-50 bg-opacity-50">{_matchStats.walks}</td>
+                    <td className="bg-amber-50 bg-opacity-50 border-r-2">{_matchStats.strike_outs}</td>
+                    <td className="bg-blue-50 bg-opacity-50">{_matchStats.errors}</td>
+                    <td className="bg-blue-50 bg-opacity-50">{_matchStats.assists}</td>
+                    <td className="bg-blue-50 bg-opacity-50 border-r-2">{_matchStats.putouts}</td>
+                    <td className="bg-red-50 bg-opacity-50">{_matchStats.ip}</td>
+                    <td className="bg-red-50 bg-opacity-50">{_matchStats.walks_allowed}</td>
+                    <td className="bg-red-50 bg-opacity-50">{_matchStats.k}</td>
+                    <td className="bg-red-50 bg-opacity-50">{_matchStats.runs_allowed}</td>
                   </tr>
                 )
               })
@@ -1259,15 +1510,40 @@ function TopBar() {
         className="transition-colors duration-200 hover:bg-green-400 
         bg-green-600 text-center text-white shadow-sm"
         onClick={() => { // TODO: Will this work?
-          if (isMyTeamHome) exhibition(my_team, opp_team);
-          else if (!isMyTeamHome) exhibition(opp_team, my_team);
+          let myTeamWin: boolean = false;
+          if (isMyTeamHome) myTeamWin = exhibition(my_team, opp_team);
+          else if (!isMyTeamHome) myTeamWin = !exhibition(opp_team, my_team);
+          let temp_teams: TeamStateStruct[] = [];
+          for (let i=0; i<gameData.teams.length; i++) {
+            if (gameData.teams[i]?.id === gameData.myTeamId) {
+              temp_teams.push({
+                id: gameData.teams[i]?.id!,
+                name: gameData.teams[i]?.name!,
+                gamesPlayed: gameData.teams[i]?.gamesPlayed! + 1,
+                wins: gameData.teams[i]?.wins! + ((myTeamWin) ? 1 : 0),
+                playersJson: gameData.teams[i]?.playersJson! // TODO: update level, stats, exp
+              })
+            }
+            else if (gameData.teams[i]?.id === opp_team.id) {
+              temp_teams.push({
+                id: gameData.teams[i]?.id!,
+                name: gameData.teams[i]?.name!,
+                gamesPlayed: gameData.teams[i]?.gamesPlayed! + 1,
+                wins: gameData.teams[i]?.wins! + ((!myTeamWin) ? 1 : 0),
+                playersJson: gameData.teams[i]?.playersJson! // TODO: update level, stats, exp
+              })
+            }
+            else {
+              temp_teams.push(gameData.teams[i]!);
+            }
+          }
           setGameData({
             leagueId: gameData.leagueId,
             leagueName: gameData.leagueName,
             myTeamId: gameData.myTeamId,
             week: gameData.week,
             phase: WeekPhase.GAME,
-            teams: gameData.teams, 
+            teams: temp_teams, 
             schedule: gameData.schedule,
             fielderHexPos: gameData.fielderHexPos
           })
@@ -1298,13 +1574,59 @@ function TopBar() {
           className="transition-colors duration-200 hover:bg-green-400 
           bg-green-600 text-center text-white shadow-sm"
           onClick={() => { // TODO: Will this work?
+            // save all team wins/losses
+            // sim other team's games
+            let temp_teams: TeamStateStruct[] = [];
+            for (let i=0; i<gameData.schedule[gameData.week]!.length; i++) {
+              let matchups = gameData.schedule[gameData.week]!;
+              if (matchups[i]!.homeTeam !== gameData.myTeamId && matchups[i]!.awayTeam !== gameData.myTeamId) { // don't sim game if this was my team's game for that week (already simmed)
+                const team_home = getTeamById(matchups[i]!.homeTeam);
+                const team_away = getTeamById(matchups[i]!.awayTeam);
+                console.log(`home team: ${team_home?.name}`)
+                console.log(`away team: ${team_away?.name}`)
+                //const results: MatchSimResults = MatchSim(gameData, team_home!, team_away!, []);
+                const results: MatchSimResults = MatchSim(gameData, team_home!, team_away!, []);
+                temp_teams.push({
+                  id: matchups[i]!.homeTeam,
+                  name: team_home?.name!,
+                  gamesPlayed: team_home?.gamesPlayed! + 1,
+                  wins: team_home?.wins! + ((results.home_win) ? 1 : 0),
+                  playersJson: team_home?.playersJson!
+                })
+                temp_teams.push({
+                  id: matchups[i]!.awayTeam,
+                  name: team_away?.name!,
+                  gamesPlayed: team_away?.gamesPlayed! + 1,
+                  wins: team_away?.wins! + ((!results.home_win) ? 1 : 0),
+                  playersJson: team_away?.playersJson!
+                })
+              }
+              else { // my team and my opponent team wins and gamesPlayed have already been updated
+                const team_home = getTeamById(matchups[i]!.homeTeam);
+                const team_away = getTeamById(matchups[i]!.awayTeam);
+                temp_teams.push({
+                  id: matchups[i]!.homeTeam,
+                  name: team_home?.name!,
+                  gamesPlayed: team_home?.gamesPlayed!,
+                  wins: team_home?.wins!,
+                  playersJson: team_home?.playersJson!
+                })
+                temp_teams.push({
+                  id: matchups[i]!.awayTeam,
+                  name: team_away?.name!,
+                  gamesPlayed: team_away?.gamesPlayed!,
+                  wins: team_away?.wins!,
+                  playersJson: team_away?.playersJson!
+                })
+              }
+            }
             setGameData({
               leagueId: gameData.leagueId,
               leagueName: gameData.leagueName,
               myTeamId: gameData.myTeamId,
-              week: gameData.week,
+              week: gameData.week + 1,
               phase: WeekPhase.PREGAME,
-              teams: gameData.teams, 
+              teams: temp_teams, 
               schedule: gameData.schedule,
               fielderHexPos: gameData.fielderHexPos
             })
@@ -1439,6 +1761,46 @@ function getPlayerIndex_byName(name: string, team?: TeamStateStruct, players?: P
   return index;
 }
 
+function getTeamIndex(_id: string, teams: TeamStateStruct[]): number {
+  let i = 0;
+  let index = 0;
+  if (teams !== undefined) {  
+    while (i < teams.length) {
+      if (teams[i]?.id === _id) {
+        index = i;
+        return index;
+      }
+      i++;
+    }
+  }
+  return 0;
+}
+
+function getTeamByName(name: string, teams: TeamStateStruct[]) {
+  let myTeam: TeamStateStruct = {
+    id: 'none',
+    name: '',
+    gamesPlayed: 0,
+    wins: 0,
+    playersJson: []
+  };
+  let i = 0;
+  while (myTeam.id === 'none') {
+    if (teams[i]?.name === name) {
+      myTeam = {
+        id: teams[i]?.id!,
+        name: teams[i]?.name!,
+        gamesPlayed: teams[i]?.gamesPlayed!,
+        wins: teams[i]?.wins!,
+        playersJson: teams[i]?.playersJson!
+      }
+      return myTeam;
+    }
+    i++;
+  }
+  return myTeam;
+}
+
 function pitch(pitcher: PlayerStateStruct, batter: PlayerStateStruct): PitchResults {
   const pitch_roll: number = Math.floor(Math.random() * (pitcher.precision - 1 + 1) + 1);
   const _con_roll: number = Math.floor(Math.random() * batter.contact + 1);
@@ -1449,6 +1811,11 @@ function pitch(pitcher: PlayerStateStruct, batter: PlayerStateStruct): PitchResu
   let retStrings: string[] = [];
   //log += `${pitcher.name} pitches with ${_prec_roll} precision...`
   retStrings.push(`${pitcher.name} pitches with ${pitch_roll} precision...\n`);
+  if (pitch_roll <= Math.ceil(batter.level / 3)) {
+    // this pitch is a ball -> WALK
+    retStrings.push(`${pitcher.class} ${pitcher.name} walks the batter.\n`);
+    return {outCounter:0, pitchLogContents:retStrings, hitLine:[]}; // on WALK, outcounter = 0 and hitline is empty array
+  }
   if (_con_roll >= pitch_roll) {
     //log += `with ${_con_roll} contact, ${batter.name} gets a hit!!!`
     let str_roll = Math.floor(Math.random() * batter.strength + 1);
@@ -1696,7 +2063,7 @@ function fieldAction(batter: PlayerStateStruct, fieldTeam: PlayerStateStruct[], 
             // it's a single
             basesEarned[0] = 1;
           }
-          else if (str_roll_f > spd_roll_batter) { // batter thrown out at 1st TODO: deal with other baserunners
+          else if (str_roll_f > spd_roll_batter) { // batter thrown out at 1st 
             basesEarned[0] = 0;
             _outcounter += 1;
             retStrings.push(`${batter.name} is thrown out at 1st!\n`)
@@ -2108,8 +2475,8 @@ function fieldAction(batter: PlayerStateStruct, fieldTeam: PlayerStateStruct[], 
       let str_roll_of: number = Math.floor(Math.random() * nearFielder.strength*throwFactor + 1); // OF throws with strength*throwFactor
       let spd_roll_runner: number = Math.floor(Math.random() * leadRunnerNow!.speed + 1);  // runner runs with speed
       retStrings.push(`The ball comes to a rest at position ${hitLine[hitLine.length-1]!.position.q}, ${hitLine[hitLine.length-1]!.position.r}, ${hitLine[hitLine.length-1]!.position.s}\n`)
-      retStrings.push(`${nearFielder.name} recovers the ball in ${num_turns} turns.\n`)
-      retStrings.push(`${nearFielder.name} rolls throw strength of ${str_roll_of} vs ${leadRunnerNow?.name}'s speed roll of ${spd_roll_runner} with a ball factor of ${ball_factor}\n`)
+      retStrings.push(`${nearFielder.class} ${nearFielder.name} recovers the ball in ${num_turns} turns.\n`)
+      retStrings.push(`${nearFielder.class} ${nearFielder.name} rolls throw strength of ${str_roll_of} vs ${leadRunnerNow?.name}'s speed roll of ${spd_roll_runner} with a ball factor of ${ball_factor}\n`)
       if (str_roll_of <= spd_roll_runner) { // lead runner and trailing runners get an extra base
         basesEarned[0] += 1; //TODO: only need to increment lead runner and trailing runners
         basesEarned[1] += 1;
@@ -2396,6 +2763,34 @@ function updateScoreboard(_basesEarned: number[], _retStrings: string[], _batter
     __baseResults.first = _batter;
   }
   return _runsCounter_; 
+}
+
+function updateScoreboard_walk(__baseResults: BasesOccupied, _batter: PlayerStateStruct): FieldActionResults { 
+  let _runsCounter = 0;
+  let _retStrings: string[] = [];
+  let r_1 = __baseResults.first;
+  let r_2 = __baseResults.second;
+  let r_3 = __baseResults.third;
+   
+  _retStrings.push(`${_batter.name} advances to first base.\n`)
+  __baseResults.first = _batter;
+  if (r_1 !== undefined) { // if there was a runner on first before the hit
+      _retStrings.push(`${r_1.name} advances to second base.\n`);
+      __baseResults.second = r_1;
+      //r_1 = undefined;
+      if (r_2 !== undefined) { // if there was a runner on second before the walk
+        _retStrings.push(`${r_2.name} advances to third base.\n`);
+        __baseResults.third = r_2;
+        //r_2 = undefined;
+        if (r_3 !== undefined) { // if there was a runner on third before the walk
+          _runsCounter += 1;
+          _retStrings.push(`${r_3.name} scores!!!\n`);
+          //r_3 = undefined;
+        }
+     }
+  }
+
+  return {outCounter: 0, fieldActionLogContents: _retStrings, baseResults: __baseResults, runsScored: _runsCounter}; 
 }
 
 
