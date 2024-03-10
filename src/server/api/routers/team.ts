@@ -33,6 +33,7 @@ export const teamRouter = createTRPCRouter({
         classExp: z.number(),
         classLvl: z.number(),
         teamId: z.string(),
+        focusStat: z.number()
       }).array(),
       /**
         League: z.object({

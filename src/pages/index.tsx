@@ -26,6 +26,7 @@ config.autoAddCss = false; /* eslint-disable import/first */
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { library } from '@fortawesome/fontawesome-svg-core'
 import { faHouse, faArrowUp, faArrowLeft, faArrowRight, faArrowDown } from '@fortawesome/free-solid-svg-icons'
+import { createSchedule } from "./new_league";
 library.add(faHouse, faArrowUp, faArrowLeft, faArrowRight, faArrowDown)
 
 interface PlayerStateStruct {
@@ -45,7 +46,8 @@ interface PlayerStateStruct {
     experience: number,
     level: number,
     classExp: number,
-    classLvl: number
+    classLvl: number,
+    focusStat: StatFocus // StatFocus enum
 }
 
 /**
@@ -82,6 +84,7 @@ interface GameDataStateStruct {
   leagueId: string,
   leagueName: string,
   myTeamId: string,
+  season: number,
   week: number,
   phase: number,
   teams: TeamStateStruct[],
@@ -95,6 +98,13 @@ enum WeekPhase {
   PREGAME = 0,
   GAME = 1,
   POSTGAME = 2
+}
+
+enum StatFocus {
+  STRENGTH = 0,
+  SPEED = 1,
+  PRECISION = 2,
+  CONTACT = 3
 }
 
 const default_fielderHexPos: Record<FieldPositions, Position> = {
@@ -223,6 +233,7 @@ export default function Home() {
   }
 
   const [isViewSchedule, setIsViewSchedule] = useState<boolean>(false);
+  const [isViewTeamInfo, setIsViewTeamInfo] = useState<boolean>(false);
 
   // needed for game simulation
   
@@ -236,6 +247,7 @@ export default function Home() {
     leagueId: '',
     leagueName: '',
     myTeamId: '',
+    season: 0,
     week: 0,
     phase: 0,
     teams: [],
@@ -249,6 +261,7 @@ export default function Home() {
         leagueId: gameData.leagueId,
         leagueName: gameData.leagueName,
         myTeamId: gameData.myTeamId,
+        season: gameData.season,
         week: gameData.week,
         phase: gameData.phase, // change to reflect phase from database
         teams: gameData.teams,
@@ -271,6 +284,7 @@ export default function Home() {
         leagueId: gameData.leagueId,
         leagueName: gameData.leagueName,
         myTeamId: gameData.myTeamId,
+        season: gameData.season,
         week: gameData.week,
         phase: gameData.phase, // change to reflect phase from database
         teams: gameData.teams,
@@ -293,6 +307,7 @@ export default function Home() {
         leagueId: gameData.leagueId,
         leagueName: gameData.leagueName,
         myTeamId: gameData.myTeamId,
+        season: gameData.season,
         week: gameData.week,
         phase: gameData.phase, // change to reflect phase from database
         teams: gameData.teams,
@@ -315,6 +330,7 @@ export default function Home() {
         leagueId: gameData.leagueId,
         leagueName: gameData.leagueName,
         myTeamId: gameData.myTeamId,
+        season: gameData.season,
         week: gameData.week,
         phase: gameData.phase, // change to reflect phase from database
         teams: gameData.teams,
@@ -337,6 +353,7 @@ export default function Home() {
         leagueId: gameData.leagueId,
         leagueName: gameData.leagueName,
         myTeamId: gameData.myTeamId,
+        season: gameData.season,
         week: gameData.week,
         phase: gameData.phase, // change to reflect phase from database
         teams: gameData.teams,
@@ -359,6 +376,7 @@ export default function Home() {
         leagueId: gameData.leagueId,
         leagueName: gameData.leagueName,
         myTeamId: gameData.myTeamId,
+        season: gameData.season,
         week: gameData.week,
         phase: gameData.phase, // change to reflect phase from database
         teams: gameData.teams,
@@ -381,6 +399,7 @@ export default function Home() {
         leagueId: gameData.leagueId,
         leagueName: gameData.leagueName,
         myTeamId: gameData.myTeamId,
+        season: gameData.season,
         week: gameData.week,
         phase: gameData.phase, // change to reflect phase from database
         teams: gameData.teams,
@@ -400,7 +419,11 @@ export default function Home() {
     }
   }
   const [logContents, setLogContents] = useState<string[]>([]);
-  const [lastMatchStats, setLastMatchStats] = useState<{ [key: string]: playerMatchStats }>({});
+  const [lastMatchSimResults, setLastMatchSimResults] = useState<MatchSimResults>({
+    home_win: false,
+    player_matchStats: { }
+  });
+  const [preGamePlayerStats, setPreGamePlayerStats] = useState<PlayerStateStruct[]>([])
   // ~~~
   // This preserves state of isPlayingGame and gameData on refresh
   // cannot test locally if React strict mode is enabled
@@ -414,8 +437,11 @@ export default function Home() {
     const data_logContents = window.localStorage.getItem('logContents');
     if (data_logContents !== null) setLogContents(JSON.parse(data_logContents))
 
-    const data_lastMatchStats = window.localStorage.getItem('lastMatchStats');
-    if (data_lastMatchStats !== null) setLastMatchStats(JSON.parse(data_lastMatchStats))
+    const data_lastMatchSimResults = window.localStorage.getItem('lastMatchSimResults');
+    if (data_lastMatchSimResults !== null) setLastMatchSimResults(JSON.parse(data_lastMatchSimResults))
+
+    const data_preGamePlayerStats = window.localStorage.getItem('preGamePlayerStats');
+    if (data_preGamePlayerStats !== null) setPreGamePlayerStats(JSON.parse(data_preGamePlayerStats))
   }, [])   
 
   useEffect(() => {
@@ -425,8 +451,10 @@ export default function Home() {
 
     window.localStorage.setItem('logContents', JSON.stringify(logContents));
 
-    window.localStorage.setItem('lastMatchStats', JSON.stringify(lastMatchStats));
-  }, [isPlayingGame, gameData, logContents, lastMatchStats])
+    window.localStorage.setItem('lastMatchSimResults', JSON.stringify(lastMatchSimResults));
+
+    window.localStorage.setItem('preGamePlayerStats', JSON.stringify(preGamePlayerStats));
+  }, [isPlayingGame, gameData, logContents, lastMatchSimResults, preGamePlayerStats])
   //
 
 
@@ -454,7 +482,7 @@ export default function Home() {
   const createPlayerConst = api.player.create.useMutation(); 
 
 // FUNCTIONS HERE USE REACT HOOKS
-function exhibition(team_home:TeamStateStruct, team_away:TeamStateStruct): boolean {
+function exhibition(team_home:TeamStateStruct, team_away:TeamStateStruct): MatchSimResults {
   // set visibility of log
   //setIsLogActive(true);
   setLogContents(['']);
@@ -464,8 +492,8 @@ function exhibition(team_home:TeamStateStruct, team_away:TeamStateStruct): boole
   //setIsLeagueTableActive(false);
   const results = MatchSim(gameData, team_home, team_away, _localContents);
   setLogContents(_localContents);
-  setLastMatchStats(results.player_matchStats);
-  return results.home_win;
+  setLastMatchSimResults(results);
+  return results;
 }
 
 /*
@@ -972,6 +1000,11 @@ function exhibition(team_home:TeamStateStruct, team_away:TeamStateStruct): boole
     }
   }
 
+  function newSeason() {
+    // new schedule
+    createSchedule(gameData.teams)
+  }
+
 // COMPONENTS THAT REQUIRE STATE VARIABLES FROM HOME FUNCTION
 function MyLeaguesTable() {
   if (isPlayingGame) {
@@ -1032,6 +1065,7 @@ function MyLeaguesTable() {
                           leagueId: item.id,
                           leagueName: item.name,
                           myTeamId: item.myTeamId,
+                          season: item.season, 
                           week: item.week,
                           phase: WeekPhase.PREGAME, // change to reflect phase from database
                           teams: JSON.parse(JSON.stringify(teamsObject)),
@@ -1079,6 +1113,12 @@ function MainGameView() {
     );
   }
   let my_team_index = getTeamIndex(gameData.myTeamId, gameData.teams);
+  if (isViewTeamInfo) {
+    return (
+      <TeamInfoView
+      MyTeamIndex={my_team_index} />
+    )
+  }
   if (gameData.phase === WeekPhase.POSTGAME) {
     return ( 
     <PostGameView 
@@ -1198,6 +1238,7 @@ function TeamDisplayLineupChangeTable({leagueInfoProp, teamIndexProp} : {leagueI
       leagueId: gameData.leagueId,
       leagueName: gameData.leagueName,
       myTeamId: gameData.myTeamId,
+      season: gameData.season,
       week: gameData.week,
       phase: gameData.phase,
       teams: [reordered_team, ...other_teams], 
@@ -1365,8 +1406,8 @@ function ScheduleView() {
   )
 }
 
-function PostGameView({MyTeamIndex} : {MyTeamIndex: number}) {
-  const captionText: string = `My Team: ${gameData.teams[0]?.name}`
+function TeamInfoView({MyTeamIndex} : {MyTeamIndex: number}) {
+  const captionText: string = `My Team: ${gameData.teams[MyTeamIndex]?.name}`
 
   return (
     <div className="overflow-x-auto">
@@ -1382,16 +1423,15 @@ function PostGameView({MyTeamIndex} : {MyTeamIndex: number}) {
               <th>Con</th>
               <th>Lvl</th>
               <th>Age</th>
-              <th>Exp gained</th>
+              <th>Exp to next level</th>
             </tr>
           </thead>
           <tbody>
             {
               gameData.teams[MyTeamIndex]?.playersJson.map((value, index) => {
                 // get stats corresponding to this player
-                let _matchStats: playerMatchStats = lastMatchStats[value.id]!;
-                const exp_gained: number = _matchStats.at_bats + _matchStats.hits + _matchStats.doubles + (_matchStats.triples*2) + (_matchStats.home_runs*3) +
-                 _matchStats.rbi + _matchStats.runs + _matchStats.errors + _matchStats.assists + _matchStats.putouts;
+                //let _matchStats: playerMatchStats = lastMatchStats[value.id]!;
+                const exp_needed: number = getExperienceToNextLevel(value.level, value.experience);
                 return (
                   <tr key={value.id} className="even:bg-green-200 odd:bg-gray-50 hover:bg-blue-600 hover:text-gray-50 text-center">
                     <td className="px-2">{value.name}</td>
@@ -1402,7 +1442,185 @@ function PostGameView({MyTeamIndex} : {MyTeamIndex: number}) {
                     <td className="px-2">{value.contact}</td>
                     <td className="px-2">{value.level}</td>
                     <td className="px-2">{value.age}</td>
+                    <td className="px-2">{exp_needed}</td>
+                  </tr>
+                )
+              })
+            }
+          </tbody>
+        </table>
+        
+        <table className="table-auto border-2 border-spacing-2 p-8">
+          <caption>Cumulative Season Stats</caption>
+          <thead>
+            <tr className="even:bg-gray-50 odd:bg-white">
+              <th className="px-2">Name</th>
+              <th className="px-2 border-r-2">Class</th>
+              <th className="px-2 bg-amber-100">AB</th>
+              <th className="px-2 bg-amber-100">R</th>
+              <th className="px-2 bg-amber-100">Hits</th>
+              <th className="px-2 bg-amber-100">2B</th>
+              <th className="px-2 bg-amber-100">3B</th>
+              <th className="px-2 bg-amber-100">HR</th>
+              <th className="px-2 bg-amber-100">RBI</th>
+              <th className="px-2 bg-amber-100">BB</th>
+              <th className="px-2 bg-amber-100">SO</th>
+              <th className="px-2 bg-blue-100">ERR</th>
+              <th className="px-2 bg-blue-100">A</th>
+              <th className="px-2 bg-blue-100 border-r-2">PO</th>
+              <th className="px-2 bg-red-100">IP</th>
+              <th className="px-2 bg-red-100">BB</th>
+              <th className="px-2 bg-red-100">K</th>
+              <th className="px-2 bg-red-100">RA</th>
+            </tr>
+          </thead>
+          <tbody>
+            {
+              gameData.teams[MyTeamIndex]?.playersJson.map((value, index) => {
+                // get stats corresponding to this player
+                let _matchStats: playerMatchStats = lastMatchSimResults.player_matchStats[value.id]!
+                return (
+                  <tr key={value.id} className="even:bg-green-200 odd:bg-gray-50 hover:bg-black hover:bg-opacity-1 hover:text-gray-100 text-center">
+                    <td className="bg-opacity-50">{value.name}</td>
+                    <td className="bg-opacity-50 border-r-2">{value.class}</td>
+                    <td className="bg-amber-50 bg-opacity-50">TODO: show cumulative at bats</td>
+                    <td className="bg-amber-50 bg-opacity-50">TODO: show cumulative runs</td>
+                    <td className="bg-amber-50 bg-opacity-50">TODO: show cumulative stats</td>
+                    <td className="bg-amber-50 bg-opacity-50">TODO: show cumulative stats</td>
+                    <td className="bg-amber-50 bg-opacity-50">TODO: show cumulative stats</td>
+                    <td className="bg-amber-50 bg-opacity-50">TODO: show cumulative stats</td>
+                    <td className="bg-amber-50 bg-opacity-50">TODO: show cumulative stats</td>
+                    <td className="bg-amber-50 bg-opacity-50">TODO: show cumulative stats</td>
+                    <td className="bg-amber-50 bg-opacity-50 border-r-2">TODO: show cumulative stats</td>
+                    <td className="bg-blue-50 bg-opacity-50">TODO: show cumulative stats</td>
+                    <td className="bg-blue-50 bg-opacity-50">TODO: show cumulative stats</td>
+                    <td className="bg-blue-50 bg-opacity-50 border-r-2">TODO: show cumulative stats</td>
+                    <td className="bg-red-50 bg-opacity-50">TODO: show cumulative stats</td>
+                    <td className="bg-red-50 bg-opacity-50">TODO: show cumulative stats</td>
+                    <td className="bg-red-50 bg-opacity-50">TODO: show cumulative stats</td>
+                    <td className="bg-red-50 bg-opacity-50">TODO: show cumulative stats</td>
+                  </tr>
+                )
+              })
+            }
+          </tbody>
+        </table>
+      </div>
+  )
+}
+
+function PostGameView({MyTeamIndex} : {MyTeamIndex: number}) {
+  const captionText: string = `My Team: ${gameData.teams[MyTeamIndex]?.name}`
+
+  // did my team win? Was opponent team stronger or weaker?
+  let didWin: boolean = false;
+  let strongerTeam: boolean = false;
+  let runningLevelSum = 0;
+  for (let i=0; i<gameData.teams[MyTeamIndex]!.playersJson.length; i++) {
+    runningLevelSum += gameData.teams[MyTeamIndex]!.playersJson[i]!.level;
+  }
+  const myTeamAvgLvl = runningLevelSum / gameData.teams[MyTeamIndex]!.playersJson.length;
+  let oppTeamAvgLvl = 0;
+  for (let i=0; i<gameData.schedule[gameData.week]!.length; i++) {
+    if (gameData.schedule[gameData.week]![i]!.homeTeam === gameData.myTeamId) { // if my team was home team last game
+      didWin = lastMatchSimResults.home_win; 
+      // get opponent avg level 
+      const opp_index = getTeamIndex(gameData.schedule[gameData.week]![i]!.awayTeam, gameData.teams);
+      runningLevelSum = 0;
+      for (let i=0; i<gameData.teams[opp_index]!.playersJson.length; i++) {
+        runningLevelSum += gameData.teams[opp_index]!.playersJson[i]!.level;
+      }
+      oppTeamAvgLvl = runningLevelSum / gameData.teams[opp_index]!.playersJson.length;
+    }
+    if (gameData.schedule[gameData.week]![i]!.awayTeam === gameData.myTeamId) { // if my team was away team last game
+      didWin = !lastMatchSimResults.home_win;
+      // get opponent avg level 
+      const opp_index = getTeamIndex(gameData.schedule[gameData.week]![i]!.homeTeam, gameData.teams);
+      runningLevelSum = 0;
+      for (let i=0; i<gameData.teams[opp_index]!.playersJson.length; i++) {
+        runningLevelSum += gameData.teams[opp_index]!.playersJson[i]!.level;
+      }
+      oppTeamAvgLvl = runningLevelSum / gameData.teams[opp_index]!.playersJson.length;
+    }
+  }
+  let multiplier = didWin ? 2 : 1;
+  if (oppTeamAvgLvl >= myTeamAvgLvl) multiplier += 1;
+  if (oppTeamAvgLvl < myTeamAvgLvl) multiplier -= 0.5;
+
+  // TODO MOVE ALL THIS
+  
+
+
+  return (
+    <div className="overflow-x-auto">
+      <h2>My team avg level = {myTeamAvgLvl}</h2>
+      <h2>Opponent team avg level = {oppTeamAvgLvl}</h2>
+        <table className="table-auto border-2 border-spacing-2 p-8">
+          <caption>{captionText}</caption>
+          <thead>
+            <tr className="even:bg-gray-50 odd:bg-white">
+              <th>Name</th>
+              <th>Class</th>
+              <th>Str</th>
+              <th>Spd</th>
+              <th>Prc</th>
+              <th>Con</th>
+              <th>Lvl</th>
+              <th>Age</th>
+              <th>Exp gained</th>
+              <th>Exp NOW</th>
+              <th>Exp before game</th>
+            </tr>
+          </thead>
+          <tbody>
+            {
+              gameData.teams[MyTeamIndex]?.playersJson.map((value, index) => {
+                // get stats corresponding to this player
+                let _matchStats: playerMatchStats = lastMatchSimResults.player_matchStats[value.id]!;
+                const exp_gained: number = Math.round((_matchStats.at_bats + _matchStats.hits + _matchStats.doubles + (_matchStats.triples*2) + (_matchStats.home_runs*3) +
+                 _matchStats.rbi + _matchStats.runs + _matchStats.errors + _matchStats.assists + _matchStats.putouts) * multiplier);
+                
+                 let inc_str = 0
+                 let inc_spd = 0
+                 let inc_prec = 0
+                 let inc_con = 0
+                 let inc_lvl = 0
+                 let exp_show = 0
+                if (preGamePlayerStats[index] !== undefined) {
+                 inc_str = value.strength - preGamePlayerStats[index]!.strength;
+                 inc_spd = value.speed - preGamePlayerStats[index]!.speed;
+                 inc_prec = value.precision - preGamePlayerStats[index]!.precision;
+                 inc_con = value.contact - preGamePlayerStats[index]!.contact;
+                 inc_lvl = value.level - preGamePlayerStats[index]!.level;
+                 exp_show = preGamePlayerStats[index]!.experience
+                }
+                
+                /**
+                  let str_to_show = (players_copy[index]!.strength > value.strength) ? players_copy[index]!.strength : value.strength;
+                  let str_className_string = (players_copy[index]!.strength > value.strength) ? "px-2 text-green-300" : "px-2";
+                  let spd_to_show = (players_copy[index]!.speed > value.speed) ? players_copy[index]!.speed : value.speed;
+                  let spd_className_string = (players_copy[index]!.speed > value.speed) ? "px-2 text-green-300" : "px-2";
+                  let prec_to_show = (players_copy[index]!.precision > value.precision) ? players_copy[index]!.precision : value.precision;
+                  let prec_className_string = (players_copy[index]!.precision > value.precision) ? "px-2 text-green-300" : "px-2";
+                  let con_to_show = (players_copy[index]!.contact > value.contact) ? players_copy[index]!.contact : value.contact;
+                  let con_className_string = (players_copy[index]!.contact > value.contact) ? "px-2 text-green-300" : "px-2";
+  
+                  let lvl_to_show = (players_copy[index]!.level > value.level) ? players_copy[index]!.level : value.level;
+                  let lvl_className_string = (players_copy[index]!.level > value.level) ? "px-2 text-green-300" : "px-2";
+                */
+                return (
+                  <tr key={value.id} className="even:bg-green-200 odd:bg-gray-50 hover:bg-blue-600 hover:text-gray-50 text-center">
+                    <td className="px-2">{value.name}</td>
+                    <td className="px-2">{value.class}</td>
+                    <td className="px-2">{value.strength} +{inc_str}</td>
+                    <td className="px-2">{value.speed} +{inc_spd}</td>
+                    <td className="px-2">{value.precision} +{inc_prec}</td>
+                    <td className="px-2">{value.contact} +{inc_con}</td>
+                    <td className="px-2">{value.level} +{inc_lvl}</td>
+                    <td className="px-2">{value.age}</td>
                     <td className="px-2">{exp_gained}</td>
+                    <td className="px-2">{value.experience}</td>
+                    <td className="px-2">{exp_show}</td>
                   </tr>
                 )
               })
@@ -1438,7 +1656,7 @@ function PostGameView({MyTeamIndex} : {MyTeamIndex: number}) {
             {
               gameData.teams[MyTeamIndex]?.playersJson.map((value, index) => {
                 // get stats corresponding to this player
-                let _matchStats: playerMatchStats = lastMatchStats[value.id]!
+                let _matchStats: playerMatchStats = lastMatchSimResults.player_matchStats[value.id]!
                 return (
                   <tr key={value.id} className="even:bg-green-200 odd:bg-gray-50 hover:bg-black hover:bg-opacity-1 hover:text-gray-100 text-center">
                     <td className="bg-opacity-50">{value.name}</td>
@@ -1503,26 +1721,122 @@ function TopBar() {
 
   return (
     <div className="flex flex-row p-1 gap-3 bg-neutral-100">
-      <button onClick={() => setIsViewSchedule(false)}>Dashboard</button>
-      <button onClick={() => setIsViewSchedule(true)}>Schedule</button>
+      <button onClick={() => {
+        setIsViewSchedule(false);
+        setIsViewTeamInfo(false);
+      }}>Dashboard</button>
+      <button onClick={() => {
+        setIsViewSchedule(true);
+        setIsViewTeamInfo(false);
+      }}>Schedule</button>
+      <button onClick={() => {
+        setIsViewSchedule(false);
+        setIsViewTeamInfo(true);
+      }}>Team Info</button>
       {gameData.phase === WeekPhase.PREGAME ? (
         <button 
         className="transition-colors duration-200 hover:bg-green-400 
         bg-green-600 text-center text-white shadow-sm"
         onClick={() => { // TODO: Will this work?
           let myTeamWin: boolean = false;
-          if (isMyTeamHome) myTeamWin = exhibition(my_team, opp_team);
-          else if (!isMyTeamHome) myTeamWin = !exhibition(opp_team, my_team);
+          let _results: MatchSimResults = {
+            home_win: false, 
+            player_matchStats: {}
+          };
+          if (isMyTeamHome) {
+            _results = exhibition(my_team, opp_team);
+            myTeamWin = _results.home_win;
+          }
+          else if (!isMyTeamHome) {
+            _results = exhibition(opp_team, my_team);
+            myTeamWin = !_results.home_win;
+          }
           let temp_teams: TeamStateStruct[] = [];
+          /////////////////// from postgameview
+          // did my team win? Was opponent team stronger or weaker?
+          //let didWin: boolean = false;
+          //let strongerTeam: boolean = false;
+          let runningLevelSum = 0;
+          for (let i=0; i<my_team!.playersJson.length; i++) {
+            runningLevelSum += my_team!.playersJson[i]!.level;
+          }
+          const myTeamAvgLvl = runningLevelSum / my_team!.playersJson.length;
+          //let oppTeamAvgLvl = 0;
+          
+          //didWin = myTeamWin; 
+          // get opponent avg level 
+          //const opp_index = getTeamIndex(gameData.schedule[gameData.week]![i]!.awayTeam, gameData.teams);
+          runningLevelSum = 0;
+          for (let i=0; i<opp_team!.playersJson.length; i++) {
+            runningLevelSum += opp_team!.playersJson[i]!.level;
+          }
+          const oppTeamAvgLvl = runningLevelSum / opp_team!.playersJson.length; 
+          
+          let multiplier = myTeamWin ? 2 : 1;
+          if (oppTeamAvgLvl >= myTeamAvgLvl) multiplier += 1;
+          if (oppTeamAvgLvl < myTeamAvgLvl) multiplier -= 0.5;
+          //////////////////////// end from postgameview
+          //let pregame_players_copy: PlayerStateStruct[] = [...my_team.playersJson];
+          let pregame_players_copy: PlayerStateStruct[] = JSON.parse(JSON.stringify(my_team.playersJson)) // clone gameData.playersJson
+          //console.log(`pregame_players_copy before: ${pregame_players_copy[0]!.experience}`)
+          //console.log(`pregameplayerstats before: ${preGamePlayerStats[0]!.experience}`)
+          setPreGamePlayerStats(pregame_players_copy);  // used to compare against gameData player stats in PostGameView to check which stats/levels increased
+          //console.log(`pregameplayerstats after: ${preGamePlayerStats[0]!.experience}`)
           for (let i=0; i<gameData.teams.length; i++) {
             if (gameData.teams[i]?.id === gameData.myTeamId) {
+              ////////////////////////////////////////////////// from postgameview
+              let players_copy: PlayerStateStruct[] = JSON.parse(JSON.stringify(my_team.playersJson)) //MUST USE THIS METHOD TO ACTUALLY CLONE
+              for (let i=0; i<players_copy.length!; i++) {
+                //let _matchStats: playerMatchStats = lastMatchSimResults.player_matchStats[players_copy[i]!.id]!;
+                let _matchStats: playerMatchStats = _results.player_matchStats[players_copy[i]!.id]!;
+                const exp_gained: number = Math.round((_matchStats.at_bats + _matchStats.hits + _matchStats.doubles + (_matchStats.triples*2) + (_matchStats.home_runs*3) +
+                  _matchStats.rbi + _matchStats.runs + _matchStats.errors + _matchStats.assists + _matchStats.putouts) * multiplier);
+                let exp_needed: number = getExperienceToNextLevel(players_copy[i]!.level, players_copy[i]!.experience);
+                console.log(`exp gained: ${exp_gained}`)
+                console.log(`exp needed: ${exp_needed}`)
+                if (exp_needed <= (exp_gained)) {
+                  // level up
+                  LevelUpPlayer(players_copy[i]!);
+                  players_copy[i]!.experience = exp_gained - exp_needed;
+                }
+                else {
+                  players_copy[i]!.experience += exp_gained;
+                }
+              }
+              //let temp_teams: TeamStateStruct[] = [];
+                
               temp_teams.push({
-                id: gameData.teams[i]?.id!,
-                name: gameData.teams[i]?.name!,
-                gamesPlayed: gameData.teams[i]?.gamesPlayed! + 1,
-                wins: gameData.teams[i]?.wins! + ((myTeamWin) ? 1 : 0),
-                playersJson: gameData.teams[i]?.playersJson! // TODO: update level, stats, exp
+              id: gameData.teams[i]?.id!,
+              name: gameData.teams[i]?.name!,
+              gamesPlayed: gameData.teams[i]?.gamesPlayed! +1,
+              wins: gameData.teams[i]?.wins! + ((myTeamWin) ? 1 : 0),
+              playersJson: players_copy // TODO: update level, stats, exp
               })
+                  
+              /**
+                setGameData({
+                  leagueId: gameData.leagueId,
+                  leagueName: gameData.leagueName,
+                  myTeamId: gameData.myTeamId,
+                  season: gameData.season,
+                  week: gameData.week,
+                  phase: gameData.phase,
+                  teams: temp_teams, 
+                  schedule: gameData.schedule,
+                  fielderHexPos: gameData.fielderHexPos
+                })
+              */
+              /////////////////////////////// end from postgameview
+
+              /**
+                temp_teams.push({
+                  id: gameData.teams[i]?.id!,
+                  name: gameData.teams[i]?.name!,
+                  gamesPlayed: gameData.teams[i]?.gamesPlayed! + 1,
+                  wins: gameData.teams[i]?.wins! + ((myTeamWin) ? 1 : 0),
+                  playersJson: gameData.teams[i]?.playersJson! // TODO: update level, stats, exp
+                })
+              */
             }
             else if (gameData.teams[i]?.id === opp_team.id) {
               temp_teams.push({
@@ -1537,10 +1851,12 @@ function TopBar() {
               temp_teams.push(gameData.teams[i]!);
             }
           }
+          //console.log(`pregame_players_copy after: ${pregame_players_copy[0]!.experience}`)
           setGameData({
             leagueId: gameData.leagueId,
             leagueName: gameData.leagueName,
             myTeamId: gameData.myTeamId,
+            season: gameData.season,
             week: gameData.week,
             phase: WeekPhase.GAME,
             teams: temp_teams, 
@@ -1555,10 +1871,12 @@ function TopBar() {
           className="transition-colors duration-200 hover:bg-green-400 
           bg-green-600 text-center text-white shadow-sm"
           onClick={() => { // TODO: Will this work?
+            console.log(`pregameplayerstats gainexp: ${preGamePlayerStats[0]!.experience}`)
             setGameData({
               leagueId: gameData.leagueId,
               leagueName: gameData.leagueName,
               myTeamId: gameData.myTeamId,
+              season: gameData.season,
               week: gameData.week,
               phase: WeekPhase.POSTGAME,
               teams: gameData.teams, 
@@ -1566,6 +1884,7 @@ function TopBar() {
               fielderHexPos: gameData.fielderHexPos
             })
             setLogContents([]);
+            //setPreGamePlayerStats([]); // TODO: need this?
           }}>
             Gain EXP{` >>`}
           </button>
@@ -1574,6 +1893,7 @@ function TopBar() {
           className="transition-colors duration-200 hover:bg-green-400 
           bg-green-600 text-center text-white shadow-sm"
           onClick={() => { // TODO: Will this work?
+            console.log(`pregameplayerstats save: ${preGamePlayerStats[0]!.experience}`)
             // save all team wins/losses
             // sim other team's games
             let temp_teams: TeamStateStruct[] = [];
@@ -1620,18 +1940,47 @@ function TopBar() {
                 })
               }
             }
-            setGameData({
-              leagueId: gameData.leagueId,
-              leagueName: gameData.leagueName,
-              myTeamId: gameData.myTeamId,
-              week: gameData.week + 1,
-              phase: WeekPhase.PREGAME,
-              teams: temp_teams, 
-              schedule: gameData.schedule,
-              fielderHexPos: gameData.fielderHexPos
-            })
-            setLastMatchStats({});
+            if (gameData.week < 31) {
+              setGameData({
+                leagueId: gameData.leagueId,
+                leagueName: gameData.leagueName,
+                myTeamId: gameData.myTeamId,
+                season: gameData.season,
+                week: gameData.week + 1,
+                phase: WeekPhase.PREGAME,
+                teams: temp_teams, 
+                schedule: gameData.schedule,
+                fielderHexPos: gameData.fielderHexPos
+              })
+            }
+            else if (gameData.week >= 31) {
+              // create new schedule
+              const nextSeasonSchedule: {[key: number] : Matchup[]} = createSchedule(gameData.teams);
+              // set team wins and gamesPlayed to 0
+              temp_teams.map((v) => {
+                v.gamesPlayed = 0;
+                v.wins = 0;
+              })
+              setGameData({
+                leagueId: gameData.leagueId,
+                leagueName: gameData.leagueName,
+                myTeamId: gameData.myTeamId,
+                season: gameData.season + 1,
+                week: 0,
+                phase: WeekPhase.PREGAME,
+                teams: temp_teams, 
+                schedule: nextSeasonSchedule,
+                fielderHexPos: gameData.fielderHexPos
+              })
+            }
+            setLastMatchSimResults({
+              home_win: false,
+              player_matchStats: {}
+            });
+            //setPreGamePlayerStats(my_team.playersJson);  // used to compare against gameData player stats in PostGameView to check which stats/levels increased
+            //setPreGamePlayerStats([]);
             //setLogContents([]);
+            // TODO: save new exp gained and new stats from level ups for each player in gameData
           }}>
             Save and Go to Next Week{` >>`}
           </button>
@@ -1844,11 +2193,11 @@ function pitch(pitcher: PlayerStateStruct, batter: PlayerStateStruct): PitchResu
     // since hex_lineDraw returns Position[], we have to convert it to Hex[]...
     // here we set ball height for each hex in the hitLine, based on launchAngle
     let i = 1;
-    console.log(`${batter.name} hitline is (length=${_hitLinePos.length}) (launch=${launchAngle}): `) // for debugging
+    //console.log(`${batter.name} hitline is (length=${_hitLinePos.length}) (launch=${launchAngle}): `) // for debugging
     if (launchAngle === Height.GROUND) {  // all hexes GROUND
       while (i < _hitLinePos.length) {
         _hitLineHex[i] = {position:{q:_hitLinePos[i]?.q!, r:_hitLinePos[i]?.r!, s:_hitLinePos[i]?.s!}, ballHeight:Height.GROUND}
-        console.log(`hex: ${_hitLineHex[i]?.position.q}, ${_hitLineHex[i]?.position.r}, ${_hitLineHex[i]?.position.s} GROUND`) // for debugging
+        //console.log(`hex: ${_hitLineHex[i]?.position.q}, ${_hitLineHex[i]?.position.r}, ${_hitLineHex[i]?.position.s} GROUND`) // for debugging
         i++;
       }
     }
@@ -1856,12 +2205,12 @@ function pitch(pitcher: PlayerStateStruct, batter: PlayerStateStruct): PitchResu
       while (i < _hitLinePos.length) {
         if (i <= _hitLinePos.length/1.4) { // these hexes AIR
           _hitLineHex[i] = {position:{q:_hitLinePos[i]?.q!, r:_hitLinePos[i]?.r!, s:_hitLinePos[i]?.s!}, ballHeight:Height.AIR}
-          console.log(`hex: ${_hitLineHex[i]?.position.q}, ${_hitLineHex[i]?.position.r}, ${_hitLineHex[i]?.position.s} AIR`) // for debugging
+          //console.log(`hex: ${_hitLineHex[i]?.position.q}, ${_hitLineHex[i]?.position.r}, ${_hitLineHex[i]?.position.s} AIR`) // for debugging
           i++;
         }
         else if (i > _hitLinePos.length/1.4) { // these hexes GROUND
           _hitLineHex[i] = {position:{q:_hitLinePos[i]?.q!, r:_hitLinePos[i]?.r!, s:_hitLinePos[i]?.s!}, ballHeight:Height.GROUND}
-          console.log(`hex: ${_hitLineHex[i]?.position.q}, ${_hitLineHex[i]?.position.r}, ${_hitLineHex[i]?.position.s} GROUND`) // for debugging
+          //console.log(`hex: ${_hitLineHex[i]?.position.q}, ${_hitLineHex[i]?.position.r}, ${_hitLineHex[i]?.position.s} GROUND`) // for debugging
           i++;
         }
       }
@@ -1870,17 +2219,17 @@ function pitch(pitcher: PlayerStateStruct, batter: PlayerStateStruct): PitchResu
       while (i < _hitLinePos.length) {
         if (i === _hitLinePos.length-1) { // final position is GROUND
           _hitLineHex[i] = {position:{q:_hitLinePos[i]?.q!, r:_hitLinePos[i]?.r!, s:_hitLinePos[i]?.s!}, ballHeight:Height.GROUND}
-          console.log(`hex: ${_hitLineHex[i]?.position.q}, ${_hitLineHex[i]?.position.r}, ${_hitLineHex[i]?.position.s} GROUND`) // for debugging
+          //console.log(`hex: ${_hitLineHex[i]?.position.q}, ${_hitLineHex[i]?.position.r}, ${_hitLineHex[i]?.position.s} GROUND`) // for debugging
           i++;
         }
         if (i === _hitLinePos.length-2) { // Position 1 hex before final is AIR
           _hitLineHex[i] = {position:{q:_hitLinePos[i]?.q!, r:_hitLinePos[i]?.r!, s:_hitLinePos[i]?.s!}, ballHeight:Height.AIR}
-          console.log(`hex: ${_hitLineHex[i]?.position.q}, ${_hitLineHex[i]?.position.r}, ${_hitLineHex[i]?.position.s} AIR`) // for debugging
+          //console.log(`hex: ${_hitLineHex[i]?.position.q}, ${_hitLineHex[i]?.position.r}, ${_hitLineHex[i]?.position.s} AIR`) // for debugging
           i++;
         }
         else if (i < _hitLinePos.length-2) { // all other hexes are HIGH
           _hitLineHex[i] = {position:{q:_hitLinePos[i]?.q!, r:_hitLinePos[i]?.r!, s:_hitLinePos[i]?.s!}, ballHeight:Height.HIGH}
-          console.log(`hex: ${_hitLineHex[i]?.position.q}, ${_hitLineHex[i]?.position.r}, ${_hitLineHex[i]?.position.s} HIGH`) // for debugging
+          //console.log(`hex: ${_hitLineHex[i]?.position.q}, ${_hitLineHex[i]?.position.r}, ${_hitLineHex[i]?.position.s} HIGH`) // for debugging
           i++;
         }
       }
@@ -2085,26 +2434,26 @@ function fieldAction(batter: PlayerStateStruct, fieldTeam: PlayerStateStruct[], 
             retStrings.push(`That's an OUT!\n`); 
             if (_outcounter < 3) { // if still less than 3 outs, try for double play
               let spd_roll_batter: number = Math.floor(Math.random() * batter.speed + 1);  // batter runs with speed
-              console.log('It is happening!!!')
+              //console.log('It is happening!!!')
               if (activeFielder.class === '1B' || activeFielder.class === '2B' || activeFielder.class === 'RF') {
                 // SS has ball because he caught it at second
                 //get index of SS
                 throwFactor = getThrowFactor(13);
                 let index_ss = fieldTeam.findIndex(v => v.class === 'SS');
-                console.log(`activeFielder SS index: ${index_ss}`)
+                //console.log(`activeFielder SS index: ${index_ss}`)
                 activeFielder = fieldTeam[index_ss];
-                console.log(`activeFielder shortstop? ${activeFielder?.class}`)
-                console.log(`activeFielder shortstop? ${activeFielder?.name}`)
+                //console.log(`activeFielder shortstop? ${activeFielder?.class}`)
+                //console.log(`activeFielder shortstop? ${activeFielder?.name}`)
               }
               else {
                 // 2B has ball because he caught it at second
                 //get index of 2B
                 throwFactor = getThrowFactor(13);
                 let index_2b = fieldTeam.findIndex(v => v.class === '2B');
-                console.log(`activeFielder 2B index: ${index_2b}`)
+                //console.log(`activeFielder 2B index: ${index_2b}`)
                 activeFielder = fieldTeam[index_2b];
-                console.log(`activeFielder 2B? ${activeFielder?.class}`)
-                console.log(`activeFielder 2B? ${activeFielder?.name}`)
+                //console.log(`activeFielder 2B? ${activeFielder?.class}`)
+                //console.log(`activeFielder 2B? ${activeFielder?.name}`)
               }
               let str_roll_f: number = Math.floor(Math.random() * (activeFielder!.strength*throwFactor) + 1);
               retStrings.push(`${activeFielder!.class} ${activeFielder!.name} throws with a strength of ${str_roll_f} against ${batter.name}'s speed of ${spd_roll_batter}.\n`);
@@ -2489,7 +2838,7 @@ function fieldAction(batter: PlayerStateStruct, fieldTeam: PlayerStateStruct[], 
           let _base = basesEarned[highestIndex]! + highestIndex + 1;
           _outcounter += 1;
           basesEarned[highestIndex] = -1;
-          console.log(`there are ${_outcounter} outs\n`)
+          //console.log(`there are ${_outcounter} outs\n`)
           retStrings.push(`${leadRunnerNow?.name} is thrown out at base ${_base}\n`)
           //basesEarned[highestIndex] = 0; // lead runner was thrown out, but trailing runners still advance +1
           retStrings.push(`That's an OUT!\n`)
@@ -2500,7 +2849,7 @@ function fieldAction(batter: PlayerStateStruct, fieldTeam: PlayerStateStruct[], 
         }
       }
       // TODO: WHAT IF PLAYER SCORES BUT THEN OTHER RUNNER GETS OUT 3???
-    console.log(`NOW there are ${_outcounter} outs\n`)
+    //console.log(`NOW there are ${_outcounter} outs\n`)
     if (_outcounter < 3) { 
       // get hits on scoreboard
       _runsCounter += updateScoreboard(basesEarned, retStrings, batter, _baseResults, _runsCounter);
@@ -2791,6 +3140,153 @@ function updateScoreboard_walk(__baseResults: BasesOccupied, _batter: PlayerStat
   }
 
   return {outCounter: 0, fieldActionLogContents: _retStrings, baseResults: __baseResults, runsScored: _runsCounter}; 
+}
+
+function getExperienceToNextLevel(currentLevel: number, currentExp: number) : number {
+  const exp_by_level: number[] = [
+    0, // exp_by_level[0] should never be used
+    50, // exp_by_level[1] = 50 means it takes 50 exp to get to level 2
+    55,
+    60,
+    66,
+    72,
+    79,
+    86,
+    95,
+    104,
+    115,
+    126,
+    139,
+    152,
+    168,
+    184,
+    203,
+    222,
+    244,
+    266,
+    292,
+    318,
+    348,
+    378,
+    412,
+    446,
+    485,
+    524,
+    568,
+    612,
+    661,
+    710,
+    765,
+    820,
+    881,
+    942,
+    1009,
+    1076,
+    1150,
+    1224,
+    1305,
+    1386,
+    1474,
+    1562,
+    1658,
+    1754,
+    1858,
+    1962,
+    2075,
+    2188,
+    2310,
+    2432,
+    2564,
+    2696,
+    2838,
+    2980,
+    3133,
+    3286,
+    3450,
+    3614,
+    3791,
+    3968,
+    4158,
+    4348,
+    4553,
+    4758,
+    4978,
+    5198,
+    5435,
+    5689,
+    5961,
+    6251,
+    6560,
+    6888,
+    7236,
+    7604,
+    7993,
+    8403,
+    8835,
+    9289,
+    9766,
+    10266,
+    10790,
+    11338,
+    11911,
+    12510,
+    13136,
+    13790,
+    14473,
+    15186,
+    15930,
+    16706,
+    17515,
+    18358,
+    19236,
+    20150,
+    21101,
+    22090,
+    23118,
+    24186,
+  ]
+
+  return exp_by_level[currentLevel]! - currentExp;
+}
+
+/*
+// Mutates the input PlayerStateStruct object
+*/
+function LevelUpPlayer(player: PlayerStateStruct) { 
+  player.level += 1;
+  // gain 3 stat points per level up
+  // 1 stat point goes into the player's focus stat
+  if (player.focusStat === StatFocus.STRENGTH) player.strength += 1;
+  else if (player.focusStat === StatFocus.SPEED) player.speed += 1;
+  else if (player.focusStat === StatFocus.PRECISION) player.precision += 1;
+  else if (player.focusStat === StatFocus.CONTACT) player.contact += 1;
+  // 2 stat points are decided based on player proclivities
+  let stat_to_add = getNextStatPoint({strength: player.strengthPot, speed: player.speedPot, precision: player.precisionPot, contact: player.contactPot});
+  for (let i=0; i<2; i++) {
+    switch (stat_to_add) {
+      case StatFocus.STRENGTH:
+        player.strength += 1;
+        break;
+      case StatFocus.SPEED:
+        player.speed += 1;
+        break;
+      case StatFocus.PRECISION:
+        player.precision += 1;
+        break;
+      case StatFocus.CONTACT:
+        player.contact += 1;
+        break;
+    }
+    stat_to_add = getNextStatPoint({strength: player.strengthPot, speed: player.speedPot, precision: player.precisionPot, contact: player.contactPot})
+  }
+}
+
+function getNextStatPoint(proclivities: Proclivity): number {
+  const num = Math.random();
+  if (num < proclivities.strength) return 0;
+  else if (num < proclivities.speed + proclivities.strength) return 1;
+  else if (num < proclivities.precision + proclivities.speed + proclivities.strength) return 2;
+  else return 3;
 }
 
 

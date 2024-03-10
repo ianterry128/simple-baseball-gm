@@ -30,7 +30,8 @@ interface PlayerStateStruct {
     experience: number,
     level: number,
     classExp: number,
-    classLvl: number
+    classLvl: number,
+    focusStat: StatFocus // StatFocus enum
 }
 
 /**
@@ -63,6 +64,7 @@ interface GameDataStateStruct {
   leagueId: string,
   leagueName: string,
   myTeamId: string,
+  season: number,
   week: number,
   phase: number,
   teams: TeamStateStruct[],
@@ -76,6 +78,13 @@ enum WeekPhase {
   PREGAME = 0,
   GAME = 1,
   POSTGAME = 2
+}
+
+enum StatFocus {
+  STRENGTH = 0,
+  SPEED = 1,
+  PRECISION = 2,
+  CONTACT = 3
 }
 
 interface Matchup { // store teamId of competing teams
@@ -135,6 +144,7 @@ export default function Home() {
     leagueId: '',
     leagueName: '',
     myTeamId: '',
+    season: 1,
     week: 0,
     phase: 0,
     teams: [],
@@ -142,21 +152,27 @@ export default function Home() {
     fielderHexPos: default_fielderHexPos
   });
   const [isPlayingGame, setIsPlayingGame] = useState<boolean>(false);
+  const [preGamePlayerStats, setPreGamePlayerStats] = useState<PlayerStateStruct[]>([])
   // This preserves state of isPlayingGame and gameData on refresh
   // cannot test locally if React strict mode is enabled
   useEffect(() => {
     const data_isPlayingGame = window.localStorage.getItem('isPlayingGame');
-    if (data_isPlayingGame !== null) setIsPlayingGame(JSON.parse(data_isPlayingGame))
+    if (data_isPlayingGame !== null) setIsPlayingGame(JSON.parse(data_isPlayingGame));
 
     const data_gameData = window.localStorage.getItem('gameData');
-    if (data_gameData !== null) setGameData(JSON.parse(data_gameData))
+    if (data_gameData !== null) setGameData(JSON.parse(data_gameData));
+
+    const data_preGamePlayerStats = window.localStorage.getItem('preGamePlayerStats');
+    if (data_preGamePlayerStats !== null) setPreGamePlayerStats(JSON.parse(data_preGamePlayerStats));
   }, [])   
 
   useEffect(() => {
     window.localStorage.setItem('isPlayingGame', JSON.stringify(isPlayingGame));
 
     window.localStorage.setItem('gameData', JSON.stringify(gameData));
-  }, [isPlayingGame, gameData])
+
+    window.localStorage.setItem('preGamePlayerStats', JSON.stringify(preGamePlayerStats));
+  }, [isPlayingGame, gameData, preGamePlayerStats])
   //
 
   const proclivities: {[key: string]: Proclivity} = {
@@ -245,17 +261,18 @@ export default function Home() {
           experience: 0,
           level: 0,
           classExp: 0,
-          classLvl: 0
+          classLvl: 0, 
+          focusStat: 0
         }
         const classesProclivities: {[key: string]: Proclivity} = {
-          '1B': proclivitiesArr[Math.floor(Math.random() * 7)]!,
-          '2B': proclivitiesArr[Math.floor(Math.random() * 7)]!,
-          'SS': proclivitiesArr[Math.floor(Math.random() * 7)]!,
-          '3B': proclivitiesArr[Math.floor(Math.random() * 7)]!,
-          'CF': proclivitiesArr[Math.floor(Math.random() * 7)]!,
-          'LF': proclivitiesArr[Math.floor(Math.random() * 7)]!,
-          'RF': proclivitiesArr[Math.floor(Math.random() * 7)]!,
-          'C': proclivitiesArr[Math.floor(Math.random() * 7)]!,
+          '1B': proclivitiesArr[Math.floor(Math.random() * 6)]!,
+          '2B': proclivitiesArr[Math.floor(Math.random() * 6)]!,
+          'SS': proclivitiesArr[Math.floor(Math.random() * 6)]!,
+          '3B': proclivitiesArr[Math.floor(Math.random() * 6)]!,
+          'CF': proclivitiesArr[Math.floor(Math.random() * 6)]!,
+          'LF': proclivitiesArr[Math.floor(Math.random() * 6)]!,
+          'RF': proclivitiesArr[Math.floor(Math.random() * 6)]!,
+          'C': proclivitiesArr[Math.floor(Math.random() * 6)]!,
           'P': proclivities['pitcher']!
         }
 
@@ -310,12 +327,19 @@ export default function Home() {
               break;
           }
           stat_to_add = getNextStatPoint(class_stat_proclivities ?? {strength:0.25, speed:0.25, precision:0.25, contact:0.25});
-          //stat_to_add = Math.floor(Math.random() * (3-0+1) + 0); // choose next stat to add
         }
-        //newPlayer.strength = Math.floor(Math.random() * (30 - 1) + 1);
-        //newPlayer.speed = Math.floor(Math.random() * (30 - 1) + 1);
-        //newPlayer.precision = Math.floor(Math.random() * (30 - 1) + 1);
-        //newPlayer.contact = Math.floor(Math.random() * (30 - 1) + 1);
+        // add stat proclivities based on initial stats
+        newPlayer.strengthPot = class_stat_proclivities?.strength!;
+        newPlayer.speedPot = class_stat_proclivities?.speed!;
+        newPlayer.precisionPot = class_stat_proclivities?.precision!;
+        newPlayer.contactPot = class_stat_proclivities?.contact!;
+
+        // initial focus stat will be greatest stat
+        const greatesetStatValue = Math.max(newPlayer.strength, newPlayer.speed, newPlayer.precision, newPlayer.contact);
+        if (newPlayer.strength === greatesetStatValue){  newPlayer.focusStat = StatFocus.STRENGTH; }
+        else if (newPlayer.speed === greatesetStatValue){  newPlayer.focusStat = StatFocus.SPEED; }
+        else if (newPlayer.precision === greatesetStatValue){  newPlayer.focusStat = StatFocus.PRECISION; }
+        else if (newPlayer.contact === greatesetStatValue){  newPlayer.focusStat = StatFocus.CONTACT; }
 
         newPlayers[n] = newPlayer;
         n++;
@@ -352,6 +376,7 @@ export default function Home() {
     // store info in React state
     setLeagueInfo(newLeague);
     // store teams in database
+    // TODO: is it necessary to store teams and players in database in their own tables???
     for (let i=0; i<teamsToAdd.length; i++) {
       // store players in database
       for (let j=0; j<teamsToAdd[i]?.playersJson.length!; j++) {
@@ -374,6 +399,7 @@ export default function Home() {
           classExp: teamsToAdd[i]?.playersJson[j]?.classExp!,
           classLvl: teamsToAdd[i]?.playersJson[j]?.classLvl!,
           teamId: teamsToAdd[i]?.id!,
+          focusStat: teamsToAdd[i]?.playersJson[j]?.focusStat!
           });
       }
       createTeamConst.mutate({ id: teamsToAdd[i]?.id!, name: teamsToAdd[i]?.name!, gamesPlayed: 0, wins: 0, playersJson: teamsToAdd[i]?.playersJson.map((v) => {
@@ -396,6 +422,7 @@ export default function Home() {
           classExp: v.classExp,
           classLvl: v.classLvl,
           teamId: teamsToAdd[i]?.id!,
+          focusStat: v.focusStat
         }
       })!, leagueId: newLeague.id});
       
@@ -427,17 +454,19 @@ export default function Home() {
             classExp: item.classExp,
             classLvl: item.classLvl,
             teamId: v.id,
+            focusStat: item.focusStat
           }
         }),
         leagueId: newLeague.id
       }
-    }) , myTeamId: newLeague.teams[0]?.id!, myTeamName: teamNameInput, week: 0, scheduleJson: newLeague.schedule});
+    }) , myTeamId: newLeague.teams[0]?.id!, myTeamName: teamNameInput, season: 1, week: 0, scheduleJson: newLeague.schedule});
 
     // store league info in state variables
     setGameData({
       leagueId: newLeague.id,
       leagueName: newLeague.name,
       myTeamId: newLeague.teams[0]?.id!,
+      season: 1,
       week: 0,
       phase: WeekPhase.PREGAME,
       teams: teamsToAdd,
@@ -445,60 +474,14 @@ export default function Home() {
       fielderHexPos: default_fielderHexPos
     })
     setIsPlayingGame(true);
+    setPreGamePlayerStats(teamsToAdd[0]!.playersJson);
 
     router.push('/') // this navigates to Home Page
   }
 
   const schedule: { [key: number]: Matchup[]} = {}
 
-  function createSchedule(teams: TeamStateStruct[]): { [key: number]: Matchup[]} {
-    const num_weeks = 32;
-    const num_teams = teams.length;
-    let schedule: { [key: number]: Matchup[]} = {};
-    let indices: number[] = [];
-    for (let i=0, k=0, j=1; i<num_teams; i++) {
-      if (i % 2 === 0) {
-        indices[i] = k;
-        k++;
-      }
-      else {
-        indices[i] = num_teams-j;
-        j++;
-      }   
-    }
-
-    for (let w=0; w<num_weeks; w++) {
-      let matches: Matchup[] = [];
-      let num_matches = num_teams / 2;
-      let m = 0;
-
-      let h_ind = indices[0];
-      let a_ind = indices[1];
-      let i = 0;
-      while (m < num_matches) {
-        matches[m] = {
-          homeTeam: teams[h_ind!]?.id!,
-          awayTeam: teams[a_ind!]?.id!
-        }
-        //console.log(`home team: ${h_ind} vs away team: ${a_ind}`);
-        i += 2;
-        h_ind = indices[i];
-        a_ind = indices[i+1];
-        m += 1;
-      }
-      // edit indices based on berger algorithm - https://en.wikipedia.org/wiki/Round-robin_tournament#Scheduling_algorithm
-      for (let i=0; i < indices.length; i++) {
-        if (indices[i] !== num_teams-1) {
-          indices[i] = indices[i]! + (num_teams/2) >= (num_teams-1) ? 
-            indices[i]! + (num_teams/2) - (num_teams-1) : 
-            indices[i]! + (num_teams/2);
-        }
-      }
-      // add mathups for this week to schedule
-      schedule[w] = matches;
-    }
-    return schedule;
-  }
+  
 
   return (
     <>
@@ -588,6 +571,55 @@ function getNextStatPoint(proclivities: Proclivity): number {
   else if (num < proclivities.speed + proclivities.strength) return 1;
   else if (num < proclivities.precision + proclivities.speed + proclivities.strength) return 2;
   else return 3;
+}
+
+export function createSchedule(teams: TeamStateStruct[]): { [key: number]: Matchup[]} {
+  const num_weeks = 32;
+  const num_teams = teams.length;
+  let schedule: { [key: number]: Matchup[]} = {};
+  let indices: number[] = [];
+  for (let i=0, k=0, j=1; i<num_teams; i++) {
+    if (i % 2 === 0) {
+      indices[i] = k;
+      k++;
+    }
+    else {
+      indices[i] = num_teams-j;
+      j++;
+    }   
+  }
+
+  for (let w=0; w<num_weeks; w++) {
+    let matches: Matchup[] = [];
+    let num_matches = num_teams / 2;
+    let m = 0;
+
+    let h_ind = indices[0];
+    let a_ind = indices[1];
+    let i = 0;
+    while (m < num_matches) {
+      matches[m] = {
+        homeTeam: teams[h_ind!]?.id!,
+        awayTeam: teams[a_ind!]?.id!
+      }
+      //console.log(`home team: ${h_ind} vs away team: ${a_ind}`);
+      i += 2;
+      h_ind = indices[i];
+      a_ind = indices[i+1];
+      m += 1;
+    }
+    // edit indices based on berger algorithm - https://en.wikipedia.org/wiki/Round-robin_tournament#Scheduling_algorithm
+    for (let i=0; i < indices.length; i++) {
+      if (indices[i] !== num_teams-1) {
+        indices[i] = indices[i]! + (num_teams/2) >= (num_teams-1) ? 
+          indices[i]! + (num_teams/2) - (num_teams-1) : 
+          indices[i]! + (num_teams/2);
+      }
+    }
+    // add mathups for this week to schedule
+    schedule[w] = matches;
+  }
+  return schedule;
 }
 
 

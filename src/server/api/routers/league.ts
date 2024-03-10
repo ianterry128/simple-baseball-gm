@@ -36,6 +36,7 @@ export const leagueRouter = createTRPCRouter({
           classExp: z.number(),
           classLvl: z.number(),
           teamId: z.string(),
+          focusStat: z.number(),
         }).array(),
         leagueId: z.string(),
       }).array(),
@@ -69,6 +70,7 @@ export const leagueRouter = createTRPCRouter({
     })), */
       myTeamId: z.string(),
       myTeamName: z.string(),
+      season: z.number(),
       week: z.number(),
       scheduleJson: z.record(z.string(), z.object({ // use string type instead of number for key: https://github.com/colinhacks/zod?tab=readme-ov-file#record-key-type
         homeTeam: z.string(),
@@ -78,7 +80,7 @@ export const leagueRouter = createTRPCRouter({
       const _teamsJson = input.teamsJson as Prisma.JsonArray;
       //const _scheduleJson = input.scheduleJson as Prisma.JsonArray;
       const league = await ctx.db.league.create({
-        data: { id: input.id, name: input.name, teamsJson: _teamsJson, myTeamId: input.myTeamId, myTeamName: input.myTeamName, week: input.week, scheduleJson: input.scheduleJson, userId: ctx.session.user.id },
+        data: { id: input.id, name: input.name, teamsJson: _teamsJson, myTeamId: input.myTeamId, myTeamName: input.myTeamName, season: input.season, week: input.week, scheduleJson: input.scheduleJson, userId: ctx.session.user.id },
       });
       return league;
     }),

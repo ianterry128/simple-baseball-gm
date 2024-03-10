@@ -27,6 +27,7 @@ export const playerRouter = createTRPCRouter({
       classExp: z.number(),
       classLvl: z.number(),
       teamId: z.string(),
+      focusStat: z.number()
     }))
     .mutation(async ({ ctx, input }) => {
       const player = await ctx.db.player.create({
@@ -49,6 +50,7 @@ export const playerRouter = createTRPCRouter({
           classExp: input.classExp,
           classLvl: input.classLvl,
           teamId: input.teamId,
+          focusStat: input.focusStat
          },
       });
 
