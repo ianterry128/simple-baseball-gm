@@ -31,7 +31,27 @@ interface PlayerStateStruct {
     level: number,
     classExp: number,
     classLvl: number,
-    focusStat: StatFocus // StatFocus enum
+    focusStat: StatFocus, // StatFocus enum
+    stats_season: playerMatchStats,
+    stats_career: playerMatchStats,
+}
+interface playerMatchStats {
+  at_bats: number,
+  runs: number,
+  walks: number,
+  hits: number,
+  doubles: number,
+  triples: number,
+  home_runs: number,
+  rbi: number,
+  strike_outs: number,
+  errors: number,
+  assists: number,
+  putouts: number,
+  k: number,
+  walks_allowed: number,
+  ip: number,
+  runs_allowed: number
 }
 
 /**
@@ -262,7 +282,43 @@ export default function Home() {
           level: 0,
           classExp: 0,
           classLvl: 0, 
-          focusStat: 0
+          focusStat: 0,
+          stats_season: {
+            at_bats: 0,
+            runs: 0,
+            walks: 0,
+            hits: 0,
+            doubles: 0,
+            triples: 0,
+            home_runs: 0,
+            rbi: 0,
+            strike_outs: 0,
+            errors: 0,
+            assists: 0,
+            putouts: 0,
+            k: 0,
+            walks_allowed: 0,
+            ip: 0,
+            runs_allowed: 0  
+          },
+          stats_career: {
+            at_bats: 0,
+            runs: 0,
+            walks: 0,
+            hits: 0,
+            doubles: 0,
+            triples: 0,
+            home_runs: 0,
+            rbi: 0,
+            strike_outs: 0,
+            errors: 0,
+            assists: 0,
+            putouts: 0,
+            k: 0,
+            walks_allowed: 0,
+            ip: 0,
+            runs_allowed: 0  
+          },
         }
         const classesProclivities: {[key: string]: Proclivity} = {
           '1B': proclivitiesArr[Math.floor(Math.random() * 6)]!,
@@ -454,7 +510,43 @@ export default function Home() {
             classExp: item.classExp,
             classLvl: item.classLvl,
             teamId: v.id,
-            focusStat: item.focusStat
+            focusStat: item.focusStat,
+            stats_season: {
+              at_bats: 0,
+              runs: 0,
+              walks: 0,
+              hits: 0,
+              doubles: 0,
+              triples: 0,
+              home_runs: 0,
+              rbi: 0,
+              strike_outs: 0,
+              errors: 0,
+              assists: 0,
+              putouts: 0,
+              k: 0,
+              walks_allowed: 0,
+              ip: 0,
+              runs_allowed: 0,
+            },
+            stats_career: {
+              at_bats: 0,
+              runs: 0,
+              walks: 0,
+              hits: 0,
+              doubles: 0,
+              triples: 0,
+              home_runs: 0,
+              rbi: 0,
+              strike_outs: 0,
+              errors: 0,
+              assists: 0,
+              putouts: 0,
+              k: 0,
+              walks_allowed: 0,
+              ip: 0,
+              runs_allowed: 0,
+            }
           }
         }),
         leagueId: newLeague.id

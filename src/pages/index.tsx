@@ -47,7 +47,9 @@ interface PlayerStateStruct {
     level: number,
     classExp: number,
     classLvl: number,
-    focusStat: StatFocus // StatFocus enum
+    focusStat: StatFocus, // StatFocus enum
+    stats_season: playerMatchStats,
+    stats_career: playerMatchStats,
 }
 
 /**
@@ -979,6 +981,12 @@ function exhibition(team_home:TeamStateStruct, team_away:TeamStateStruct): Match
         if (currentInning >= 5) {
           _logContents.push(`The game ends early due to the Mercy Rule.\n`)
           _logContents.push(`The Home Team ${team_home.name} win!!!\n`)
+          if (isMyTeam_Home) { // increment pitcher's innings pitched
+            _playerMatchStats[home_lineup[home_p_index]!.id]!.ip = currentInning;
+          }
+          else if (isMyTeam_Away) {
+            _playerMatchStats[away_lineup[away_p_index]!.id]!.ip = currentInning;
+          }
           return {home_win:true, player_matchStats:_playerMatchStats};
         }
       }
@@ -986,6 +994,12 @@ function exhibition(team_home:TeamStateStruct, team_away:TeamStateStruct): Match
         if (currentInning >= 5) {
           _logContents.push(`The game ends early due to the Mercy Rule.\n`)
           _logContents.push(`The Away Team ${team_away.name} win!!!\n`)
+          if (isMyTeam_Home) { // increment pitcher's innings pitched
+            _playerMatchStats[home_lineup[home_p_index]!.id]!.ip = currentInning;
+          }
+          else if (isMyTeam_Away) {
+            _playerMatchStats[away_lineup[away_p_index]!.id]!.ip = currentInning;
+          }
           return {home_win:false, player_matchStats:_playerMatchStats};
         }
       }
@@ -994,6 +1008,12 @@ function exhibition(team_home:TeamStateStruct, team_away:TeamStateStruct): Match
         _num_innings += 1;
       }
       currentInning++;
+    }
+    if (isMyTeam_Home) { // increment pitcher's innings pitched
+      _playerMatchStats[home_lineup[home_p_index]!.id]!.ip = currentInning;
+    }
+    else if (isMyTeam_Away) {
+      _playerMatchStats[away_lineup[away_p_index]!.id]!.ip = currentInning;
     }
     //for (const key_id in _playerMatchStats) {
      // _playerMatchStats[key_id]!.at_bats = _playerMatchStats[key_id]?.hits! + _playerMatchStats[key_id]?.strike_outs!;
@@ -1479,41 +1499,62 @@ function TeamInfoView({MyTeamIndex} : {MyTeamIndex: number}) {
               <th className="px-2 bg-amber-100">HR</th>
               <th className="px-2 bg-amber-100">RBI</th>
               <th className="px-2 bg-amber-100">BB</th>
-              <th className="px-2 bg-amber-100">SO</th>
+              <th className="px-2 bg-amber-100 border-r-2">SO</th>
+              <th className="px-2 bg-amber-100">AVG</th>
+              <th className="px-2 bg-amber-100">OBP</th>
+              <th className="px-2 bg-amber-100">SLG</th>
+              <th className="px-2 bg-amber-100 border-r-2">OPS</th>
               <th className="px-2 bg-blue-100">ERR</th>
               <th className="px-2 bg-blue-100">A</th>
               <th className="px-2 bg-blue-100 border-r-2">PO</th>
               <th className="px-2 bg-red-100">IP</th>
               <th className="px-2 bg-red-100">BB</th>
               <th className="px-2 bg-red-100">K</th>
-              <th className="px-2 bg-red-100">RA</th>
+              <th className="px-2 bg-red-100 border-r-2">RA</th>
+              <th className="px-2 bg-red-100">ERA</th>
+              <th className="px-2 bg-red-100">K/9</th>
             </tr>
           </thead>
           <tbody>
             {
               gameData.teams[MyTeamIndex]?.playersJson.map((value, index) => {
                 // get stats corresponding to this player
-                let _matchStats: playerMatchStats = lastMatchSimResults.player_matchStats[value.id]!
+                const average = parseFloat((value.stats_season.hits / (value.stats_season.at_bats - value.stats_season.walks)).toFixed(3)).toFixed(3).toString().substring(1);
+                const obp = parseFloat(((value.stats_season.hits + value.stats_season.walks) / (value.stats_season.at_bats + value.stats_season.walks)).toFixed(3)).toFixed(3).toString().substring(1);
+                const slg = parseFloat((((value.stats_season.hits - value.stats_season.doubles - value.stats_season.triples - value.stats_season.home_runs) 
+                  + (value.stats_season.doubles * 2) + (value.stats_season.triples * 3) + (value.stats_season.home_runs * 4)) 
+                  / (value.stats_season.at_bats - value.stats_season.walks)).toFixed(3)).toFixed(3).toString().substring(1);
+                const ops = parseFloat((parseFloat(obp) + parseFloat(slg)).toFixed(3)).toFixed(3);
+                const era = parseFloat(((value.stats_season.runs_allowed * 9) / value.stats_season.ip).toFixed(2)).toFixed(2).toString();
+                const k_9 = parseFloat(((value.stats_season.k * 9) / value.stats_season.ip).toFixed(2)).toFixed(2).toString();
+                //const average = Math.round((value.stats_season.hits / value.stats_season.at_bats) * 1000) / 1000;
+
                 return (
                   <tr key={value.id} className="even:bg-green-200 odd:bg-gray-50 hover:bg-black hover:bg-opacity-1 hover:text-gray-100 text-center">
                     <td className="bg-opacity-50">{value.name}</td>
                     <td className="bg-opacity-50 border-r-2">{value.class}</td>
-                    <td className="bg-amber-50 bg-opacity-50">TODO: show cumulative at bats</td>
-                    <td className="bg-amber-50 bg-opacity-50">TODO: show cumulative runs</td>
-                    <td className="bg-amber-50 bg-opacity-50">TODO: show cumulative stats</td>
-                    <td className="bg-amber-50 bg-opacity-50">TODO: show cumulative stats</td>
-                    <td className="bg-amber-50 bg-opacity-50">TODO: show cumulative stats</td>
-                    <td className="bg-amber-50 bg-opacity-50">TODO: show cumulative stats</td>
-                    <td className="bg-amber-50 bg-opacity-50">TODO: show cumulative stats</td>
-                    <td className="bg-amber-50 bg-opacity-50">TODO: show cumulative stats</td>
-                    <td className="bg-amber-50 bg-opacity-50 border-r-2">TODO: show cumulative stats</td>
-                    <td className="bg-blue-50 bg-opacity-50">TODO: show cumulative stats</td>
-                    <td className="bg-blue-50 bg-opacity-50">TODO: show cumulative stats</td>
-                    <td className="bg-blue-50 bg-opacity-50 border-r-2">TODO: show cumulative stats</td>
-                    <td className="bg-red-50 bg-opacity-50">TODO: show cumulative stats</td>
-                    <td className="bg-red-50 bg-opacity-50">TODO: show cumulative stats</td>
-                    <td className="bg-red-50 bg-opacity-50">TODO: show cumulative stats</td>
-                    <td className="bg-red-50 bg-opacity-50">TODO: show cumulative stats</td>
+                    <td className="bg-amber-50 bg-opacity-50">{value.stats_season.at_bats}</td>
+                    <td className="bg-amber-50 bg-opacity-50">{value.stats_season.runs}</td>
+                    <td className="bg-amber-50 bg-opacity-50">{value.stats_season.hits}</td>
+                    <td className="bg-amber-50 bg-opacity-50">{value.stats_season.doubles}</td>
+                    <td className="bg-amber-50 bg-opacity-50">{value.stats_season.triples}</td>
+                    <td className="bg-amber-50 bg-opacity-50">{value.stats_season.home_runs}</td>
+                    <td className="bg-amber-50 bg-opacity-50">{value.stats_season.rbi}</td>
+                    <td className="bg-amber-50 bg-opacity-50">{value.stats_season.walks}</td>
+                    <td className="bg-amber-50 bg-opacity-50 border-r-2">{value.stats_season.strike_outs}</td>
+                    <td className="bg-amber-50 bg-opacity-50">{average}</td>
+                    <td className="bg-amber-50 bg-opacity-50">{obp}</td>
+                    <td className="bg-amber-50 bg-opacity-50">{slg}</td>
+                    <td className="bg-amber-50 bg-opacity-50 border-r-2">{ops}</td>
+                    <td className="bg-blue-50 bg-opacity-50">{value.stats_season.errors}</td>
+                    <td className="bg-blue-50 bg-opacity-50">{value.stats_season.assists}</td>
+                    <td className="bg-blue-50 bg-opacity-50 border-r-2">{value.stats_season.putouts}</td>
+                    <td className="bg-red-50 bg-opacity-50">{value.stats_season.ip}</td>
+                    <td className="bg-red-50 bg-opacity-50">{value.stats_season.walks_allowed}</td>
+                    <td className="bg-red-50 bg-opacity-50">{value.stats_season.k}</td>
+                    <td className="bg-red-50 bg-opacity-50 border-r-2">{value.stats_season.runs_allowed}</td>
+                    <td className="bg-red-50 bg-opacity-50">{era}</td>
+                    <td className="bg-red-50 bg-opacity-50">{k_9}</td>
                   </tr>
                 )
               })
@@ -1529,7 +1570,6 @@ function PostGameView({MyTeamIndex} : {MyTeamIndex: number}) {
 
   // did my team win? Was opponent team stronger or weaker?
   let didWin: boolean = false;
-  let strongerTeam: boolean = false;
   let runningLevelSum = 0;
   for (let i=0; i<gameData.teams[MyTeamIndex]!.playersJson.length; i++) {
     runningLevelSum += gameData.teams[MyTeamIndex]!.playersJson[i]!.level;
@@ -1610,28 +1650,28 @@ function PostGameView({MyTeamIndex} : {MyTeamIndex: number}) {
                  exp_show = preGamePlayerStats[index]!.experience
                 }
                 
-                /**
-                  let str_to_show = (players_copy[index]!.strength > value.strength) ? players_copy[index]!.strength : value.strength;
-                  let str_className_string = (players_copy[index]!.strength > value.strength) ? "px-2 text-green-300" : "px-2";
-                  let spd_to_show = (players_copy[index]!.speed > value.speed) ? players_copy[index]!.speed : value.speed;
-                  let spd_className_string = (players_copy[index]!.speed > value.speed) ? "px-2 text-green-300" : "px-2";
-                  let prec_to_show = (players_copy[index]!.precision > value.precision) ? players_copy[index]!.precision : value.precision;
-                  let prec_className_string = (players_copy[index]!.precision > value.precision) ? "px-2 text-green-300" : "px-2";
-                  let con_to_show = (players_copy[index]!.contact > value.contact) ? players_copy[index]!.contact : value.contact;
-                  let con_className_string = (players_copy[index]!.contact > value.contact) ? "px-2 text-green-300" : "px-2";
-  
-                  let lvl_to_show = (players_copy[index]!.level > value.level) ? players_copy[index]!.level : value.level;
-                  let lvl_className_string = (players_copy[index]!.level > value.level) ? "px-2 text-green-300" : "px-2";
-                */
+                
+                let str_to_show = (preGamePlayerStats[index]!.strength < value.strength) ? `${inc_str}` : ``;
+                let str_className_string = (preGamePlayerStats[index]!.strength < value.strength) ? "px-2 text-green-500 font-bold" : "px-2";
+                let spd_to_show = (preGamePlayerStats[index]!.speed < value.speed) ? `+${inc_spd}` : ``;
+                let spd_className_string = (preGamePlayerStats[index]!.speed < value.speed) ? "px-2 text-green-500 font-bold" : "px-2";
+                let prec_to_show = (preGamePlayerStats[index]!.precision < value.precision) ? `+${inc_prec}` : ``;
+                let prec_className_string = (preGamePlayerStats[index]!.precision < value.precision) ? "px-2 text-green-500 font-bold" : "px-2";
+                let con_to_show = (preGamePlayerStats[index]!.contact < value.contact) ? `+${inc_con}` : ``;
+                let con_className_string = (preGamePlayerStats[index]!.contact < value.contact) ? "px-2 text-green-500 font-bold" : "px-2";
+
+                let lvl_to_show = (preGamePlayerStats[index]!.level < value.level) ? `+${inc_lvl}` : ``;
+                let lvl_className_string = (preGamePlayerStats[index]!.level < value.level) ? "px-2 text-green-500 font-bold" : "px-2";
+                
                 return (
                   <tr key={value.id} className="even:bg-green-200 odd:bg-gray-50 hover:bg-blue-600 hover:text-gray-50 text-center">
                     <td className="px-2">{value.name}</td>
                     <td className="px-2">{value.class}</td>
-                    <td className="px-2">{value.strength} +{inc_str}</td>
-                    <td className="px-2">{value.speed} +{inc_spd}</td>
-                    <td className="px-2">{value.precision} +{inc_prec}</td>
-                    <td className="px-2">{value.contact} +{inc_con}</td>
-                    <td className="px-2">{value.level} +{inc_lvl}</td>
+                    <td className={str_className_string}>{value.strength}<sup>{str_to_show}</sup></td>
+                    <td className={spd_className_string}>{value.speed}<sup>{spd_to_show}</sup></td>
+                    <td className={prec_className_string}>{value.precision}<sup>{prec_to_show}</sup></td>
+                    <td className={con_className_string}>{value.contact}<sup>{con_to_show}</sup></td>
+                    <td className={lvl_className_string}>{value.level}<sup>{lvl_to_show}</sup></td>
                     <td className="px-2">{value.age}</td>
                     <td className="px-2">{exp_gained}</td>
                     <td className="px-2">{value.experience}</td>
@@ -1804,6 +1844,43 @@ function TopBar() {
               for (let i=0; i<players_copy.length!; i++) {
                 //let _matchStats: playerMatchStats = lastMatchSimResults.player_matchStats[players_copy[i]!.id]!;
                 let _matchStats: playerMatchStats = _results.player_matchStats[players_copy[i]!.id]!;
+                // add performance stats to player season stats and career stats
+                // season stats
+                players_copy[i]!.stats_season.at_bats += _matchStats.at_bats;
+                players_copy[i]!.stats_season.runs += _matchStats.runs;
+                players_copy[i]!.stats_season.walks += _matchStats.walks;
+                players_copy[i]!.stats_season.hits += _matchStats.hits;
+                players_copy[i]!.stats_season.doubles += _matchStats.doubles;
+                players_copy[i]!.stats_season.triples += _matchStats.triples;
+                players_copy[i]!.stats_season.home_runs += _matchStats.home_runs;
+                players_copy[i]!.stats_season.rbi += _matchStats.rbi;
+                players_copy[i]!.stats_season.strike_outs += _matchStats.strike_outs;
+                players_copy[i]!.stats_season.errors += _matchStats.errors;
+                players_copy[i]!.stats_season.assists += _matchStats.assists;
+                players_copy[i]!.stats_season.putouts += _matchStats.putouts;
+                players_copy[i]!.stats_season.k += _matchStats.k;
+                players_copy[i]!.stats_season.walks_allowed += _matchStats.walks_allowed;
+                players_copy[i]!.stats_season.ip += _matchStats.ip;
+                players_copy[i]!.stats_season.runs_allowed += _matchStats.runs_allowed;
+                // career stats
+                players_copy[i]!.stats_career.at_bats += _matchStats.at_bats;
+                players_copy[i]!.stats_career.runs += _matchStats.runs;
+                players_copy[i]!.stats_career.walks += _matchStats.walks;
+                players_copy[i]!.stats_career.hits += _matchStats.hits;
+                players_copy[i]!.stats_career.doubles += _matchStats.doubles;
+                players_copy[i]!.stats_career.triples += _matchStats.triples;
+                players_copy[i]!.stats_career.home_runs += _matchStats.home_runs;
+                players_copy[i]!.stats_career.rbi += _matchStats.rbi;
+                players_copy[i]!.stats_career.strike_outs += _matchStats.strike_outs;
+                players_copy[i]!.stats_career.errors += _matchStats.errors;
+                players_copy[i]!.stats_career.assists += _matchStats.assists;
+                players_copy[i]!.stats_career.putouts += _matchStats.putouts;
+                players_copy[i]!.stats_career.k += _matchStats.k;
+                players_copy[i]!.stats_career.walks_allowed += _matchStats.walks_allowed;
+                players_copy[i]!.stats_career.ip += _matchStats.ip;
+                players_copy[i]!.stats_career.runs_allowed += _matchStats.runs_allowed;
+
+                // calculate experience and level ups
                 const exp_gained: number = Math.round((_matchStats.at_bats + _matchStats.hits + _matchStats.doubles + (_matchStats.triples*2) + (_matchStats.home_runs*3) +
                   _matchStats.rbi + _matchStats.runs + _matchStats.errors + _matchStats.assists + _matchStats.putouts) * multiplier);
                 let exp_needed: number = getExperienceToNextLevel(players_copy[i]!.level, players_copy[i]!.experience);
@@ -1827,31 +1904,6 @@ function TopBar() {
               wins: gameData.teams[i]?.wins! + ((myTeamWin) ? 1 : 0),
               playersJson: players_copy // TODO: update level, stats, exp
               })
-                  
-              /**
-                setGameData({
-                  leagueId: gameData.leagueId,
-                  leagueName: gameData.leagueName,
-                  myTeamId: gameData.myTeamId,
-                  season: gameData.season,
-                  week: gameData.week,
-                  phase: gameData.phase,
-                  teams: temp_teams, 
-                  schedule: gameData.schedule,
-                  fielderHexPos: gameData.fielderHexPos
-                })
-              */
-              /////////////////////////////// end from postgameview
-
-              /**
-                temp_teams.push({
-                  id: gameData.teams[i]?.id!,
-                  name: gameData.teams[i]?.name!,
-                  gamesPlayed: gameData.teams[i]?.gamesPlayed! + 1,
-                  wins: gameData.teams[i]?.wins! + ((myTeamWin) ? 1 : 0),
-                  playersJson: gameData.teams[i]?.playersJson! // TODO: update level, stats, exp
-                })
-              */
             }
             else if (gameData.teams[i]?.id === opp_team.id) {
               temp_teams.push({
