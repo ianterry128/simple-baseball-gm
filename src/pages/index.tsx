@@ -974,6 +974,21 @@ function exhibition(team_home:TeamStateStruct, team_away:TeamStateStruct): Match
       }
       outCount = 0;
       basesOccupied = {first:undefined, second:undefined, third:undefined};
+      // Mercy rule (10 runs and at least 5 innings played by trailing team)
+      if (homeScore - 10 >= awayScore) {
+        if (currentInning >= 5) {
+          _logContents.push(`The game ends early due to the Mercy Rule.\n`)
+          _logContents.push(`The Home Team ${team_home.name} win!!!\n`)
+          return {home_win:true, player_matchStats:_playerMatchStats};
+        }
+      }
+      if (awayScore - 10 >= homeScore) {
+        if (currentInning >= 5) {
+          _logContents.push(`The game ends early due to the Mercy Rule.\n`)
+          _logContents.push(`The Away Team ${team_away.name} win!!!\n`)
+          return {home_win:false, player_matchStats:_playerMatchStats};
+        }
+      }
       // play extra innings if game is tied
       if (currentInning === _num_innings && homeScore === awayScore) {
         _num_innings += 1;
@@ -1247,7 +1262,7 @@ function TeamDisplayLineupChangeTable({leagueInfoProp, teamIndexProp} : {leagueI
     })
   }
 
-  const captionText: string = teamIndexProp === 0 ? "My Team: " : "Opponent Team: "
+  const captionText: string = "My Team: " 
   return (
       <div className="overflow-x-auto">
         <table className="table-auto border-2 border-spacing-2 p-8">
