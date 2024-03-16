@@ -27,6 +27,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { library } from '@fortawesome/fontawesome-svg-core'
 import { faHouse, faArrowUp, faArrowLeft, faArrowRight, faArrowDown } from '@fortawesome/free-solid-svg-icons'
 import { createSchedule } from "./new_league";
+import { isWeakMap } from "util/types";
 library.add(faHouse, faArrowUp, faArrowLeft, faArrowRight, faArrowDown)
 
 interface PlayerStateStruct {
@@ -148,7 +149,8 @@ interface Hex {
 type PitchResults = {
   outCounter: number,
   pitchLogContents: string[],
-  hitLine: Hex[]
+  hitLine: Hex[],
+  isWeakContact: boolean,
 }
 
 type BasesOccupied = {
@@ -510,7 +512,7 @@ function exhibition(team_home:TeamStateStruct, team_away:TeamStateStruct): Match
     let awayScore = 0;
     let home_bat_cur = 0;
     let away_bat_cur = 0;
-    let pitchResults: PitchResults = {outCounter:0, pitchLogContents:[], hitLine:[]};
+    let pitchResults: PitchResults = {outCounter:0, pitchLogContents:[], hitLine:[], isWeakContact:false};
     let basesOccupied: BasesOccupied = {first:undefined, second:undefined, third:undefined};
     let fieldActionResults: FieldActionResults = {outCounter:0, fieldActionLogContents:[], baseResults: basesOccupied, runsScored: 0};
     let _playerMatchStats: {[key: string]: playerMatchStats} = {};
@@ -585,7 +587,7 @@ function exhibition(team_home:TeamStateStruct, team_away:TeamStateStruct): Match
       while (outCount < 3) {
         _logContents.push(`${away_lineup[away_bat_cur]?.name} steps up to the plate...\n`);
         
-        pitchResults = pitch(team_home.playersJson[home_p_index]!, team_away.playersJson[away_bat_cur]!);
+        pitchResults = isMyTeam_Home ? pitch(team_home.playersJson[home_p_index]!, team_away.playersJson[away_bat_cur]!, true, gameDataProp) : pitch(team_home.playersJson[home_p_index]!, team_away.playersJson[away_bat_cur]!, false, gameDataProp);
         pitchResults.pitchLogContents.forEach((v) => { // log pitch log contents
           _logContents.push(v);
           if (v.includes('strikes out')) {
@@ -612,10 +614,10 @@ function exhibition(team_home:TeamStateStruct, team_away:TeamStateStruct): Match
         // What happens after a hit? (or miss) (or walk)
         if (pitchResults.hitLine.length > 0) { // if hitline.length >1 then the ball was hit
           if (isMyTeam_Home) { //TODO: can just call this in one place with the boolean parameter as isMyTeam_Home
-            fieldActionResults = fieldAction(away_lineup[away_bat_cur]!, home_lineup, pitchResults.hitLine, basesOccupied, outCount, gameDataProp, true) // input batter, field team, hitline,
+            fieldActionResults = fieldAction(away_lineup[away_bat_cur]!, home_lineup, pitchResults.hitLine, basesOccupied, outCount, gameDataProp, true, pitchResults.isWeakContact) // input batter, field team, hitline,
           }
           else if (!isMyTeam_Home) {
-            fieldActionResults = fieldAction(away_lineup[away_bat_cur]!, home_lineup, pitchResults.hitLine, basesOccupied, outCount, gameDataProp, false) // input batter, field team, hitline,
+            fieldActionResults = fieldAction(away_lineup[away_bat_cur]!, home_lineup, pitchResults.hitLine, basesOccupied, outCount, gameDataProp, false, pitchResults.isWeakContact) // input batter, field team, hitline,
           }
           // output outcount, scoreToAdd, baseRanTo
           outCount += fieldActionResults.outCounter - outCount;
@@ -660,33 +662,33 @@ function exhibition(team_home:TeamStateStruct, team_away:TeamStateStruct): Match
             if (isMyTeam_Home) {
               if (v.includes('thrown out at 1st')) { 
                 // increment assists
-                const fielder_class_name: string[] = arr[index-1]!.split(' ', 1); // gets the fielder class and name from the previous line
-                const fielder_ind = getPlayerIndex(fielder_class_name[0]?.substring(1) as FieldPositions, team_home);
+                const fielder_class_name: string[] = arr[index-1]!.split(' ', 2); // gets the fielder class and name from the previous line
+                const fielder_ind = getPlayerIndex(fielder_class_name[0] as FieldPositions, team_home);
                 _playerMatchStats[home_lineup[fielder_ind]!.id]!.assists += 1;
                 // increment putouts
                 let po_ind = getPlayerIndex('1B', team_home);
-                if (fielder_class_name[0]?.substring(1) === '1B') {
+                if (fielder_class_name[0] === '1B') {
                   po_ind = getPlayerIndex('P', team_home); // if 1B fielded the ball, then P covered first base
                 }
                 _playerMatchStats[home_lineup[po_ind]!.id]!.putouts += 1;
               }
               if (v.includes('thrown out at 2nd')) { 
                 // increment assists
-                const fielder_class_name: string[] = arr[index-1]!.split(' ', 1); // gets the fielder class and name from the previous line
-                const fielder_ind = getPlayerIndex(fielder_class_name[0]?.substring(1) as FieldPositions, team_home);
+                const fielder_class_name: string[] = arr[index-1]!.split(' ', 2); // gets the fielder class and name from the previous line
+                const fielder_ind = getPlayerIndex(fielder_class_name[0] as FieldPositions, team_home);
                 _playerMatchStats[home_lineup[fielder_ind]!.id]!.assists += 1;
                 // increment putouts
                 // TODO: PO could be either 2B or SS depending on who made the assist
                 let po_ind = getPlayerIndex('2B', team_home);
-                if (fielder_class_name[0]?.substring(1) === '1B' || fielder_class_name[0]?.substring(1) === '2B' || fielder_class_name[0]?.substring(1) === 'RF') {
+                if (fielder_class_name[0] === '1B' || fielder_class_name[0] === '2B' || fielder_class_name[0] === 'RF') {
                   po_ind = getPlayerIndex('SS', team_home); // if 1B or 2B or RF made the fielded the ball, then SS covered second base
                 }
                 _playerMatchStats[home_lineup[po_ind]!.id]!.putouts += 1;
               }
               if (v.includes('out at 3rd')) { 
                 // increment assists
-                const fielder_class_name: string[] = arr[index-1]!.split(' ', 1); // gets the fielder class and name from the previous line
-                const fielder_ind = getPlayerIndex(fielder_class_name[0]?.substring(1) as FieldPositions, team_home);
+                const fielder_class_name: string[] = arr[index-1]!.split(' ', 2); // gets the fielder class and name from the previous line
+                const fielder_ind = getPlayerIndex(fielder_class_name[0] as FieldPositions, team_home);
                 _playerMatchStats[home_lineup[fielder_ind]!.id]!.assists += 1;
                 // increment putouts
                 const po_ind = getPlayerIndex('3B', team_home);
@@ -694,8 +696,8 @@ function exhibition(team_home:TeamStateStruct, team_away:TeamStateStruct): Match
               }
               if (v.includes('out at home')) { 
                 // increment assists
-                const fielder_class_name: string[] = arr[index-1]!.split(' ', 1); // gets the fielder class and name from the previous line
-                const fielder_ind = getPlayerIndex(fielder_class_name[0]?.substring(1) as FieldPositions, team_home);
+                const fielder_class_name: string[] = arr[index-1]!.split(' ', 2); // gets the fielder class and name from the previous line
+                const fielder_ind = getPlayerIndex(fielder_class_name[0] as FieldPositions, team_home);
                 _playerMatchStats[home_lineup[fielder_ind]!.id]!.assists += 1;
                 // increment putouts
                 const po_ind = getPlayerIndex('C', team_home);
@@ -703,44 +705,44 @@ function exhibition(team_home:TeamStateStruct, team_away:TeamStateStruct): Match
               }
               if (v.includes('thrown out at base 1')) {
                 // increment assists
-                const fielder_class_name: string[] = arr[index-1]!.split(' ', 1); // gets the fielder class and name from the previous line
-                const fielder_ind = getPlayerIndex(fielder_class_name[0]?.substring(1) as FieldPositions, team_home);
+                const fielder_class_name: string[] = arr[index-1]!.split(' ', 2); // gets the fielder class and name from the previous line
+                const fielder_ind = getPlayerIndex(fielder_class_name[0] as FieldPositions, team_home);
                 _playerMatchStats[home_lineup[fielder_ind]!.id]!.assists += 1;
                 // increment putouts
                 let po_ind = getPlayerIndex('1B');
-                if (fielder_class_name[0]?.substring(1) === '1B') po_ind = getPlayerIndex('P', team_home);
+                if (fielder_class_name[0] === '1B') po_ind = getPlayerIndex('P', team_home);
                 _playerMatchStats[home_lineup[po_ind]!.id]!.putouts += 1;
               }
               if (v.includes('thrown out at base 2')) {
                 // increment assists
-                const fielder_class_name: string[] = arr[index-1]!.split(' ', 1); // gets the fielder class and name from the previous line
-                const fielder_ind = getPlayerIndex(fielder_class_name[0]?.substring(1) as FieldPositions, team_home);
+                const fielder_class_name: string[] = arr[index-1]!.split(' ', 2); // gets the fielder class and name from the previous line
+                const fielder_ind = getPlayerIndex(fielder_class_name[0] as FieldPositions, team_home);
                 _playerMatchStats[home_lineup[fielder_ind]!.id]!.assists += 1;
                 // increment putouts
                 let po_ind = getPlayerIndex('2B', team_home);
-                if (fielder_class_name[0]?.substring(1) === '1B' || fielder_class_name[0]?.substring(1) === '2B' || fielder_class_name[0]?.substring(1) === 'RF') {
+                if (fielder_class_name[0] === '1B' || fielder_class_name[0] === '2B' || fielder_class_name[0] === 'RF') {
                   po_ind = getPlayerIndex('SS', team_home);
                 }
                 _playerMatchStats[home_lineup[po_ind]!.id]!.putouts += 1;
               }
               if (v.includes('thrown out at base 3')) {
                 // increment assists
-                const fielder_class_name: string[] = arr[index-1]!.split(' ', 1); // gets the fielder class and name from the previous line
-                const fielder_ind = getPlayerIndex(fielder_class_name[0]?.substring(1) as FieldPositions, team_home);
+                const fielder_class_name: string[] = arr[index-1]!.split(' ', 2); // gets the fielder class and name from the previous line
+                const fielder_ind = getPlayerIndex(fielder_class_name[0] as FieldPositions, team_home);
                 _playerMatchStats[home_lineup[fielder_ind]!.id]!.assists += 1;
                 // increment putouts
                 let po_ind = getPlayerIndex('3B', team_home);
-                if (fielder_class_name[0]?.substring(1) === '3B') po_ind = getPlayerIndex('P', team_home);
+                if (fielder_class_name[0] === '3B') po_ind = getPlayerIndex('P', team_home);
                 _playerMatchStats[home_lineup[po_ind]!.id]!.putouts += 1;
               }
               if (v.includes('thrown out at base 4')) {
                 // increment assists
-                const fielder_class_name: string[] = arr[index-1]!.split(' ', 1); // gets the fielder class and name from the previous line
-                const fielder_ind = getPlayerIndex(fielder_class_name[0]?.substring(1) as FieldPositions, team_home);
+                const fielder_class_name: string[] = arr[index-1]!.split(' ', 2); // gets the fielder class and name from the previous line
+                const fielder_ind = getPlayerIndex(fielder_class_name[0] as FieldPositions, team_home);
                 _playerMatchStats[home_lineup[fielder_ind]!.id]!.assists += 1;
                 // increment putouts
                 let po_ind = getPlayerIndex('C', team_home);
-                if (fielder_class_name[0]?.substring(1) === 'C') po_ind = getPlayerIndex('P', team_home);
+                if (fielder_class_name[0] === 'C') po_ind = getPlayerIndex('P', team_home);
                 _playerMatchStats[home_lineup[po_ind]!.id]!.putouts += 1;
               }
             }  
@@ -785,7 +787,7 @@ function exhibition(team_home:TeamStateStruct, team_away:TeamStateStruct): Match
       while (outCount < 3) {
         _logContents.push(`${home_lineup[home_bat_cur]?.name} steps up to the plate...\n`)
         
-        pitchResults = pitch(team_away.playersJson[away_p_index]!, team_home.playersJson[home_bat_cur]!);
+        pitchResults = isMyTeam_Away ? pitch(team_away.playersJson[away_p_index]!, team_home.playersJson[home_bat_cur]!, true, gameDataProp) : pitch(team_away.playersJson[away_p_index]!, team_home.playersJson[home_bat_cur]!, false, gameDataProp);
         pitchResults.pitchLogContents.forEach((v) => { // log pitch log contents
           _logContents.push(v);
           if (v.includes('strikes out')) {
@@ -812,10 +814,10 @@ function exhibition(team_home:TeamStateStruct, team_away:TeamStateStruct): Match
         // What happens after a hit? (or miss)
         if (pitchResults.hitLine.length > 0) { // if hitline.length >1 then the ball was hit
           if (isMyTeam_Away) {
-            fieldActionResults = fieldAction(home_lineup[home_bat_cur]!, away_lineup, pitchResults.hitLine, basesOccupied, outCount, gameDataProp, true) // input batter, field team, hitline,
+            fieldActionResults = fieldAction(home_lineup[home_bat_cur]!, away_lineup, pitchResults.hitLine, basesOccupied, outCount, gameDataProp, true, pitchResults.isWeakContact) // input batter, field team, hitline,
           }
           else if (!isMyTeam_Away) {
-            fieldActionResults = fieldAction(home_lineup[home_bat_cur]!, away_lineup, pitchResults.hitLine, basesOccupied, outCount, gameDataProp, false) // input batter, field team, hitline,
+            fieldActionResults = fieldAction(home_lineup[home_bat_cur]!, away_lineup, pitchResults.hitLine, basesOccupied, outCount, gameDataProp, false, pitchResults.isWeakContact) // input batter, field team, hitline,
           }
           // output outcount, scoreToAdd, baseRanTo
           outCount += fieldActionResults.outCounter - outCount;
@@ -861,33 +863,33 @@ function exhibition(team_home:TeamStateStruct, team_away:TeamStateStruct): Match
             if (isMyTeam_Away) {
               if (v.includes('thrown out at 1st')) { 
                 // increment assists
-                const fielder_class_name: string[] = arr[index-1]!.split(' ', 1); // gets the fielder class and name from the previous line
-                const fielder_ind = getPlayerIndex(fielder_class_name[0]?.substring(1) as FieldPositions, team_away);
+                const fielder_class_name: string[] = arr[index-1]!.split(' ', 2); // gets the fielder class and name from the previous line
+                const fielder_ind = getPlayerIndex(fielder_class_name[0] as FieldPositions, team_away);
                 _playerMatchStats[away_lineup[fielder_ind]!.id]!.assists += 1;
                 // increment putouts
                 let po_ind = getPlayerIndex('1B', team_away);
-                if (fielder_class_name[0]?.substring(1) === '1B') {
+                if (fielder_class_name[0] === '1B') {
                   po_ind = getPlayerIndex('P', team_away); // if 1B fielded the ball, then P covered first base
                 }
                 _playerMatchStats[away_lineup[po_ind]!.id]!.putouts += 1;
               }
               if (v.includes('thrown out at 2nd')) { 
                 // increment assists
-                const fielder_class_name: string[] = arr[index-1]!.split(' ', 1); // gets the fielder class and name from the previous line
-                const fielder_ind = getPlayerIndex(fielder_class_name[0]?.substring(1) as FieldPositions, team_away);
+                const fielder_class_name: string[] = arr[index-1]!.split(' ', 2); // gets the fielder class and name from the previous line
+                const fielder_ind = getPlayerIndex(fielder_class_name[0] as FieldPositions, team_away);
                 _playerMatchStats[away_lineup[fielder_ind]!.id]!.assists += 1;
                 // increment putouts
                 // TODO: PO could be either 2B or SS depending on who made the assist
                 let po_ind = getPlayerIndex('2B', team_away);
-                if (fielder_class_name[0]?.substring(1) === '1B' || fielder_class_name[0]?.substring(1) === '2B' || fielder_class_name[0]?.substring(1) === 'RF') {
+                if (fielder_class_name[0] === '1B' || fielder_class_name[0] === '2B' || fielder_class_name[0] === 'RF') {
                   po_ind = getPlayerIndex('SS', team_away); // if 1B or 2B or RF made the fielded the ball, then SS covered second base
                 }
                 _playerMatchStats[away_lineup[po_ind]!.id]!.putouts += 1;
               }
               if (v.includes('out at 3rd')) { 
                 // increment assists
-                const fielder_class_name: string[] = arr[index-1]!.split(' ', 1); // gets the fielder class and name from the previous line
-                const fielder_ind = getPlayerIndex(fielder_class_name[0]?.substring(1) as FieldPositions, team_away);
+                const fielder_class_name: string[] = arr[index-1]!.split(' ', 2); // gets the fielder class and name from the previous line
+                const fielder_ind = getPlayerIndex(fielder_class_name[0] as FieldPositions, team_away);
                 _playerMatchStats[away_lineup[fielder_ind]!.id]!.assists += 1;
                 // increment putouts
                 const po_ind = getPlayerIndex('3B', team_away);
@@ -895,8 +897,8 @@ function exhibition(team_home:TeamStateStruct, team_away:TeamStateStruct): Match
               }
               if (v.includes('out at home')) { 
                 // increment assists
-                const fielder_class_name: string[] = arr[index-1]!.split(' ', 1); // gets the fielder class and name from the previous line
-                const fielder_ind = getPlayerIndex(fielder_class_name[0]?.substring(1) as FieldPositions, team_away);
+                const fielder_class_name: string[] = arr[index-1]!.split(' ', 2); // gets the fielder class and name from the previous line
+                const fielder_ind = getPlayerIndex(fielder_class_name[0] as FieldPositions, team_away);
                 _playerMatchStats[away_lineup[fielder_ind]!.id]!.assists += 1;
                 // increment putouts
                 const po_ind = getPlayerIndex('C', team_away);
@@ -904,44 +906,44 @@ function exhibition(team_home:TeamStateStruct, team_away:TeamStateStruct): Match
               }
               if (v.includes('thrown out at base 1')) {
                 // increment assists
-                const fielder_class_name: string[] = arr[index-1]!.split(' ', 1); // gets the fielder class and name from the previous line
-                const fielder_ind = getPlayerIndex(fielder_class_name[0]?.substring(1) as FieldPositions, team_away);
+                const fielder_class_name: string[] = arr[index-1]!.split(' ', 2); // gets the fielder class and name from the previous line
+                const fielder_ind = getPlayerIndex(fielder_class_name[0]as FieldPositions, team_away);
                 _playerMatchStats[away_lineup[fielder_ind]!.id]!.assists += 1;
                 // increment putouts
                 let po_ind = getPlayerIndex('1B', team_away);
-                if (fielder_class_name[0]?.substring(1) === '1B') po_ind = getPlayerIndex('P', team_away);
+                if (fielder_class_name[0] === '1B') po_ind = getPlayerIndex('P', team_away);
                 _playerMatchStats[away_lineup[po_ind]!.id]!.putouts += 1;
               }
               if (v.includes('thrown out at base 2')) {
                 // increment assists
-                const fielder_class_name: string[] = arr[index-1]!.split(' ', 1); // gets the fielder class and name from the previous line
-                const fielder_ind = getPlayerIndex(fielder_class_name[0]?.substring(1) as FieldPositions, team_away);
+                const fielder_class_name: string[] = arr[index-1]!.split(' ', 2); // gets the fielder class and name from the previous line
+                const fielder_ind = getPlayerIndex(fielder_class_name[0] as FieldPositions, team_away);
                 _playerMatchStats[away_lineup[fielder_ind]!.id]!.assists += 1;
                 // increment putouts
                 let po_ind = getPlayerIndex('2B', team_away);
-                if (fielder_class_name[0]?.substring(1) === '1B' || fielder_class_name[0]?.substring(1) === '2B' || fielder_class_name[0]?.substring(1) === 'RF') {
+                if (fielder_class_name[0] === '1B' || fielder_class_name[0] === '2B' || fielder_class_name[0] === 'RF') {
                   po_ind = getPlayerIndex('SS', team_away);
                 }
                 _playerMatchStats[away_lineup[po_ind]!.id]!.putouts += 1;
               }
               if (v.includes('thrown out at base 3')) {
                 // increment assists
-                const fielder_class_name: string[] = arr[index-1]!.split(' ', 1); // gets the fielder class and name from the previous line
-                const fielder_ind = getPlayerIndex(fielder_class_name[0]?.substring(1) as FieldPositions, team_away);
+                const fielder_class_name: string[] = arr[index-1]!.split(' ', 2); // gets the fielder class and name from the previous line
+                const fielder_ind = getPlayerIndex(fielder_class_name[0] as FieldPositions, team_away);
                 _playerMatchStats[away_lineup[fielder_ind]!.id]!.assists += 1;
                 // increment putouts
                 let po_ind = getPlayerIndex('3B', team_away);
-                if (fielder_class_name[0]?.substring(1) === '3B') po_ind = getPlayerIndex('P', team_away);
+                if (fielder_class_name[0] === '3B') po_ind = getPlayerIndex('P', team_away);
                 _playerMatchStats[away_lineup[po_ind]!.id]!.putouts += 1;
               }
               if (v.includes('thrown out at base 4')) {
                 // increment assists
-                const fielder_class_name: string[] = arr[index-1]!.split(' ', 1); // gets the fielder class and name from the previous line
-                const fielder_ind = getPlayerIndex(fielder_class_name[0]?.substring(1) as FieldPositions, team_away);
+                const fielder_class_name: string[] = arr[index-1]!.split(' ', 2); // gets the fielder class and name from the previous line
+                const fielder_ind = getPlayerIndex(fielder_class_name[0] as FieldPositions, team_away);
                 _playerMatchStats[away_lineup[fielder_ind]!.id]!.assists += 1;
                 // increment putouts
                 let po_ind = getPlayerIndex('C', team_away);
-                if (fielder_class_name[0]?.substring(1) === 'C') po_ind = getPlayerIndex('P', team_away);
+                if (fielder_class_name[0] === 'C') po_ind = getPlayerIndex('P', team_away);
                 _playerMatchStats[away_lineup[po_ind]!.id]!.putouts += 1;
               }
             }  
@@ -981,12 +983,6 @@ function exhibition(team_home:TeamStateStruct, team_away:TeamStateStruct): Match
         if (currentInning >= 5) {
           _logContents.push(`The game ends early due to the Mercy Rule.\n`)
           _logContents.push(`The Home Team ${team_home.name} win!!!\n`)
-          if (isMyTeam_Home) { // increment pitcher's innings pitched
-            _playerMatchStats[home_lineup[home_p_index]!.id]!.ip = currentInning;
-          }
-          else if (isMyTeam_Away) {
-            _playerMatchStats[away_lineup[away_p_index]!.id]!.ip = currentInning;
-          }
           return {home_win:true, player_matchStats:_playerMatchStats};
         }
       }
@@ -994,12 +990,6 @@ function exhibition(team_home:TeamStateStruct, team_away:TeamStateStruct): Match
         if (currentInning >= 5) {
           _logContents.push(`The game ends early due to the Mercy Rule.\n`)
           _logContents.push(`The Away Team ${team_away.name} win!!!\n`)
-          if (isMyTeam_Home) { // increment pitcher's innings pitched
-            _playerMatchStats[home_lineup[home_p_index]!.id]!.ip = currentInning;
-          }
-          else if (isMyTeam_Away) {
-            _playerMatchStats[away_lineup[away_p_index]!.id]!.ip = currentInning;
-          }
           return {home_win:false, player_matchStats:_playerMatchStats};
         }
       }
@@ -1007,13 +997,15 @@ function exhibition(team_home:TeamStateStruct, team_away:TeamStateStruct): Match
       if (currentInning === _num_innings && homeScore === awayScore) {
         _num_innings += 1;
       }
+      // increment pitcher's innings pitched
+      if (isMyTeam_Home) { 
+        _playerMatchStats[home_lineup[home_p_index]!.id]!.ip += 1;
+      }
+      else if (isMyTeam_Away) {
+        _playerMatchStats[away_lineup[away_p_index]!.id]!.ip += 1;
+      }
+
       currentInning++;
-    }
-    if (isMyTeam_Home) { // increment pitcher's innings pitched
-      _playerMatchStats[home_lineup[home_p_index]!.id]!.ip = currentInning;
-    }
-    else if (isMyTeam_Away) {
-      _playerMatchStats[away_lineup[away_p_index]!.id]!.ip = currentInning;
     }
     //for (const key_id in _playerMatchStats) {
      // _playerMatchStats[key_id]!.at_bats = _playerMatchStats[key_id]?.hits! + _playerMatchStats[key_id]?.strike_outs!;
@@ -1884,8 +1876,6 @@ function TopBar() {
                 const exp_gained: number = Math.round((_matchStats.at_bats + _matchStats.hits + _matchStats.doubles + (_matchStats.triples*2) + (_matchStats.home_runs*3) +
                   _matchStats.rbi + _matchStats.runs + _matchStats.errors + _matchStats.assists + _matchStats.putouts) * multiplier);
                 let exp_needed: number = getExperienceToNextLevel(players_copy[i]!.level, players_copy[i]!.experience);
-                console.log(`exp gained: ${exp_gained}`)
-                console.log(`exp needed: ${exp_needed}`)
                 if (exp_needed <= (exp_gained)) {
                   // level up
                   LevelUpPlayer(players_copy[i]!);
@@ -1938,7 +1928,7 @@ function TopBar() {
           className="transition-colors duration-200 hover:bg-green-400 
           bg-green-600 text-center text-white shadow-sm"
           onClick={() => { // TODO: Will this work?
-            console.log(`pregameplayerstats gainexp: ${preGamePlayerStats[0]!.experience}`)
+            //console.log(`pregameplayerstats gainexp: ${preGamePlayerStats[0]!.experience}`)
             setGameData({
               leagueId: gameData.leagueId,
               leagueName: gameData.leagueName,
@@ -1960,7 +1950,7 @@ function TopBar() {
           className="transition-colors duration-200 hover:bg-green-400 
           bg-green-600 text-center text-white shadow-sm"
           onClick={() => { // TODO: Will this work?
-            console.log(`pregameplayerstats save: ${preGamePlayerStats[0]!.experience}`)
+            //console.log(`pregameplayerstats save: ${preGamePlayerStats[0]!.experience}`)
             // save all team wins/losses
             // sim other team's games
             let temp_teams: TeamStateStruct[] = [];
@@ -1969,8 +1959,7 @@ function TopBar() {
               if (matchups[i]!.homeTeam !== gameData.myTeamId && matchups[i]!.awayTeam !== gameData.myTeamId) { // don't sim game if this was my team's game for that week (already simmed)
                 const team_home = getTeamById(matchups[i]!.homeTeam);
                 const team_away = getTeamById(matchups[i]!.awayTeam);
-                console.log(`home team: ${team_home?.name}`)
-                console.log(`away team: ${team_away?.name}`)
+
                 //const results: MatchSimResults = MatchSim(gameData, team_home!, team_away!, []);
                 const results: MatchSimResults = MatchSim(gameData, team_home!, team_away!, []);
                 temp_teams.push({
@@ -2217,7 +2206,7 @@ function getTeamByName(name: string, teams: TeamStateStruct[]) {
   return myTeam;
 }
 
-function pitch(pitcher: PlayerStateStruct, batter: PlayerStateStruct): PitchResults {
+function pitch(pitcher: PlayerStateStruct, batter: PlayerStateStruct, isMyTeamFielding: boolean, _gameData: GameDataStateStruct): PitchResults {
   const pitch_roll: number = Math.floor(Math.random() * (pitcher.precision - 1 + 1) + 1);
   const _con_roll: number = Math.floor(Math.random() * batter.contact + 1);
 
@@ -2225,12 +2214,14 @@ function pitch(pitcher: PlayerStateStruct, batter: PlayerStateStruct): PitchResu
   let _hitLineHex: Hex[] = [];
 
   let retStrings: string[] = [];
+
+  const weak_con_chance = Math.floor(Math.random()*100); // used to determine if pitch results in k or weak contact when contact roll is < pitch roll
   //log += `${pitcher.name} pitches with ${_prec_roll} precision...`
   retStrings.push(`${pitcher.name} pitches with ${pitch_roll} precision...\n`);
   if (pitch_roll <= Math.ceil(batter.level / 3)) {
     // this pitch is a ball -> WALK
     retStrings.push(`${pitcher.class} ${pitcher.name} walks the batter.\n`);
-    return {outCounter:0, pitchLogContents:retStrings, hitLine:[]}; // on WALK, outcounter = 0 and hitline is empty array
+    return {outCounter:0, pitchLogContents:retStrings, hitLine:[], isWeakContact:false}; // on WALK, outcounter = 0 and hitline is empty array
   }
   if (_con_roll >= pitch_roll) {
     //log += `with ${_con_roll} contact, ${batter.name} gets a hit!!!`
@@ -2301,13 +2292,87 @@ function pitch(pitcher: PlayerStateStruct, batter: PlayerStateStruct): PitchResu
         }
       }
     } 
-    return {outCounter:0, pitchLogContents:retStrings, hitLine:_hitLineHex};
+    return {outCounter:0, pitchLogContents:retStrings, hitLine:_hitLineHex, isWeakContact:false};
+  }
+  else if (_con_roll < pitch_roll && weak_con_chance < 80){ // currently, 20% chance of weak contact instead of strike-out
+    let fielderHexPos: Record<FieldPositions, Position> = {
+      '1B': {q:12,r:-15,s:3},
+      '2B': {q:6,r:-15,s:9},
+      'SS': {q:-4,r:-11,s:15},
+      '3B': {q:-12,r:-3,s:15},
+      'CF': {q:0,r:-25,s:25},
+      'LF': {q:-14,r:-10,s:24},
+      'RF': {q:14,r:-24,s:10},
+      'C': {q:0,r:0,s:0},
+      'P': {q:0,r:-7,s:7}
+    }
+    if (isMyTeamFielding === true) {
+      fielderHexPos = _gameData.fielderHexPos;
+    }
+
+    retStrings.push(`with ${_con_roll} contact, ${batter.name} hits the ball for weak contact!!!\n`);
+    const hit_to_fielder_arr = ['1B', '2B', '3B', 'SS', 'P', 'C']
+    const hit_to_fielder: FieldPositions = hit_to_fielder_arr[Math.floor(Math.random()*hit_to_fielder_arr.length)]! as FieldPositions;
+    let finalBallPos: Hex = {position: fielderHexPos[hit_to_fielder], ballHeight: Height.GROUND }; // get hex of final ball pos
+    if (hit_to_fielder === 'C') { // must offset final ball position if hit to catcher
+      finalBallPos = {position: {q:0, r:-1, s:1}, ballHeight: Height.GROUND };
+    }
+    const _hitLinePos: Position[] = hex_lineDraw({q:0,r:0,s:0}, finalBallPos.position); 
+
+    let launchAngle = Height.GROUND;
+    if (hit_to_fielder !== 'C') {
+      launchAngle = Math.floor(Math.random() * 3)
+    }
+    let i = 1;
+    //console.log(`${batter.name} hitline is (length=${_hitLinePos.length}) (launch=${launchAngle}): `) // for debugging
+    if (launchAngle === Height.GROUND) {  // all hexes GROUND
+      while (i < _hitLinePos.length) {
+        _hitLineHex[i] = {position:{q:_hitLinePos[i]?.q!, r:_hitLinePos[i]?.r!, s:_hitLinePos[i]?.s!}, ballHeight:Height.GROUND}
+        //console.log(`hex: ${_hitLineHex[i]?.position.q}, ${_hitLineHex[i]?.position.r}, ${_hitLineHex[i]?.position.s} GROUND`) // for debugging
+        i++;
+      }
+    }
+    else if (launchAngle === Height.AIR) {
+      while (i < _hitLinePos.length) {
+        if (i <= _hitLinePos.length/1.4) { // these hexes AIR
+          _hitLineHex[i] = {position:{q:_hitLinePos[i]?.q!, r:_hitLinePos[i]?.r!, s:_hitLinePos[i]?.s!}, ballHeight:Height.AIR}
+          //console.log(`hex: ${_hitLineHex[i]?.position.q}, ${_hitLineHex[i]?.position.r}, ${_hitLineHex[i]?.position.s} AIR`) // for debugging
+          i++;
+        }
+        else if (i > _hitLinePos.length/1.4) { // these hexes GROUND
+          _hitLineHex[i] = {position:{q:_hitLinePos[i]?.q!, r:_hitLinePos[i]?.r!, s:_hitLinePos[i]?.s!}, ballHeight:Height.GROUND}
+          //console.log(`hex: ${_hitLineHex[i]?.position.q}, ${_hitLineHex[i]?.position.r}, ${_hitLineHex[i]?.position.s} GROUND`) // for debugging
+          i++;
+        }
+      }
+    }
+    else if (launchAngle === Height.HIGH) {
+      while (i < _hitLinePos.length) {
+        if (i === _hitLinePos.length-1) { // final position is GROUND
+          _hitLineHex[i] = {position:{q:_hitLinePos[i]?.q!, r:_hitLinePos[i]?.r!, s:_hitLinePos[i]?.s!}, ballHeight:Height.GROUND}
+          //console.log(`hex: ${_hitLineHex[i]?.position.q}, ${_hitLineHex[i]?.position.r}, ${_hitLineHex[i]?.position.s} GROUND`) // for debugging
+          i++;
+        }
+        if (i === _hitLinePos.length-2) { // Position 1 hex before final is AIR
+          _hitLineHex[i] = {position:{q:_hitLinePos[i]?.q!, r:_hitLinePos[i]?.r!, s:_hitLinePos[i]?.s!}, ballHeight:Height.AIR}
+          //console.log(`hex: ${_hitLineHex[i]?.position.q}, ${_hitLineHex[i]?.position.r}, ${_hitLineHex[i]?.position.s} AIR`) // for debugging
+          i++;
+        }
+        else if (i < _hitLinePos.length-2) { // all other hexes are HIGH
+          _hitLineHex[i] = {position:{q:_hitLinePos[i]?.q!, r:_hitLinePos[i]?.r!, s:_hitLinePos[i]?.s!}, ballHeight:Height.HIGH}
+          //console.log(`hex: ${_hitLineHex[i]?.position.q}, ${_hitLineHex[i]?.position.r}, ${_hitLineHex[i]?.position.s} HIGH`) // for debugging
+          i++;
+        }
+      }
+    } 
+
+    return {outCounter:0, pitchLogContents:retStrings, hitLine:_hitLineHex, isWeakContact:true};
   }
   else {
     //log += `${batter.name} swings with ${_con_roll}, and it's a miss...`
     retStrings.push(`${batter.name} swings with ${_con_roll} contact, and it's a miss...\n`);
     retStrings.push(`${batter.name} strikes out!\n`);
-    return {outCounter:1, pitchLogContents:retStrings, hitLine:[]};
+    return {outCounter:1, pitchLogContents:retStrings, hitLine:[], isWeakContact:false};
   }
   //return {0,[]};
 }
@@ -2369,7 +2434,7 @@ function getHexesAtDistance(distance: number): Hex[] {
   return hexes;
 }
 
-function fieldAction(batter: PlayerStateStruct, fieldTeam: PlayerStateStruct[], hitLine: Hex[], basesOccupied: BasesOccupied, outs: number, _gameData: GameDataStateStruct, isMyTeamField: boolean): FieldActionResults {
+function fieldAction(batter: PlayerStateStruct, fieldTeam: PlayerStateStruct[], hitLine: Hex[], basesOccupied: BasesOccupied, outs: number, _gameData: GameDataStateStruct, isMyTeamField: boolean, isWeakContact: boolean): FieldActionResults {
 
   let retStrings: string[] = [];
   let _baseResults = basesOccupied;
@@ -2417,6 +2482,9 @@ function fieldAction(batter: PlayerStateStruct, fieldTeam: PlayerStateStruct[], 
     }
     let prec_roll: number = Math.floor(Math.random() * activeFielder.precision*prec_mod + 1); 
     let ball_factor: number = Math.floor(Math.random() * 15 + 1); 
+    if (isWeakContact) {
+      ball_factor = Math.floor(Math.random() * 3 + 1); 
+    }
     retStrings.push(`${activeFielder.class} ${activeFielder.name} rolls ${prec_roll} vs ball factor of ${ball_factor}\n`)
     //let basesEarned_batter = 0;
     let basesEarned: number[] = [0, 0, 0, 0]; // index 0=batter, 1=firstRunner, 2=secondRunner, 3=thirdRunner. basesEarned[2] refers to number of bases earned by _baseResults.second
@@ -2972,7 +3040,7 @@ function getFieldersInRange(fieldTeam: PlayerStateStruct[], hitLine: Hex[], _gam
           }
         }
         if (fielder.class === 'P') { // should P reaction range be 1 or 2?
-          if (dist <= 2) {
+          if (dist <= 1) {
             //fielders.push(fielder);
             fielders[i] = fielder;
           }
