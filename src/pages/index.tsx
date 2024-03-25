@@ -228,12 +228,12 @@ export default function Home() {
     classExp: 0,
     classLvl: 0
   });
-  function setSelectedPlayerById(_id: string) {
+  function setSelectedPlayerById(_id: string, team_index: number) {
     let i: number = 0;
-    while (i < gameData.teams[0]!.playersJson.length && gameData.teams[0]!.playersJson[i]?.id !== _id) {
+    while (i < gameData.teams[team_index]!.playersJson.length && gameData.teams[team_index]!.playersJson[i]?.id !== _id) {
       i++;
     }
-    setSelectedPlayer(gameData.teams[0]?.playersJson[i]!);
+    setSelectedPlayer(gameData.teams[team_index]?.playersJson[i]!);
   }
 
   const [isViewSchedule, setIsViewSchedule] = useState<boolean>(false);
@@ -1252,10 +1252,10 @@ function TeamDisplayLineupChangeTable({leagueInfoProp, teamIndexProp} : {leagueI
     ];
 
     const reordered_team: TeamStateStruct = {
-      id: gameData.teams[0]?.id!,
-      name: gameData.teams[0]?.name!,
-      gamesPlayed: gameData.teams[0]?.gamesPlayed!,
-      wins: gameData.teams[0]?.wins!,
+      id: gameData.teams[teamIndexProp]?.id!,
+      name: gameData.teams[teamIndexProp]?.name!,
+      gamesPlayed: gameData.teams[teamIndexProp]?.gamesPlayed!,
+      wins: gameData.teams[teamIndexProp]?.wins!,
       playersJson: reorderedItems
     }
 
@@ -1296,25 +1296,26 @@ function TeamDisplayLineupChangeTable({leagueInfoProp, teamIndexProp} : {leagueI
           <tbody>
             {
               leagueInfoProp.teams[teamIndexProp]?.playersJson.map((value, index) => {
+                const keyVal: string = value.id + `-teamDisplayLineupChangeTable`;
                 return (
-                  <tr key={value.id} 
+                  <tr key={keyVal} 
                   className="even:bg-green-200 odd:bg-gray-50 hover:bg-blue-600 hover:text-gray-50"
                   onClick={() => {
-                    setSelectedPlayerById(value.id);
+                    setSelectedPlayerById(value.id, teamIndexProp);
                   }}>
                     <td>{index+1}</td>
                     <td>
                       {
                         index === 0 ? (
-                          <button onClick={() => changeOrder(leagueInfoProp.teams[0]?.playersJson!, index, "DOWN")}>v</button>
+                          <button onClick={() => changeOrder(leagueInfoProp.teams[teamIndexProp]?.playersJson!, index, "DOWN")}>v</button>
                         ) :
                           index === 8 ? (
-                            <button onClick={() => changeOrder(leagueInfoProp.teams[0]?.playersJson!, index, "UP")}>^</button> 
+                            <button onClick={() => changeOrder(leagueInfoProp.teams[teamIndexProp]?.playersJson!, index, "UP")}>^</button> 
                           ) :
                             (
                               <div>
-                                <button onClick={() => changeOrder(leagueInfoProp.teams[0]?.playersJson!, index, "UP")}>^</button> 
-                                <button onClick={() => changeOrder(leagueInfoProp.teams[0]?.playersJson!, index, "DOWN")}>v</button>
+                                <button onClick={() => changeOrder(leagueInfoProp.teams[teamIndexProp]?.playersJson!, index, "UP")}>^</button> 
+                                <button onClick={() => changeOrder(leagueInfoProp.teams[teamIndexProp]?.playersJson!, index, "DOWN")}>v</button>
                               </div>
                             )
                       }
@@ -1360,9 +1361,10 @@ function LeagueTeamsTable({leagueInfoProp, isActiveProp} : {leagueInfoProp:Leagu
           <tbody>
             {
               sorted_teams.map((index) => {
+                const keyVal: string = index.id + `-LeagueTeamsTable`;
                 return (
                   <tr 
-                  key={index.id} 
+                  key={keyVal} 
                   className="even:bg-green-200 odd:bg-gray-50 hover:bg-blue-600 hover:text-gray-50"
                   onClick={() => {
                     setSelectedTeamById(index.id);
@@ -1451,6 +1453,7 @@ function TeamInfoView({MyTeamIndex} : {MyTeamIndex: number}) {
               <th>Lvl</th>
               <th>Age</th>
               <th>Exp to next level</th>
+              <th>Focus Stat</th>
             </tr>
           </thead>
           <tbody>
@@ -1459,8 +1462,24 @@ function TeamInfoView({MyTeamIndex} : {MyTeamIndex: number}) {
                 // get stats corresponding to this player
                 //let _matchStats: playerMatchStats = lastMatchStats[value.id]!;
                 const exp_needed: number = getExperienceToNextLevel(value.level, value.experience);
+                const select_id = value.id + "selectTag";
+                let selected_value: string = 'none';
+                if (value.focusStat === StatFocus.STRENGTH) {
+                  selected_value = "strength";
+                }
+                else if (value.focusStat === StatFocus.SPEED) {
+                  selected_value = "speed";
+                }
+                else if (value.focusStat === StatFocus.PRECISION) {
+                  selected_value = "precision";
+                }
+                else if (value.focusStat === StatFocus.CONTACT) {
+                  selected_value = "contact";
+                }
+
+                const keyVal: string = value.id + `-TeamInfoView`;
                 return (
-                  <tr key={value.id} className="even:bg-green-200 odd:bg-gray-50 hover:bg-blue-600 hover:text-gray-50 text-center">
+                  <tr key={keyVal} className="even:bg-green-200 odd:bg-gray-50 hover:bg-blue-600 hover:text-gray-50 text-center">
                     <td className="px-2">{value.name}</td>
                     <td className="px-2">{value.class}</td>
                     <td className="px-2">{value.strength}</td>
@@ -1470,6 +1489,95 @@ function TeamInfoView({MyTeamIndex} : {MyTeamIndex: number}) {
                     <td className="px-2">{value.level}</td>
                     <td className="px-2">{value.age}</td>
                     <td className="px-2">{exp_needed}</td>
+                    <td className="px-2">
+                      <select className="p-2" id={select_id} defaultValue={selected_value}>
+                        <option 
+                          value="strength"
+                          onClick={() => {
+                            const _teamsTemp: TeamStateStruct[] = SetFocusStat_utility(gameData, MyTeamIndex, index, StatFocus.STRENGTH);
+                            /**
+                              let teams_copy: TeamStateStruct[] = JSON.parse(JSON.stringify(gameData.teams)); // create clone of all teams
+                              let players_copy: PlayerStateStruct[] = JSON.parse(JSON.stringify(gameData.teams[MyTeamIndex]?.playersJson)); // create clone of my team
+                              players_copy[index]!.focusStat = StatFocus.STRENGTH; // set focus stat of clone of this player
+                              // put copy of my team into the teams_copy
+                              teams_copy[MyTeamIndex] = {
+                                id: teams_copy[MyTeamIndex]?.id!,
+                                name: teams_copy[MyTeamIndex]?.name!,
+                                gamesPlayed: teams_copy[MyTeamIndex]?.gamesPlayed!,
+                                wins: teams_copy[MyTeamIndex]?.wins!,
+                                playersJson: players_copy,
+                              }
+                            */
+                            setGameData({
+                              leagueId: gameData.leagueId,
+                              leagueName: gameData.leagueName,
+                              myTeamId: gameData.myTeamId,
+                              season: gameData.season,
+                              week: gameData.week,
+                              phase: gameData.phase,
+                              teams: _teamsTemp, 
+                              schedule: gameData.schedule,
+                              fielderHexPos: gameData.fielderHexPos
+                            })
+                          }}>
+                            strength
+                        </option>
+                        <option 
+                          value="speed"
+                          onClick={() => {
+                            const _teamsTemp: TeamStateStruct[] = SetFocusStat_utility(gameData, MyTeamIndex, index, StatFocus.SPEED);
+                            setGameData({
+                              leagueId: gameData.leagueId,
+                              leagueName: gameData.leagueName,
+                              myTeamId: gameData.myTeamId,
+                              season: gameData.season,
+                              week: gameData.week,
+                              phase: gameData.phase,
+                              teams: _teamsTemp, 
+                              schedule: gameData.schedule,
+                              fielderHexPos: gameData.fielderHexPos
+                            })
+                          }}>
+                          speed
+                        </option>
+                        <option 
+                          value="precision"
+                          onClick={() => {
+                            const _teamsTemp: TeamStateStruct[] = SetFocusStat_utility(gameData, MyTeamIndex, index, StatFocus.PRECISION);
+                            setGameData({
+                              leagueId: gameData.leagueId,
+                              leagueName: gameData.leagueName,
+                              myTeamId: gameData.myTeamId,
+                              season: gameData.season,
+                              week: gameData.week,
+                              phase: gameData.phase,
+                              teams: _teamsTemp, 
+                              schedule: gameData.schedule,
+                              fielderHexPos: gameData.fielderHexPos
+                            })
+                          }}>
+                            precision
+                        </option>
+                        <option 
+                          value="contact"
+                          onClick={() => {
+                            const _teamsTemp: TeamStateStruct[] = SetFocusStat_utility(gameData, MyTeamIndex, index, StatFocus.CONTACT);
+                            setGameData({
+                              leagueId: gameData.leagueId,
+                              leagueName: gameData.leagueName,
+                              myTeamId: gameData.myTeamId,
+                              season: gameData.season,
+                              week: gameData.week,
+                              phase: gameData.phase,
+                              teams: _teamsTemp, 
+                              schedule: gameData.schedule,
+                              fielderHexPos: gameData.fielderHexPos
+                            })
+                          }}>
+                            contact
+                        </option>
+                      </select>
+                    </td>
                   </tr>
                 )
               })
@@ -1521,8 +1629,10 @@ function TeamInfoView({MyTeamIndex} : {MyTeamIndex: number}) {
                 const k_9 = parseFloat(((value.stats_season.k * 9) / value.stats_season.ip).toFixed(2)).toFixed(2).toString();
                 //const average = Math.round((value.stats_season.hits / value.stats_season.at_bats) * 1000) / 1000;
 
+                const keyVal: string = value.id + `-TeamInfoView2`;
+
                 return (
-                  <tr key={value.id} className="even:bg-green-200 odd:bg-gray-50 hover:bg-black hover:bg-opacity-1 hover:text-gray-100 text-center">
+                  <tr key={keyVal} className="even:bg-green-200 odd:bg-gray-50 hover:bg-black hover:bg-opacity-1 hover:text-gray-100 text-center">
                     <td className="bg-opacity-50">{value.name}</td>
                     <td className="bg-opacity-50 border-r-2">{value.class}</td>
                     <td className="bg-amber-50 bg-opacity-50">{value.stats_season.at_bats}</td>
@@ -1655,8 +1765,9 @@ function PostGameView({MyTeamIndex} : {MyTeamIndex: number}) {
                 let lvl_to_show = (preGamePlayerStats[index]!.level < value.level) ? `+${inc_lvl}` : ``;
                 let lvl_className_string = (preGamePlayerStats[index]!.level < value.level) ? "px-2 text-green-500 font-bold" : "px-2";
                 
+                const keyVal: string = value.id + `-PostGameView`;
                 return (
-                  <tr key={value.id} className="even:bg-green-200 odd:bg-gray-50 hover:bg-blue-600 hover:text-gray-50 text-center">
+                  <tr key={keyVal} className="even:bg-green-200 odd:bg-gray-50 hover:bg-blue-600 hover:text-gray-50 text-center">
                     <td className="px-2">{value.name}</td>
                     <td className="px-2">{value.class}</td>
                     <td className={str_className_string}>{value.strength}<sup>{str_to_show}</sup></td>
@@ -1704,8 +1815,10 @@ function PostGameView({MyTeamIndex} : {MyTeamIndex: number}) {
               gameData.teams[MyTeamIndex]?.playersJson.map((value, index) => {
                 // get stats corresponding to this player
                 let _matchStats: playerMatchStats = lastMatchSimResults.player_matchStats[value.id]!
+
+                const keyVal: string = value.id + `-PostGameView2`;
                 return (
-                  <tr key={value.id} className="even:bg-green-200 odd:bg-gray-50 hover:bg-black hover:bg-opacity-1 hover:text-gray-100 text-center">
+                  <tr key={keyVal} className="even:bg-green-200 odd:bg-gray-50 hover:bg-black hover:bg-opacity-1 hover:text-gray-100 text-center">
                     <td className="bg-opacity-50">{value.name}</td>
                     <td className="bg-opacity-50 border-r-2">{value.class}</td>
                     <td className="bg-amber-50 bg-opacity-50">{_matchStats.at_bats}</td>
@@ -2084,8 +2197,9 @@ function TeamDisplayTable({leagueInfoProp, teamIndexProp} : {leagueInfoProp:Leag
           <tbody>
             {
               leagueInfoProp.teams[teamIndexProp]?.playersJson.map((index) => {
+                const keyVal: string = index.id + `-TeamDisplayTable`;
                 return (
-                  <tr key={index.id} className="even:bg-green-200 odd:bg-gray-50">
+                  <tr key={keyVal} className="even:bg-green-200 odd:bg-gray-50">
                     <td>{index.name}</td>
                     <td>{index.class}</td>
                     <td>{index.strength}</td>
@@ -2294,7 +2408,7 @@ function pitch(pitcher: PlayerStateStruct, batter: PlayerStateStruct, isMyTeamFi
     } 
     return {outCounter:0, pitchLogContents:retStrings, hitLine:_hitLineHex, isWeakContact:false};
   }
-  else if (_con_roll < pitch_roll && weak_con_chance < 80){ // currently, 20% chance of weak contact instead of strike-out
+  else if (_con_roll < pitch_roll && weak_con_chance < 80){ // currently, 80% chance of weak contact instead of strike-out
     let fielderHexPos: Record<FieldPositions, Position> = {
       '1B': {q:12,r:-15,s:3},
       '2B': {q:6,r:-15,s:9},
@@ -3422,6 +3536,23 @@ function getNextStatPoint(proclivities: Proclivity): number {
   else if (num < proclivities.speed + proclivities.strength) return 1;
   else if (num < proclivities.precision + proclivities.speed + proclivities.strength) return 2;
   else return 3;
+}
+/*
+// Used in TeamInfoView to get copy of gameData.teams that can be used in setGameData() 
+*/
+function SetFocusStat_utility(_gd: GameDataStateStruct, _myTeamIndex: number, _playerIndex: number, _focus: StatFocus) : TeamStateStruct[] {
+  let teams_copy: TeamStateStruct[] = JSON.parse(JSON.stringify(_gd.teams)); // create clone of all teams
+  let players_copy: PlayerStateStruct[] = JSON.parse(JSON.stringify(_gd.teams[_myTeamIndex]?.playersJson)); // create clone of my team
+  players_copy[_playerIndex]!.focusStat = _focus; // set focus stat of clone of this player
+  // put copy of my team into the teams_copy
+  teams_copy[_myTeamIndex] = {
+    id: teams_copy[_myTeamIndex]?.id!,
+    name: teams_copy[_myTeamIndex]?.name!,
+    gamesPlayed: teams_copy[_myTeamIndex]?.gamesPlayed!,
+    wins: teams_copy[_myTeamIndex]?.wins!,
+    playersJson: players_copy,
+  }
+  return teams_copy;
 }
 
 

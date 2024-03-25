@@ -260,7 +260,8 @@ export default function Home() {
     {
       let newPlayers: PlayerStateStruct[] = [];
       const numPlayers: number = 9;
-      let team_lvl_max = 16;
+      let team_lvl_min = 15;
+      let team_lvl_max = 40;
       let n = 0;
       while (n < numPlayers)
       {
@@ -357,8 +358,19 @@ export default function Home() {
         const _name = generateName();
         newPlayer.name = _name
         newPlayer.age = Math.floor(Math.random() * (40 - 16) + 16);
+
         // choose lvl of player
-        newPlayer.level = Math.floor(Math.random() * (30-5+1) + 5); // random lvl between 30 and 5
+        newPlayer.level = Math.floor(Math.random() * (team_lvl_max-team_lvl_min+1) + team_lvl_min); // random lvl between 30 and 5
+        if (m % 2) {
+          team_lvl_max += 3;
+        }
+        if (m % 3) {
+          team_lvl_min += 2
+        }
+        if (m === 0) {
+          team_lvl_max = 30;
+          team_lvl_min = 10;
+        }
         //team_lvl_max -= newPlayer.level; // to ensure every team has same total lvls across players
         let numStatPoints = 16 + ((newPlayer.level-1)*3); // lvl 1 has 20 total stat points and each additional lvl has +3
         // we start at 16, because each stat MUST have at least 1 point
