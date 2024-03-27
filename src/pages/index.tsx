@@ -15,6 +15,8 @@ import { teamNames } from "~/data/names";
 
 import { api } from "~/utils/api";
 import { Position, hex_distance, hex_lineDraw } from "~/utils/hexUtil";
+import { ToastContainer, toast } from "react-toastify";
+import 'react-toastify/dist/ReactToastify.css';
 /////////////////////////
 // The following import prevents a Font Awesome icon server-side rendering bug, // taken from https://stackoverflow.com/questions/56334381/why-my-font-awesome-icons-are-being-displayed-big-at-first-and-then-updated-to-t
 // where the icons flash from a very large icon down to a properly sized one:
@@ -1159,6 +1161,36 @@ function MainGameView() {
     schedule: gameData.schedule
   }  
 
+  if (gameData.phase === WeekPhase.GAME) {
+    return (
+      <div className="flex flex-row flex-wrap">
+
+        <div className="w-full sm:w-1/5 lg:w-1/5 px-1 bg-red-300">
+          <TeamDisplayLineupChangeTable 
+            leagueInfoProp={_leagueInfo}
+            teamIndexProp={my_team_index}
+          />     
+        </div>
+        <div className="w-full sm:w-3/5 lg:w-3/5 px-1 bg-orange-300 margin-auto">
+          <h1 className="text-center">Week {gameData.week}</h1>
+          <FieldView 
+          fielderHexPos={gameData.fielderHexPos}
+          numInnings={numInnings}
+          phase={gameData.phase}
+          logContents={logContents}/>
+        </div>
+        <div className="w-full sm:w-1/5 lg:w-1/5 px-1 bg-amber-200">
+          <TeamDisplayTable 
+            leagueInfoProp={_leagueInfo}
+            teamIndexProp={selectedTeam}
+          /> 
+        </div>
+      <LeagueTeamsTable
+      leagueInfoProp={_leagueInfo}
+      isActiveProp={true} />
+    </div>
+    )
+  }
   
   let opp_team_id: string = '';
   let my_sched_index = 0;
@@ -1176,6 +1208,7 @@ function MainGameView() {
     setSelectedTeamById(opp_team_id); // this will cause second teamdisplaytable to show opponent team of the current week
   }, []);
   
+  // default return is reached only during PREGAME phase
   return (
     <div className="flex flex-row flex-wrap">
 
@@ -1207,8 +1240,7 @@ function MainGameView() {
               <FontAwesomeIcon 
                 className='p-1 -rotate-45' icon={['fas', 'arrow-down']}
                 onClick={() => setGameData_FielderHexPos(selectedPlayer.class as FieldPositions, {q:1, r:0, s:-1})} />
-            </div>
-            
+            </div> 
           </div>
           
         </div>
@@ -1239,6 +1271,8 @@ function MainGameView() {
 // TODO: I don't think this needs props... can just use gameData state variable directly
 */
 function TeamDisplayLineupChangeTable({leagueInfoProp, teamIndexProp} : {leagueInfoProp:LeagueStateStruct, teamIndexProp:number}) {
+  const notify_orderChange = () => toast("Cannot change batting order during game simulation.");
+  //const notify = () => toast("Wow so easy !");
  
   function changeOrder(originalArray: PlayerStateStruct[], index: number, direction: string) {
     let newIndex = index + (direction === "UP" ? (-1) : 1)
@@ -1301,21 +1335,51 @@ function TeamDisplayLineupChangeTable({leagueInfoProp, teamIndexProp} : {leagueI
                   <tr key={keyVal} 
                   className="even:bg-green-200 odd:bg-gray-50 hover:bg-blue-600 hover:text-gray-50"
                   onClick={() => {
-                    setSelectedPlayerById(value.id, teamIndexProp);
+                    if (gameData.phase !== WeekPhase.GAME) {
+                      setSelectedPlayerById(value.id, teamIndexProp);
+                    }
                   }}>
                     <td>{index+1}</td>
                     <td>
                       {
                         index === 0 ? (
-                          <button onClick={() => changeOrder(leagueInfoProp.teams[teamIndexProp]?.playersJson!, index, "DOWN")}>v</button>
+                          <button onClick={() => {
+                            if (gameData.phase !== WeekPhase.GAME) {
+                              changeOrder(leagueInfoProp.teams[teamIndexProp]?.playersJson!, index, "DOWN")
+                            }
+                            else if (gameData.phase === WeekPhase.GAME) {
+                              notify_orderChange();
+                            }
+                        }}>v</button>
                         ) :
                           index === 8 ? (
-                            <button onClick={() => changeOrder(leagueInfoProp.teams[teamIndexProp]?.playersJson!, index, "UP")}>^</button> 
+                            <button onClick={() => {
+                              if (gameData.phase !== WeekPhase.GAME) {
+                                changeOrder(leagueInfoProp.teams[teamIndexProp]?.playersJson!, index, "UP")
+                              }
+                              else if (gameData.phase === WeekPhase.GAME) {
+                                notify_orderChange();
+                              }
+                            }}>^</button> 
                           ) :
                             (
                               <div>
-                                <button onClick={() => changeOrder(leagueInfoProp.teams[teamIndexProp]?.playersJson!, index, "UP")}>^</button> 
-                                <button onClick={() => changeOrder(leagueInfoProp.teams[teamIndexProp]?.playersJson!, index, "DOWN")}>v</button>
+                                <button onClick={() => {
+                                  if (gameData.phase !== WeekPhase.GAME) {
+                                    changeOrder(leagueInfoProp.teams[teamIndexProp]?.playersJson!, index, "UP")
+                                  }
+                                  else if (gameData.phase === WeekPhase.GAME) {
+                                    notify_orderChange();
+                                  }
+                                }}>^</button> 
+                                <button onClick={() => {
+                                  if (gameData.phase !== WeekPhase.GAME) {
+                                    changeOrder(leagueInfoProp.teams[teamIndexProp]?.playersJson!, index, "DOWN")
+                                  }
+                                  else if (gameData.phase === WeekPhase.GAME) {
+                                    notify_orderChange();
+                                  }
+                                }}>v</button>
                               </div>
                             )
                       }
@@ -1490,7 +1554,10 @@ function TeamInfoView({MyTeamIndex} : {MyTeamIndex: number}) {
                     <td className="px-2">{value.age}</td>
                     <td className="px-2">{exp_needed}</td>
                     <td className="px-2">
-                      <select className="p-2" id={select_id} defaultValue={selected_value}>
+                      <select 
+                        className="p-2 border-2 rounded-md bg-slate-400 hover:bg-slate-500" 
+                        id={select_id} 
+                        defaultValue={selected_value}>
                         <option 
                           value="strength"
                           onClick={() => {
@@ -2168,6 +2235,7 @@ function TopBar() {
         {/* can have a table here showing the user's different leagues*/}
         <MyLeaguesTable />
         <MainGameView />
+        <ToastContainer />
       </div>
     </div>
     </>

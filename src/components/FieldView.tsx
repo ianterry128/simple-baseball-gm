@@ -43,6 +43,7 @@ export function FieldView(props: FieldViewProps) {
     r: 0,
     s: 0,
   });
+  const [hexCoordString, setHexCoordString] = useState<string>('0, 0, 0')
   const [canvasState, setCanvasState] = useState<HTMLCanvasElement>();
   const [hexSizeState, setHexSizeState] = useState<number>(7);
 
@@ -164,18 +165,43 @@ export function FieldView(props: FieldViewProps) {
     //draw mound dirt
     drawRing(ctx!, mound_pos, 1, r, '#7d7210');
 
-    canvas.addEventListener( 'mousedown', event => {
+    canvas.addEventListener( 'mousemove', event => {
     
       const bb = canvas.getBoundingClientRect();
       const x = Math.floor( (event.clientX - bb.left) / bb.width * canvas.width );
       const y = Math.floor( (event.clientY - bb.top) / bb.height * canvas.height );
-      let hexCoord: Position = pixel_to_hex({x:x, y:y}, r, {x: canvas_w/2, y: canvas_h-r});
+      let _hexCoord: Position = pixel_to_hex({x:x, y:y}, r, {x: canvas_w/2, y: canvas_h-r});
 
       //console.log(`pixel coord: ${x}, ${y}`);
-      console.log(`hex coord: ${hexCoord.q}, ${hexCoord.r}, ${hexCoord.s}`)
-      setHexCoord(hexCoord);
-
+      //console.log(`hex coord: ${_hexCoord.q}, ${_hexCoord.r}, ${_hexCoord.s}`)
+      //setHexCoord(hexCoord);
+      if (_hexCoord.q > 40 || _hexCoord.r > 0 || _hexCoord.s > 40 || _hexCoord.q < -40 || _hexCoord.r < -40 || _hexCoord.s < 0) {
+        setHexCoordString(`OUT OF BOUNDS`)
+      }
+      else {
+        setHexCoordString(`${_hexCoord.q}, ${_hexCoord.r}, ${_hexCoord.s}`)
+      }
   });
+
+  canvas.addEventListener( 'mousedown', event => {
+    
+    const bb = canvas.getBoundingClientRect();
+    const x = Math.floor( (event.clientX - bb.left) / bb.width * canvas.width );
+    const y = Math.floor( (event.clientY - bb.top) / bb.height * canvas.height );
+    let _hexCoord: Position = pixel_to_hex({x:x, y:y}, r, {x: canvas_w/2, y: canvas_h-r});
+    let centered_pixel  = hex_to_pixel(_hexCoord, r, {x: canvas_w/2, y: canvas_h-r});
+    let prev_pixel: Pixel  = hex_to_pixel(hexCoord, r, {x: canvas_w/2, y: canvas_h-r});
+    
+    //console.log(`pixel coord: ${x}, ${y}`);
+    //console.log(`hex coord: ${_hexCoord.q}, ${_hexCoord.r}, ${_hexCoord.s}`)
+    if (_hexCoord.q > 40 || _hexCoord.r > 0 || _hexCoord.s > 40 || _hexCoord.q < -40 || _hexCoord.r < -40 || _hexCoord.s < 0) {
+      //setHexCoord()
+    }
+    else {
+      setHexCoord(_hexCoord);
+      //drawHex(ctx!, centered_pixel.x, centered_pixel.y, r, "pink")
+    }
+});
   }
 
   function drawHex(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, color?: string) {
@@ -276,7 +302,7 @@ export function FieldView(props: FieldViewProps) {
       if (fp === 'P') {
         let pixel  = hex_to_pixel(f_positions[fp as FieldPositions], hexSizeState, {x: canvas_w/2, y: canvas_h-hexSizeState});
         drawHex(canvas.getContext('2d')!, pixel.x, pixel.y, hexSizeState, 'gold');
-        drawRing(canvas.getContext('2d')!, f_positions[fp as FieldPositions], 2, hexSizeState, 'gold');
+        drawRing(canvas.getContext('2d')!, f_positions[fp as FieldPositions], 1, hexSizeState, 'gold');
       }
       if (fp === 'C') {
         let pixel  = hex_to_pixel(f_positions[fp as FieldPositions], hexSizeState, {x: canvas_w/2, y: canvas_h-hexSizeState});
@@ -497,7 +523,7 @@ function MatchTextLog3(props_matchlog: MatchLogProps3) {
             autoFocus
             rows={5}
             cols={130}
-            value={props.logContents?.slice(0, logIndex).reverse()}
+            value={props.logContents?.slice(0, logIndex).reverse().join('')}
             >
             </textarea>
         </div>
@@ -595,7 +621,7 @@ function MatchTextLog3(props_matchlog: MatchLogProps3) {
     <>
     <div className="overflow-x-auto">
       <div className="flex flex-col">
-        <h1 className="text-center text-2xl">Graphics worksheet</h1>
+        <h1 className="text-center text-2xl">Game Phase</h1>
         <h1 className="text-center">{hexCoord.q}, {hexCoord.r}, {hexCoord.s}</h1>
         <div className="flex flex-row p-2 margin-auto">
           <MatchTextLog3
@@ -619,8 +645,10 @@ function MatchTextLog3(props_matchlog: MatchLogProps3) {
     <>
     <div className="overflow-x-auto">
       <div className="flex flex-col">
-        <h1 className="text-center text-2xl">Graphics worksheet</h1>
-        <h1 className="text-center">{hexCoord.q}, {hexCoord.r}, {hexCoord.s}</h1>
+        <h1 className="text-center text-2xl">Pregame Phase</h1>
+        <h2 className="text-center">Set batting order and field positions</h2>
+        <h1 className="text-center">Selected Hex: {hexCoord.q}, {hexCoord.r}, {hexCoord.s}</h1>
+        <h1 className="text-center">{hexCoordString}</h1>
         <div className="flex flex-row p-2 margin-auto">
         </div>
         <div className="flex p-2 gap-4 margin-auto">
