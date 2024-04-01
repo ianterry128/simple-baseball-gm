@@ -21,10 +21,11 @@ const MyApp: AppType<{ session: Session | null }> = ({
       </Head>
       <div className="container mx-auto">
         <div className="flex flex-row flex-wrap">
+          {/*
           <aside className="w-full sm:w-1/6 lg:w-1/12 px-2 ">
-            <SideNav />
-          </aside>  
-          <main className="w-full sm:w-5/6 lg:w-11/12 bg-blue-200">
+            {/*<SideNav />}
+          </aside>  */}
+          <main className="w-full  mx-auto bg-blue-200">
             <Component {...pageProps} />
           </main>
         </div>

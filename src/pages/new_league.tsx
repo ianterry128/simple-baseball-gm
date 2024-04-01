@@ -148,6 +148,8 @@ const default_fielderHexPos: Record<FieldPositions, Position> = {
 //type FieldPositions = '1B' | '2B' | 'SS' | '3B' | 'CF' | 'LF' | 'RF' | 'C' | 'P' ;
 
 export default function Home() {
+  const session = useSession();
+  const user = session.data?.user;
   //const [playerInfo, setPlayerInfo] = useState<PlayerStateStruct[]>([]);
   //const [teamInfo, setTeamInfo] = useState<TeamStateStruct>();
   const [leagueInfo, setLeagueInfo] = useState<LeagueStateStruct>({
@@ -584,13 +586,39 @@ export default function Home() {
   }
 
   const schedule: { [key: number]: Matchup[]} = {}
-
+  function TopBar_newLeague() {
+  
+    return (
+      <div className="flex flex-row justify-between bg-neutral-100">
+        <div className="flex flex-row p-1 gap-3 bg-neutral-100">
+        </div>
+        <div className="content-end px-2 py-1 gap-3 bg-neutral-100"> {/*add items here to appear on RIGHT side of top bar */}
+          {user != null ? (
+                      <div className="gap-3"> {/* why do I need this div? */}
+                        <Link 
+                            href="/"
+                            className=" transition-colors duration-200 hover:bg-green-500 
+                            text-center hover:text-white shadow-sm ">Home
+                        </Link>
+                        <button 
+                        className="px-2"
+                        onClick={() => void signOut()}>Log Out</button>   
+                      </div>
+          ) : null}
+          {user == null ? (
+              <button onClick={() => void signIn()}>Log In</button>
+          ) : null}
+        </div>
+      </div>
+    )
+  }
   
 
   return (
     <>
     <div className="flex flex-col">
       <h1 className="text-center text-2xl">Welcome to Simple Baseball GM!</h1>
+      <TopBar_newLeague />
       <div className="flex p-2"> 
         <form onSubmit={createLeague}>
           <ul className="flex flex-col gap-y-3">
