@@ -364,10 +364,10 @@ export default function Home() {
         // choose lvl of player
         newPlayer.level = Math.floor(Math.random() * (team_lvl_max-team_lvl_min+1) + team_lvl_min); // random lvl between 30 and 5
         if (m % 2) {
-          team_lvl_max += 3;
+          team_lvl_max += 2;
         }
         if (m % 3) {
-          team_lvl_min += 2
+          team_lvl_min += 1;
         }
         if (m === 0) {
           team_lvl_max = 30;
@@ -601,12 +601,32 @@ export default function Home() {
                             text-center hover:text-white shadow-sm ">Home
                         </Link>
                         <button 
-                        className="px-2"
-                        onClick={() => void signOut()}>Log Out</button>   
+                          className="px-2 transition-colors duration-200 hover:bg-green-500 
+                          text-center hover:text-white shadow-sm"
+                          onClick={() => {
+                            setIsPlayingGame(false);
+                            router.push('/'); // this navigates to Home Page
+                          }}>
+                            Switch League
+                        </button>   
+                        <button 
+                          className="px-2 transition-colors duration-200 hover:bg-green-500 
+                          text-center hover:text-white shadow-sm"
+                          onClick={() => {
+                            signOut({ callbackUrl: '/' });
+                          }}>Log Out</button>   
                       </div>
           ) : null}
           {user == null ? (
-              <button onClick={() => void signIn()}>Log In</button>
+              <button 
+              className="transition-colors duration-200 hover:bg-green-500 
+              text-center hover:text-white shadow-sm"
+                onClick={() => {
+                  setIsPlayingGame(false);
+                  signIn();
+                }}>
+                  Log In
+              </button>
           ) : null}
         </div>
       </div>

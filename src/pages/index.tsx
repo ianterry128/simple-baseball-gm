@@ -480,34 +480,62 @@ export default function Home() {
   // ~~~
   // This preserves state of isPlayingGame and gameData on refresh
   // cannot test locally if React strict mode is enabled
-  useEffect(() => {
-    const data_isPlayingGame = window.localStorage.getItem('isPlayingGame');
-    if (data_isPlayingGame !== null) setIsPlayingGame(JSON.parse(data_isPlayingGame))
-
-    const data_gameData = window.localStorage.getItem('gameData');
-    if (data_gameData !== null) setGameData(JSON.parse(data_gameData))
-
-    const data_logContents = window.localStorage.getItem('logContents');
-    if (data_logContents !== null) setLogContents(JSON.parse(data_logContents))
-
-    const data_lastMatchSimResults = window.localStorage.getItem('lastMatchSimResults');
-    if (data_lastMatchSimResults !== null) setLastMatchSimResults(JSON.parse(data_lastMatchSimResults))
-
-    const data_preGamePlayerStats = window.localStorage.getItem('preGamePlayerStats');
-    if (data_preGamePlayerStats !== null) setPreGamePlayerStats(JSON.parse(data_preGamePlayerStats))
-  }, [])   
-
-  useEffect(() => {
-    window.localStorage.setItem('isPlayingGame', JSON.stringify(isPlayingGame));
-
-    window.localStorage.setItem('gameData', JSON.stringify(gameData));
-
-    window.localStorage.setItem('logContents', JSON.stringify(logContents));
-
-    window.localStorage.setItem('lastMatchSimResults', JSON.stringify(lastMatchSimResults));
-
-    window.localStorage.setItem('preGamePlayerStats', JSON.stringify(preGamePlayerStats));
-  }, [isPlayingGame, gameData, logContents, lastMatchSimResults, preGamePlayerStats])
+  //if (user != null) {
+    useEffect(() => {
+      const data_isPlayingGame = window.localStorage.getItem('isPlayingGame');
+      if (data_isPlayingGame !== null) setIsPlayingGame(JSON.parse(data_isPlayingGame))
+  
+      const data_gameData = window.localStorage.getItem('gameData');
+      if (data_gameData !== null) setGameData(JSON.parse(data_gameData))
+  
+      const data_logContents = window.localStorage.getItem('logContents');
+      if (data_logContents !== null) setLogContents(JSON.parse(data_logContents))
+  
+      const data_lastMatchSimResults = window.localStorage.getItem('lastMatchSimResults');
+      if (data_lastMatchSimResults !== null) setLastMatchSimResults(JSON.parse(data_lastMatchSimResults))
+  
+      const data_preGamePlayerStats = window.localStorage.getItem('preGamePlayerStats');
+      if (data_preGamePlayerStats !== null) setPreGamePlayerStats(JSON.parse(data_preGamePlayerStats))
+    }, [])   
+  
+    useEffect(() => {
+      window.localStorage.setItem('isPlayingGame', JSON.stringify(isPlayingGame));
+  
+      window.localStorage.setItem('gameData', JSON.stringify(gameData));
+  
+      window.localStorage.setItem('logContents', JSON.stringify(logContents));
+  
+      window.localStorage.setItem('lastMatchSimResults', JSON.stringify(lastMatchSimResults));
+  
+      window.localStorage.setItem('preGamePlayerStats', JSON.stringify(preGamePlayerStats));
+    }, [isPlayingGame, gameData, logContents, lastMatchSimResults, preGamePlayerStats])
+  //}
+  /**
+    if (user == null) {
+      // if user is logged out, clear persistent state variables
+    // console.log(`this ran!!!`)
+      useEffect(() => {
+        setGameData({
+          leagueId: '',
+          leagueName: '',
+          myTeamId: '',
+          season: 0,
+          week: 0,
+          phase: 0,
+          teams: [],
+          schedule: {},
+          fielderHexPos: default_fielderHexPos
+        });
+        setIsPlayingGame(false);
+        setLogContents([]);
+        setLastMatchSimResults({
+          home_win: false,
+          player_matchStats: { }
+        });
+        setPreGamePlayerStats([]);
+      }, [])
+    }
+  */ 
   //
 
 
@@ -1182,6 +1210,7 @@ function MyLeaguesTable() {
     }
   */
 function MainGameView() {
+  if (user == null) return;
   if (!isPlayingGame) return;
   if (isViewSchedule) {
     return (
@@ -1963,7 +1992,35 @@ function PostGameView({MyTeamIndex} : {MyTeamIndex: number}) {
 }
 
 function TopBar() {
-  if (!isPlayingGame) return;
+  if (!isPlayingGame) {
+    return (
+      <div className="flex flex-row-reverse content-end px-2 py-1 gap-3 bg-neutral-100"> {/*add items here to appear on RIGHT side of top bar */}
+          {/*<Link 
+            href="/new_league"
+            className=" transition-colors duration-200 hover:bg-green-500 
+          bg-green-700 text-center text-white shadow-sm ">New League
+            </Link>*/}
+          {user != null ? (
+                      <div className="gap-3"> {/* why do I need this div? */}
+                        <Link 
+                            href="/new_league"
+                            className=" transition-colors duration-200 hover:bg-green-500 
+                        bg-green-700 text-center text-white shadow-sm ">New League
+                        </Link>
+                        <button 
+                        className="px-2"
+                        onClick={() => void signOut()}>Log Out</button>   
+                      </div>
+          ) : null}
+          {user == null ? (
+              <button onClick={() => {
+                setIsPlayingGame(false);
+                signIn();
+              } }>Log In</button>
+          ) : null}
+      </div>
+    )
+  };
   let isMyTeamHome: boolean = true;
   let opp_team: TeamStateStruct = {
     id: '',
@@ -1995,281 +2052,283 @@ function TopBar() {
 
   return (
     <div className="flex flex-row justify-between bg-neutral-100">
-      <div className="flex flex-row p-1 gap-3 bg-neutral-100">
-        <button onClick={() => {
-          setIsViewSchedule(false);
-          setIsViewTeamInfo(false);
-        }}>Dashboard</button>
-        <button onClick={() => {
-          setIsViewSchedule(true);
-          setIsViewTeamInfo(false);
-        }}>Schedule</button>
-        <button onClick={() => {
-          setIsViewSchedule(false);
-          setIsViewTeamInfo(true);
-        }}>Team Info</button>
-        {gameData.phase === WeekPhase.PREGAME ? (
-          <button 
-          className="transition-colors duration-200 hover:bg-green-400 
-          bg-green-600 text-center text-white shadow-sm"
-          onClick={() => { // TODO: Will this work?
-            let myTeamWin: boolean = false;
-            let _results: MatchSimResults = {
-              home_win: false, 
-              player_matchStats: {}
-            };
-            if (isMyTeamHome) {
-              _results = exhibition(my_team, opp_team);
-              myTeamWin = _results.home_win;
-            }
-            else if (!isMyTeamHome) {
-              _results = exhibition(opp_team, my_team);
-              myTeamWin = !_results.home_win;
-            }
-            let temp_teams: TeamStateStruct[] = [];
-            /////////////////// from postgameview
-            // did my team win? Was opponent team stronger or weaker?
-            //let didWin: boolean = false;
-            //let strongerTeam: boolean = false;
-            let runningLevelSum = 0;
-            for (let i=0; i<my_team!.playersJson.length; i++) {
-              runningLevelSum += my_team!.playersJson[i]!.level;
-            }
-            const myTeamAvgLvl = runningLevelSum / my_team!.playersJson.length;
-            //let oppTeamAvgLvl = 0;
-            
-            //didWin = myTeamWin; 
-            // get opponent avg level 
-            //const opp_index = getTeamIndex(gameData.schedule[gameData.week]![i]!.awayTeam, gameData.teams);
-            runningLevelSum = 0;
-            for (let i=0; i<opp_team!.playersJson.length; i++) {
-              runningLevelSum += opp_team!.playersJson[i]!.level;
-            }
-            const oppTeamAvgLvl = runningLevelSum / opp_team!.playersJson.length; 
-            
-            let multiplier = myTeamWin ? 2 : 1;
-            if (oppTeamAvgLvl >= myTeamAvgLvl) multiplier += 1;
-            if (oppTeamAvgLvl < myTeamAvgLvl) multiplier -= 0.5;
-            //////////////////////// end from postgameview
-            //let pregame_players_copy: PlayerStateStruct[] = [...my_team.playersJson];
-            let pregame_players_copy: PlayerStateStruct[] = JSON.parse(JSON.stringify(my_team.playersJson)) // clone gameData.playersJson
-            //console.log(`pregame_players_copy before: ${pregame_players_copy[0]!.experience}`)
-            //console.log(`pregameplayerstats before: ${preGamePlayerStats[0]!.experience}`)
-            setPreGamePlayerStats(pregame_players_copy);  // used to compare against gameData player stats in PostGameView to check which stats/levels increased
-            //console.log(`pregameplayerstats after: ${preGamePlayerStats[0]!.experience}`)
-            for (let i=0; i<gameData.teams.length; i++) {
-              if (gameData.teams[i]?.id === gameData.myTeamId) {
-                ////////////////////////////////////////////////// from postgameview
-                let players_copy: PlayerStateStruct[] = JSON.parse(JSON.stringify(my_team.playersJson)) //MUST USE THIS METHOD TO ACTUALLY CLONE
-                for (let i=0; i<players_copy.length!; i++) {
-                  //let _matchStats: playerMatchStats = lastMatchSimResults.player_matchStats[players_copy[i]!.id]!;
-                  let _matchStats: playerMatchStats = _results.player_matchStats[players_copy[i]!.id]!;
-                  // add performance stats to player season stats and career stats
-                  // season stats
-                  players_copy[i]!.stats_season.at_bats += _matchStats.at_bats;
-                  players_copy[i]!.stats_season.runs += _matchStats.runs;
-                  players_copy[i]!.stats_season.walks += _matchStats.walks;
-                  players_copy[i]!.stats_season.hits += _matchStats.hits;
-                  players_copy[i]!.stats_season.doubles += _matchStats.doubles;
-                  players_copy[i]!.stats_season.triples += _matchStats.triples;
-                  players_copy[i]!.stats_season.home_runs += _matchStats.home_runs;
-                  players_copy[i]!.stats_season.rbi += _matchStats.rbi;
-                  players_copy[i]!.stats_season.strike_outs += _matchStats.strike_outs;
-                  players_copy[i]!.stats_season.errors += _matchStats.errors;
-                  players_copy[i]!.stats_season.assists += _matchStats.assists;
-                  players_copy[i]!.stats_season.putouts += _matchStats.putouts;
-                  players_copy[i]!.stats_season.k += _matchStats.k;
-                  players_copy[i]!.stats_season.walks_allowed += _matchStats.walks_allowed;
-                  players_copy[i]!.stats_season.ip += _matchStats.ip;
-                  players_copy[i]!.stats_season.runs_allowed += _matchStats.runs_allowed;
-                  // career stats
-                  players_copy[i]!.stats_career.at_bats += _matchStats.at_bats;
-                  players_copy[i]!.stats_career.runs += _matchStats.runs;
-                  players_copy[i]!.stats_career.walks += _matchStats.walks;
-                  players_copy[i]!.stats_career.hits += _matchStats.hits;
-                  players_copy[i]!.stats_career.doubles += _matchStats.doubles;
-                  players_copy[i]!.stats_career.triples += _matchStats.triples;
-                  players_copy[i]!.stats_career.home_runs += _matchStats.home_runs;
-                  players_copy[i]!.stats_career.rbi += _matchStats.rbi;
-                  players_copy[i]!.stats_career.strike_outs += _matchStats.strike_outs;
-                  players_copy[i]!.stats_career.errors += _matchStats.errors;
-                  players_copy[i]!.stats_career.assists += _matchStats.assists;
-                  players_copy[i]!.stats_career.putouts += _matchStats.putouts;
-                  players_copy[i]!.stats_career.k += _matchStats.k;
-                  players_copy[i]!.stats_career.walks_allowed += _matchStats.walks_allowed;
-                  players_copy[i]!.stats_career.ip += _matchStats.ip;
-                  players_copy[i]!.stats_career.runs_allowed += _matchStats.runs_allowed;
-
-                  // calculate experience and level ups
-                  const exp_gained: number = Math.round((_matchStats.at_bats + _matchStats.hits + _matchStats.doubles + (_matchStats.triples*2) + (_matchStats.home_runs*3) +
-                    _matchStats.rbi + _matchStats.runs + _matchStats.errors + _matchStats.assists + _matchStats.putouts) * multiplier);
-                  let exp_needed: number = getExperienceToNextLevel(players_copy[i]!.level, players_copy[i]!.experience);
-                  if (exp_needed <= (exp_gained)) {
-                    // level up
-                    LevelUpPlayer(players_copy[i]!);
-                    players_copy[i]!.experience = exp_gained - exp_needed;
-                  }
-                  else {
-                    players_copy[i]!.experience += exp_gained;
-                  }
-                }
-                //let temp_teams: TeamStateStruct[] = [];
-                  
-                temp_teams.push({
-                id: gameData.teams[i]?.id!,
-                name: gameData.teams[i]?.name!,
-                gamesPlayed: gameData.teams[i]?.gamesPlayed! +1,
-                wins: gameData.teams[i]?.wins! + ((myTeamWin) ? 1 : 0),
-                playersJson: players_copy // TODO: update level, stats, exp
-                })
-              }
-              else if (gameData.teams[i]?.id === opp_team.id) {
-                temp_teams.push({
-                  id: gameData.teams[i]?.id!,
-                  name: gameData.teams[i]?.name!,
-                  gamesPlayed: gameData.teams[i]?.gamesPlayed! + 1,
-                  wins: gameData.teams[i]?.wins! + ((!myTeamWin) ? 1 : 0),
-                  playersJson: gameData.teams[i]?.playersJson! // TODO: update level, stats, exp
-                })
-              }
-              else {
-                temp_teams.push(gameData.teams[i]!);
-              }
-            }
-            //console.log(`pregame_players_copy after: ${pregame_players_copy[0]!.experience}`)
-            setGameData({
-              leagueId: gameData.leagueId,
-              leagueName: gameData.leagueName,
-              myTeamId: gameData.myTeamId,
-              season: gameData.season,
-              week: gameData.week,
-              phase: WeekPhase.GAME,
-              teams: temp_teams, 
-              schedule: gameData.schedule,
-              fielderHexPos: gameData.fielderHexPos
-            })
-          }}>
-            Sim Game{` >>`}
-          </button>
-          ) : (gameData.phase === WeekPhase.GAME ? (
+      {user != null ? (
+        <div className="flex flex-row p-1 gap-3 bg-neutral-100">
+          <button onClick={() => {
+            setIsViewSchedule(false);
+            setIsViewTeamInfo(false);
+          }}>Dashboard</button>
+          <button onClick={() => {
+            setIsViewSchedule(true);
+            setIsViewTeamInfo(false);
+          }}>Schedule</button>
+          <button onClick={() => {
+            setIsViewSchedule(false);
+            setIsViewTeamInfo(true);
+          }}>Team Info</button>
+          {gameData.phase === WeekPhase.PREGAME ? (
             <button 
             className="transition-colors duration-200 hover:bg-green-400 
             bg-green-600 text-center text-white shadow-sm"
             onClick={() => { // TODO: Will this work?
-              //console.log(`pregameplayerstats gainexp: ${preGamePlayerStats[0]!.experience}`)
+              let myTeamWin: boolean = false;
+              let _results: MatchSimResults = {
+                home_win: false, 
+                player_matchStats: {}
+              };
+              if (isMyTeamHome) {
+                _results = exhibition(my_team, opp_team);
+                myTeamWin = _results.home_win;
+              }
+              else if (!isMyTeamHome) {
+                _results = exhibition(opp_team, my_team);
+                myTeamWin = !_results.home_win;
+              }
+              let temp_teams: TeamStateStruct[] = [];
+              /////////////////// from postgameview
+              // did my team win? Was opponent team stronger or weaker?
+              //let didWin: boolean = false;
+              //let strongerTeam: boolean = false;
+              let runningLevelSum = 0;
+              for (let i=0; i<my_team!.playersJson.length; i++) {
+                runningLevelSum += my_team!.playersJson[i]!.level;
+              }
+              const myTeamAvgLvl = runningLevelSum / my_team!.playersJson.length;
+              //let oppTeamAvgLvl = 0;
+              
+              //didWin = myTeamWin; 
+              // get opponent avg level 
+              //const opp_index = getTeamIndex(gameData.schedule[gameData.week]![i]!.awayTeam, gameData.teams);
+              runningLevelSum = 0;
+              for (let i=0; i<opp_team!.playersJson.length; i++) {
+                runningLevelSum += opp_team!.playersJson[i]!.level;
+              }
+              const oppTeamAvgLvl = runningLevelSum / opp_team!.playersJson.length; 
+              
+              let multiplier = myTeamWin ? 2 : 1;
+              if (oppTeamAvgLvl >= myTeamAvgLvl) multiplier += 1;
+              if (oppTeamAvgLvl < myTeamAvgLvl) multiplier -= 0.5;
+              //////////////////////// end from postgameview
+              //let pregame_players_copy: PlayerStateStruct[] = [...my_team.playersJson];
+              let pregame_players_copy: PlayerStateStruct[] = JSON.parse(JSON.stringify(my_team.playersJson)) // clone gameData.playersJson
+              //console.log(`pregame_players_copy before: ${pregame_players_copy[0]!.experience}`)
+              //console.log(`pregameplayerstats before: ${preGamePlayerStats[0]!.experience}`)
+              setPreGamePlayerStats(pregame_players_copy);  // used to compare against gameData player stats in PostGameView to check which stats/levels increased
+              //console.log(`pregameplayerstats after: ${preGamePlayerStats[0]!.experience}`)
+              for (let i=0; i<gameData.teams.length; i++) {
+                if (gameData.teams[i]?.id === gameData.myTeamId) {
+                  ////////////////////////////////////////////////// from postgameview
+                  let players_copy: PlayerStateStruct[] = JSON.parse(JSON.stringify(my_team.playersJson)) //MUST USE THIS METHOD TO ACTUALLY CLONE
+                  for (let i=0; i<players_copy.length!; i++) {
+                    //let _matchStats: playerMatchStats = lastMatchSimResults.player_matchStats[players_copy[i]!.id]!;
+                    let _matchStats: playerMatchStats = _results.player_matchStats[players_copy[i]!.id]!;
+                    // add performance stats to player season stats and career stats
+                    // season stats
+                    players_copy[i]!.stats_season.at_bats += _matchStats.at_bats;
+                    players_copy[i]!.stats_season.runs += _matchStats.runs;
+                    players_copy[i]!.stats_season.walks += _matchStats.walks;
+                    players_copy[i]!.stats_season.hits += _matchStats.hits;
+                    players_copy[i]!.stats_season.doubles += _matchStats.doubles;
+                    players_copy[i]!.stats_season.triples += _matchStats.triples;
+                    players_copy[i]!.stats_season.home_runs += _matchStats.home_runs;
+                    players_copy[i]!.stats_season.rbi += _matchStats.rbi;
+                    players_copy[i]!.stats_season.strike_outs += _matchStats.strike_outs;
+                    players_copy[i]!.stats_season.errors += _matchStats.errors;
+                    players_copy[i]!.stats_season.assists += _matchStats.assists;
+                    players_copy[i]!.stats_season.putouts += _matchStats.putouts;
+                    players_copy[i]!.stats_season.k += _matchStats.k;
+                    players_copy[i]!.stats_season.walks_allowed += _matchStats.walks_allowed;
+                    players_copy[i]!.stats_season.ip += _matchStats.ip;
+                    players_copy[i]!.stats_season.runs_allowed += _matchStats.runs_allowed;
+                    // career stats
+                    players_copy[i]!.stats_career.at_bats += _matchStats.at_bats;
+                    players_copy[i]!.stats_career.runs += _matchStats.runs;
+                    players_copy[i]!.stats_career.walks += _matchStats.walks;
+                    players_copy[i]!.stats_career.hits += _matchStats.hits;
+                    players_copy[i]!.stats_career.doubles += _matchStats.doubles;
+                    players_copy[i]!.stats_career.triples += _matchStats.triples;
+                    players_copy[i]!.stats_career.home_runs += _matchStats.home_runs;
+                    players_copy[i]!.stats_career.rbi += _matchStats.rbi;
+                    players_copy[i]!.stats_career.strike_outs += _matchStats.strike_outs;
+                    players_copy[i]!.stats_career.errors += _matchStats.errors;
+                    players_copy[i]!.stats_career.assists += _matchStats.assists;
+                    players_copy[i]!.stats_career.putouts += _matchStats.putouts;
+                    players_copy[i]!.stats_career.k += _matchStats.k;
+                    players_copy[i]!.stats_career.walks_allowed += _matchStats.walks_allowed;
+                    players_copy[i]!.stats_career.ip += _matchStats.ip;
+                    players_copy[i]!.stats_career.runs_allowed += _matchStats.runs_allowed;
+
+                    // calculate experience and level ups
+                    const exp_gained: number = Math.round((_matchStats.at_bats + _matchStats.hits + _matchStats.doubles + (_matchStats.triples*2) + (_matchStats.home_runs*3) +
+                      _matchStats.rbi + _matchStats.runs + _matchStats.errors + _matchStats.assists + _matchStats.putouts) * multiplier);
+                    let exp_needed: number = getExperienceToNextLevel(players_copy[i]!.level, players_copy[i]!.experience);
+                    if (exp_needed <= (exp_gained)) {
+                      // level up
+                      LevelUpPlayer(players_copy[i]!);
+                      players_copy[i]!.experience = exp_gained - exp_needed;
+                    }
+                    else {
+                      players_copy[i]!.experience += exp_gained;
+                    }
+                  }
+                  //let temp_teams: TeamStateStruct[] = [];
+                    
+                  temp_teams.push({
+                  id: gameData.teams[i]?.id!,
+                  name: gameData.teams[i]?.name!,
+                  gamesPlayed: gameData.teams[i]?.gamesPlayed! +1,
+                  wins: gameData.teams[i]?.wins! + ((myTeamWin) ? 1 : 0),
+                  playersJson: players_copy // TODO: update level, stats, exp
+                  })
+                }
+                else if (gameData.teams[i]?.id === opp_team.id) {
+                  temp_teams.push({
+                    id: gameData.teams[i]?.id!,
+                    name: gameData.teams[i]?.name!,
+                    gamesPlayed: gameData.teams[i]?.gamesPlayed! + 1,
+                    wins: gameData.teams[i]?.wins! + ((!myTeamWin) ? 1 : 0),
+                    playersJson: gameData.teams[i]?.playersJson! // TODO: update level, stats, exp
+                  })
+                }
+                else {
+                  temp_teams.push(gameData.teams[i]!);
+                }
+              }
+              //console.log(`pregame_players_copy after: ${pregame_players_copy[0]!.experience}`)
               setGameData({
                 leagueId: gameData.leagueId,
                 leagueName: gameData.leagueName,
                 myTeamId: gameData.myTeamId,
                 season: gameData.season,
                 week: gameData.week,
-                phase: WeekPhase.POSTGAME,
-                teams: gameData.teams, 
+                phase: WeekPhase.GAME,
+                teams: temp_teams, 
                 schedule: gameData.schedule,
                 fielderHexPos: gameData.fielderHexPos
               })
-              setLogContents([]);
-              //setPreGamePlayerStats([]); // TODO: need this?
             }}>
-              Gain EXP{` >>`}
+              Sim Game{` >>`}
             </button>
-          ) : (
-            <button 
-            className="transition-colors duration-200 hover:bg-green-400 
-            bg-green-600 text-center text-white shadow-sm"
-            onClick={() => { // TODO: Will this work?
-              //console.log(`pregameplayerstats save: ${preGamePlayerStats[0]!.experience}`)
-              // save all team wins/losses
-              // sim other team's games
-              let temp_teams: TeamStateStruct[] = [];
-              for (let i=0; i<gameData.schedule[gameData.week]!.length; i++) {
-                let matchups = gameData.schedule[gameData.week]!;
-                if (matchups[i]!.homeTeam !== gameData.myTeamId && matchups[i]!.awayTeam !== gameData.myTeamId) { // don't sim game if this was my team's game for that week (already simmed)
-                  const team_home = getTeamById(matchups[i]!.homeTeam);
-                  const team_away = getTeamById(matchups[i]!.awayTeam);
-
-                  //const results: MatchSimResults = MatchSim(gameData, team_home!, team_away!, []);
-                  const results: MatchSimResults = MatchSim(gameData, team_home!, team_away!, []);
-                  temp_teams.push({
-                    id: matchups[i]!.homeTeam,
-                    name: team_home?.name!,
-                    gamesPlayed: team_home?.gamesPlayed! + 1,
-                    wins: team_home?.wins! + ((results.home_win) ? 1 : 0),
-                    playersJson: team_home?.playersJson!
-                  })
-                  temp_teams.push({
-                    id: matchups[i]!.awayTeam,
-                    name: team_away?.name!,
-                    gamesPlayed: team_away?.gamesPlayed! + 1,
-                    wins: team_away?.wins! + ((!results.home_win) ? 1 : 0),
-                    playersJson: team_away?.playersJson!
-                  })
-                }
-                else { // my team and my opponent team wins and gamesPlayed have already been updated
-                  const team_home = getTeamById(matchups[i]!.homeTeam);
-                  const team_away = getTeamById(matchups[i]!.awayTeam);
-                  temp_teams.push({
-                    id: matchups[i]!.homeTeam,
-                    name: team_home?.name!,
-                    gamesPlayed: team_home?.gamesPlayed!,
-                    wins: team_home?.wins!,
-                    playersJson: team_home?.playersJson!
-                  })
-                  temp_teams.push({
-                    id: matchups[i]!.awayTeam,
-                    name: team_away?.name!,
-                    gamesPlayed: team_away?.gamesPlayed!,
-                    wins: team_away?.wins!,
-                    playersJson: team_away?.playersJson!
-                  })
-                }
-              }
-              if (gameData.week < 31) {
+            ) : (gameData.phase === WeekPhase.GAME ? (
+              <button 
+              className="transition-colors duration-200 hover:bg-green-400 
+              bg-green-600 text-center text-white shadow-sm"
+              onClick={() => { // TODO: Will this work?
+                //console.log(`pregameplayerstats gainexp: ${preGamePlayerStats[0]!.experience}`)
                 setGameData({
                   leagueId: gameData.leagueId,
                   leagueName: gameData.leagueName,
                   myTeamId: gameData.myTeamId,
                   season: gameData.season,
-                  week: gameData.week + 1,
-                  phase: WeekPhase.PREGAME,
-                  teams: temp_teams, 
+                  week: gameData.week,
+                  phase: WeekPhase.POSTGAME,
+                  teams: gameData.teams, 
                   schedule: gameData.schedule,
                   fielderHexPos: gameData.fielderHexPos
                 })
-              }
-              else if (gameData.week >= 31) {
-                // create new schedule
-                const nextSeasonSchedule: {[key: number] : Matchup[]} = createSchedule(gameData.teams);
-                // set team wins and gamesPlayed to 0
-                temp_teams.map((v) => {
-                  v.gamesPlayed = 0;
-                  v.wins = 0;
-                })
-                setGameData({
-                  leagueId: gameData.leagueId,
-                  leagueName: gameData.leagueName,
-                  myTeamId: gameData.myTeamId,
-                  season: gameData.season + 1,
-                  week: 0,
-                  phase: WeekPhase.PREGAME,
-                  teams: temp_teams, 
-                  schedule: nextSeasonSchedule,
-                  fielderHexPos: gameData.fielderHexPos
-                })
-              }
-              setLastMatchSimResults({
-                home_win: false,
-                player_matchStats: {}
-              });
-              //setPreGamePlayerStats(my_team.playersJson);  // used to compare against gameData player stats in PostGameView to check which stats/levels increased
-              //setPreGamePlayerStats([]);
-              //setLogContents([]);
-              // TODO: save new exp gained and new stats from level ups for each player in gameData
-            }}>
-              Save and Go to Next Week{` >>`}
-            </button>
-          ))}
-      </div>
+                setLogContents([]);
+                //setPreGamePlayerStats([]); // TODO: need this?
+              }}>
+                Gain EXP{` >>`}
+              </button>
+            ) : (
+              <button 
+              className="transition-colors duration-200 hover:bg-green-400 
+              bg-green-600 text-center text-white shadow-sm"
+              onClick={() => { // TODO: Will this work?
+                //console.log(`pregameplayerstats save: ${preGamePlayerStats[0]!.experience}`)
+                // save all team wins/losses
+                // sim other team's games
+                let temp_teams: TeamStateStruct[] = [];
+                for (let i=0; i<gameData.schedule[gameData.week]!.length; i++) {
+                  let matchups = gameData.schedule[gameData.week]!;
+                  if (matchups[i]!.homeTeam !== gameData.myTeamId && matchups[i]!.awayTeam !== gameData.myTeamId) { // don't sim game if this was my team's game for that week (already simmed)
+                    const team_home = getTeamById(matchups[i]!.homeTeam);
+                    const team_away = getTeamById(matchups[i]!.awayTeam);
+
+                    //const results: MatchSimResults = MatchSim(gameData, team_home!, team_away!, []);
+                    const results: MatchSimResults = MatchSim(gameData, team_home!, team_away!, []);
+                    temp_teams.push({
+                      id: matchups[i]!.homeTeam,
+                      name: team_home?.name!,
+                      gamesPlayed: team_home?.gamesPlayed! + 1,
+                      wins: team_home?.wins! + ((results.home_win) ? 1 : 0),
+                      playersJson: team_home?.playersJson!
+                    })
+                    temp_teams.push({
+                      id: matchups[i]!.awayTeam,
+                      name: team_away?.name!,
+                      gamesPlayed: team_away?.gamesPlayed! + 1,
+                      wins: team_away?.wins! + ((!results.home_win) ? 1 : 0),
+                      playersJson: team_away?.playersJson!
+                    })
+                  }
+                  else { // my team and my opponent team wins and gamesPlayed have already been updated
+                    const team_home = getTeamById(matchups[i]!.homeTeam);
+                    const team_away = getTeamById(matchups[i]!.awayTeam);
+                    temp_teams.push({
+                      id: matchups[i]!.homeTeam,
+                      name: team_home?.name!,
+                      gamesPlayed: team_home?.gamesPlayed!,
+                      wins: team_home?.wins!,
+                      playersJson: team_home?.playersJson!
+                    })
+                    temp_teams.push({
+                      id: matchups[i]!.awayTeam,
+                      name: team_away?.name!,
+                      gamesPlayed: team_away?.gamesPlayed!,
+                      wins: team_away?.wins!,
+                      playersJson: team_away?.playersJson!
+                    })
+                  }
+                }
+                if (gameData.week < 31) {
+                  setGameData({
+                    leagueId: gameData.leagueId,
+                    leagueName: gameData.leagueName,
+                    myTeamId: gameData.myTeamId,
+                    season: gameData.season,
+                    week: gameData.week + 1,
+                    phase: WeekPhase.PREGAME,
+                    teams: temp_teams, 
+                    schedule: gameData.schedule,
+                    fielderHexPos: gameData.fielderHexPos
+                  })
+                }
+                else if (gameData.week >= 31) {
+                  // create new schedule
+                  const nextSeasonSchedule: {[key: number] : Matchup[]} = createSchedule(gameData.teams);
+                  // set team wins and gamesPlayed to 0
+                  temp_teams.map((v) => {
+                    v.gamesPlayed = 0;
+                    v.wins = 0;
+                  })
+                  setGameData({
+                    leagueId: gameData.leagueId,
+                    leagueName: gameData.leagueName,
+                    myTeamId: gameData.myTeamId,
+                    season: gameData.season + 1,
+                    week: 0,
+                    phase: WeekPhase.PREGAME,
+                    teams: temp_teams, 
+                    schedule: nextSeasonSchedule,
+                    fielderHexPos: gameData.fielderHexPos
+                  })
+                }
+                setLastMatchSimResults({
+                  home_win: false,
+                  player_matchStats: {}
+                });
+                //setPreGamePlayerStats(my_team.playersJson);  // used to compare against gameData player stats in PostGameView to check which stats/levels increased
+                //setPreGamePlayerStats([]);
+                //setLogContents([]);
+                // TODO: save new exp gained and new stats from level ups for each player in gameData
+              }}>
+                Save and Go to Next Week{` >>`}
+              </button>
+            ))}
+        </div>
+      ) : (<div></div>)}
       <div className="content-end px-2 py-1 gap-3 bg-neutral-100"> {/*add items here to appear on RIGHT side of top bar */}
         {/*<Link 
           href="/new_league"
@@ -2281,15 +2340,28 @@ function TopBar() {
                       <Link 
                           href="/new_league"
                           className=" transition-colors duration-200 hover:bg-green-500 
-                      bg-green-700 text-center text-white shadow-sm ">New League
+                          text-center hover:text-white shadow-sm ">New League
                       </Link>
                       <button 
-                      className="px-2"
-                      onClick={() => void signOut()}>Log Out</button>   
+                        className="px-2 transition-colors duration-200 hover:bg-green-500 
+                        text-center hover:text-white shadow-sm"
+                        onClick={() => {
+                          setIsPlayingGame(false);
+                        }}>
+                          Switch League
+                      </button>   
+                      <button 
+                        className="px-2 transition-colors duration-200 hover:bg-green-500 
+                        text-center hover:text-white shadow-sm"
+                        onClick={() => signOut()}>Log Out
+                      </button>   
                     </div>
         ) : null}
         {user == null ? (
-            <button onClick={() => void signIn()}>Log In</button>
+            <button onClick={() => {
+              setIsPlayingGame(false);
+              signIn();
+            }}>Log In</button>
         ) : null}
       </div>
     </div>
@@ -2297,6 +2369,8 @@ function TopBar() {
     
   )
 }
+//console.log(`this ran!!!222`)
+
 
 // This is the outermost HTML
   return (
