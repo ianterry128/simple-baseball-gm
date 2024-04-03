@@ -1902,7 +1902,7 @@ function PostGameView({MyTeamIndex} : {MyTeamIndex: number}) {
                 }
                 
                 
-                let str_to_show = (preGamePlayerStats[index]!.strength < value.strength) ? `${inc_str}` : ``;
+                let str_to_show = (preGamePlayerStats[index]!.strength < value.strength) ? `+${inc_str}` : ``;
                 let str_className_string = (preGamePlayerStats[index]!.strength < value.strength) ? "px-2 text-green-500 font-bold" : "px-2";
                 let spd_to_show = (preGamePlayerStats[index]!.speed < value.speed) ? `+${inc_spd}` : ``;
                 let spd_className_string = (preGamePlayerStats[index]!.speed < value.speed) ? "px-2 text-green-500 font-bold" : "px-2";
