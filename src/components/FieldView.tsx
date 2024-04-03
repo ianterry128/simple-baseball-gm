@@ -629,7 +629,7 @@ function MatchTextLog3(props_matchlog: MatchLogProps3) {
           _homeInningRuns={__homeInningRuns}
           _awayInningRuns={__awayInningRuns} />
         </div>
-        <div className="flex p-2 gap-4 margin-auto">
+        <div className="flex p-2 gap-4 justify-center margin-auto">
           <canvas id="canvas" 
             className="border-2 "
             width={canvas_w} 
@@ -651,7 +651,7 @@ function MatchTextLog3(props_matchlog: MatchLogProps3) {
         <h1 className="text-center">{hexCoordString}</h1>
         <div className="flex flex-row p-2 margin-auto">
         </div>
-        <div className="flex p-2 gap-4 margin-auto">
+        <div className="flex p-2 gap-4 justify-center margin-auto">
           <canvas id="canvas" 
             className="border-2 "
             width={canvas_w} 

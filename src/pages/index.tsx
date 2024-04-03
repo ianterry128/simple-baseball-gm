@@ -1326,7 +1326,7 @@ function MainGameView() {
           </div>
           
         </div>
-        <div className="w-full sm:w-3/5 lg:w-3/5 px-1 bg-orange-300 margin-auto">
+        <div className="w-full sm:w-3/5 lg:w-3/5 px-1 bg-orange-300  margin-auto">
           <h1 className="text-center">Week {gameData.week}</h1>
           <FieldView 
           fielderHexPos={gameData.fielderHexPos}
@@ -2060,15 +2060,24 @@ function TopBar() {
     <div className="flex flex-row justify-between bg-neutral-100">
       {user != null ? (
         <div className="flex flex-row p-1 gap-3 bg-neutral-100">
-          <button onClick={() => {
+          <button 
+            className="transition-colors duration-200 hover:bg-green-500 
+            text-center hover:text-white shadow-sm"
+            onClick={() => {
             setIsViewSchedule(false);
             setIsViewTeamInfo(false);
           }}>Dashboard</button>
-          <button onClick={() => {
+          <button 
+            className="transition-colors duration-200 hover:bg-green-500 
+            text-center hover:text-white shadow-sm"
+            onClick={() => {
             setIsViewSchedule(true);
             setIsViewTeamInfo(false);
           }}>Schedule</button>
-          <button onClick={() => {
+          <button 
+            className="transition-colors duration-200 hover:bg-green-500 
+            text-center hover:text-white shadow-sm"
+            onClick={() => {
             setIsViewSchedule(false);
             setIsViewTeamInfo(true);
           }}>Team Info</button>
