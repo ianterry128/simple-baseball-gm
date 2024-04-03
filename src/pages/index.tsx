@@ -17,6 +17,7 @@ import { api } from "~/utils/api";
 import { Position, hex_distance, hex_lineDraw } from "~/utils/hexUtil";
 import { ToastContainer, toast } from "react-toastify";
 import 'react-toastify/dist/ReactToastify.css';
+import localFont from 'next/font/local';
 /////////////////////////
 // The following import prevents a Font Awesome icon server-side rendering bug, // taken from https://stackoverflow.com/questions/56334381/why-my-font-awesome-icons-are-being-displayed-big-at-first-and-then-updated-to-t
 // where the icons flash from a very large icon down to a properly sized one:
@@ -31,6 +32,8 @@ import { faHouse, faArrowUp, faArrowLeft, faArrowRight, faArrowDown } from '@for
 import { createSchedule } from "./new_league";
 import { isWeakMap } from "util/types";
 library.add(faHouse, faArrowUp, faArrowLeft, faArrowRight, faArrowDown)
+
+const myFont = localFont({ src: '../../public/fonts/Talking_Baseball.otf' })
 
 interface PlayerStateStruct {
     id: string,
@@ -2379,10 +2382,12 @@ function LoggedOutView() {
   return (
     <div className="flex flex-col items-center h-[1080px]">
       <div className="lg:h-[20%] text-center content-center">
-        <h1 className="font-extrabold text-8xl font-family: talking-baseball;">Simple Baseball GM</h1>
+        <div className={myFont.className}>
+        <h1 className="text-8xl underline">Simple Baseball GM</h1>
+        </div>
         <h2 className="text-2xl p-2">a baseball management game that focuses on <b>FUN</b> rather than realism</h2>
       </div>
-      <div className="flex flex-row items-center py-10 gap-20 bg-[url('/img/bgImage_002.jpg')] bg-bottom lg:h-[58%] w-full">
+      <div className="flex flex-row items-center py-10 gap-20 bg-[url('/img/bgImage_002.jpg')] bg-fixed bg-bottom bg-cover lg:h-[58%] w-full">
         <div className="w-1/6"></div>
         <div className="w-2/6 border-2 shadow-lg rounded-lg py-3 px-6 bg-black bg-opacity-65 text-white">
           <figure>
@@ -2408,7 +2413,7 @@ function LoggedOutView() {
         </div>
         <div className="w-1/6"></div>
       </div>
-      <div className="border-2 rounded-lg p-2 text-center lg:h-[22%]">
+      <div className=" p-2 text-center lg:h-[22%]">
         <h2 className="py-2 text-lg">Log in with Google or Discord to play for free - right here in your browser.</h2>
         <button 
           className="rounded-full transition-colors duration-200 hover:bg-green-500 
