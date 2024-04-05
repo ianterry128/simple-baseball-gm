@@ -1241,15 +1241,9 @@ function MainGameView() {
 
   if (isViewLeagueInfo) {
     return (
-      <div className="flex flex-row justify-around p-10">
-        <LeagueTeamsTable
-          leagueInfoProp={_leagueInfo}
-          isActiveProp={true} />
-          <TeamDisplayTable 
-            leagueInfoProp={_leagueInfo}
-            teamIndexProp={selectedTeam}
-          /> 
-      </div>
+      <LeagueInfoView
+        leagueInfoProp={_leagueInfo}
+        teamIndexProp={selectedTeam} />
     )
   }
 
@@ -1285,9 +1279,6 @@ function MainGameView() {
             teamIndexProp={selectedTeam}
           /> 
         </div>
-      <LeagueTeamsTable
-      leagueInfoProp={_leagueInfo}
-      isActiveProp={true} />
     </div>
     )
   }
@@ -1510,8 +1501,8 @@ function LeagueTeamsTable({leagueInfoProp, isActiveProp} : {leagueInfoProp:Leagu
   return (
       <div
       style={{ display: isActiveProp ? "inline" : "none" }}>
-        <table className="table-auto border-2 border-spacing-2 p-8">
-          <caption>My League: {leagueInfoProp.name}</caption>
+        <table className="table-auto border-2 border-spacing-2 p-8 shadow-lg w-full">
+          <caption className="text-lg font-semibold">My League: {leagueInfoProp.name}</caption>
           <thead>
             <tr className="even:bg-gray-50 odd:bg-white">
               <th>Name</th>
@@ -1526,7 +1517,7 @@ function LeagueTeamsTable({leagueInfoProp, isActiveProp} : {leagueInfoProp:Leagu
                 return (
                   <tr 
                   key={keyVal} 
-                  className="even:bg-green-200 odd:bg-gray-50 hover:bg-blue-600 hover:text-gray-50"
+                  className="even:bg-green-200 odd:bg-gray-50 hover:bg-blue-600 hover:text-gray-50 text-center"
                   onClick={() => {
                     setSelectedTeamById(index.id);
                   }}>
@@ -1566,9 +1557,9 @@ function ScheduleView() {
   }
 
   return (
-    <div className="overflow-x-auto">
-        <table className="table-auto border-2 border-spacing-2 p-8">
-          <caption>My Schedule</caption>
+    <div className="flex flex-row gap-10 px-10 py-5 w-full h-full">
+        <table className="table-auto border-2 border-spacing-2 shadow-lg w-2/6">
+          <caption className="text-lg font-semibold">My Schedule</caption>
           <thead>
             <tr className="even:bg-gray-50 odd:bg-white">
               <th>Week</th>
@@ -1581,7 +1572,7 @@ function ScheduleView() {
             {
               mySched.map((v, index) => {
                 return (
-                  <tr key={v.react_key} className="even:bg-green-200 odd:bg-gray-50">
+                  <tr key={v.react_key} className="even:bg-green-200 odd:bg-gray-50  hover:bg-black hover:bg-opacity-1 hover:text-gray-100 text-center">
                     <td>{index}</td>
                     <td>{v.opponent}</td>
                     <td>{v.h_a}</td>
@@ -1836,6 +1827,60 @@ function TeamInfoView({MyTeamIndex} : {MyTeamIndex: number}) {
           </tbody>
         </table>
       </div>
+  )
+}
+
+function LeagueInfoView({leagueInfoProp, teamIndexProp} : {leagueInfoProp:LeagueStateStruct, teamIndexProp:number}) {
+  return (
+    <div className="flex flex-row justify-around gap-10 px-10 py-5 w-full h-full">
+      <div className="h-full w-2/6">
+      <LeagueTeamsTable
+        leagueInfoProp={leagueInfoProp}
+        isActiveProp={true} />
+      </div>
+        
+      <table className="table-auto border-2 border-spacing-2 p-8 shadow-lg h-80 w-2/6">
+        <caption className="text-lg font-semibold">Team: {leagueInfoProp.teams[teamIndexProp]?.name}</caption>
+        <thead>
+          <tr className="even:bg-gray-50 odd:bg-white">
+            <th>Name</th>
+            <th>Class</th>
+            <th>Str</th>
+            <th>Spd</th>
+            <th>Prc</th>
+            <th>Con</th>
+            <th>Lvl</th>
+            <th>Age</th>
+          </tr>
+        </thead>
+        <tbody>
+          {
+            leagueInfoProp.teams[teamIndexProp]?.playersJson.map((index) => {
+              const keyVal: string = index.id + `-TeamDisplayTable`;
+              return (
+                <tr key={keyVal} className="even:bg-green-200 odd:bg-gray-50 hover:bg-blue-600 hover:text-gray-50 text-center">
+                  <td>{index.name}</td>
+                  <td>{index.class}</td>
+                  <td>{index.strength}</td>
+                  <td>{index.speed}</td>
+                  <td>{index.precision}</td>
+                  <td>{index.contact}</td>
+                  <td>{index.level}</td>
+                  <td>{index.age}</td>
+                </tr>
+              )
+            })
+          }
+        </tbody>
+      </table>
+
+      <div className="border-2 rounded-lg shadow-lg bg-black bg-opacity-65 text-white w-2/6 h-1/2 p-5">
+            <p className="text-xl underline">Did you know?</p>
+            <ul className="list-disc list-outside py-2 px-3">
+              <li>Click on the row in the <b>League Table</b> corresponding to the team you'd like to view.</li>
+            </ul>
+        </div>
+    </div>
   )
 }
 
@@ -2498,11 +2543,11 @@ function LoggedOutView() {
 // Functions outside Home() do not require REACT hooks
 // COMPONENTS
 function TeamDisplayTable({leagueInfoProp, teamIndexProp} : {leagueInfoProp:LeagueStateStruct, teamIndexProp:number}) {
-  const captionText: string = teamIndexProp === 0 ? "My Team: " : "Opponent Team: "
+  //const captionText: string = teamIndexProp === 0 ? "My Team: " : "Opponent Team: ";
   return (
       <div className="overflow-x-auto">
-        <table className="table-auto border-2 border-spacing-2 p-8">
-          <caption>{captionText} {leagueInfoProp.teams[teamIndexProp]?.name}</caption>
+        <table className="table-auto border-2 border-spacing-2 p-8 shadow-lg min-w-80">
+          <caption>Opponent Team: {leagueInfoProp.teams[teamIndexProp]?.name}</caption>
           <thead>
             <tr className="even:bg-gray-50 odd:bg-white">
               <th>Name</th>
@@ -2520,7 +2565,7 @@ function TeamDisplayTable({leagueInfoProp, teamIndexProp} : {leagueInfoProp:Leag
               leagueInfoProp.teams[teamIndexProp]?.playersJson.map((index) => {
                 const keyVal: string = index.id + `-TeamDisplayTable`;
                 return (
-                  <tr key={keyVal} className="even:bg-green-200 odd:bg-gray-50">
+                  <tr key={keyVal} className="even:bg-green-200 odd:bg-gray-50 text-center">
                     <td>{index.name}</td>
                     <td>{index.class}</td>
                     <td>{index.strength}</td>
