@@ -1,12 +1,67 @@
-# Create T3 App
+# Simple Baseball GM
 
-This is a [T3 Stack](https://create.t3.gg/) project bootstrapped with `create-t3-app`.
+a game by Ian Terry
 
-## What's next? How do I make an app with this?
+## Overview
 
-We try to keep this project as simple as possible, so you can start with just the scaffolding we set up for you, and add additional things later when they become necessary.
+Simple Baseball GM is a sports management game with a focus on fun rather than realism.
 
-If you are not familiar with the different technologies used in this project, please refer to the respective docs. If you still are in the wind, please join our [Discord](https://t3.gg/discord) and ask for help.
+## How to Play
+
+### Game Simulation
+
+#### Pitching 
+
+Upon pitching, the pitcher rolls their precision stat. 
+- If the result is less than the (batter's level * 1/3), then the batter walks. 
+- Otherwise, the batter rolls their contact stat, which is compared against the pitcher's precision roll. 
+    - If the batter's contact roll is less than the pitcher's precision roll, then the batter either strikes out (20% chance) or hits with weak contact (80% chance). 
+    - If the batter's contact roll is greater than or equal to the pitcher's precision roll, then the batter hits the ball. The batter's strength stat is rolled to determine the hit distance.
+
+#### Hitting
+
+There is a lot that happens when a batter succesfully hits the ball. Going in order:
+1. The hit distance is determined by rolling the batter's strength stat. A higher strength roll corresponds to a greater hit distance. See the hit distance chart below to see how the strength roll correlates with hit distance.
+2. The **final position** of the ball is chosen randomly from all available hex tiles at the hit distance.
+3. The **launch angle** of the hit is chosen semi-randomly from three options: 1. **Ground**, 2. **Air**, and 3. **High**.
+4. A line of hexagons (the **hit line**) is drawn from the batters box at hex position (0, 0, 0) to the **final position**. Each hexagon in the line has a corresponding **ball height**, which is determined by the **launch angle**.
+5. If any hex along the the **hit line** passes through any fielder's **reaction range** with a **ball height** of **ground** or **air**, then the fielder can attempt to field the ball. In cases where the **hit line** passes through multiple fielders' **reaction ranges**, only one fielder is chosen to field the ball. The chosen fielder will be the fielder that is able to field the ball at a hex at the shortest distance along the **hit line**.
+6. When attempting to field the ball, the fielder rolls their precision stat against the **ball factor**. The **ball factor** is a randomly chosen number between 1 to 15 (inclusive). If the fielder in question is the pitcher, his precision stat is reduced by 0.25x when rolling precision.
+    -If the fielder's precision roll is greater than or equal to the **ball factor**, then the fielder successfully fields the ball.
+        - If the ball is fielded with a **ball height** of **air**, then the batter is caught out.
+        - If the ball is fielded with a **ball height** of **ground**, then the fielder rolls their strength against the **lead runner's** speed roll. Depending on how far the fielder is from the base they are throwing to, the fielder's strength may be augmented by as much as 2.0x or reduced by 0.7x when determining the strength roll. If the strength roll is greater than the **lead runner's** speed roll, then the **lead runner** is out.
+    - If the fielder's precision roll is less than the **ball factor**, then the fielder makes an error. The fielder can not throw the batter out, but he will attempt to hold the batter to first. The fielder will throw to first by rolling his strength against the batter's speed. If the batter's speed roll is greater than or equal to the fielder's strength roll, then the batter makes it to second base, and all other runners advance by one base. Otherwise, the batter is held to a single.
+7. If the **hit line** does not pass through any fielder's **reaction range** with a ball height of **ground** or **air**, then the ball will come to rest in the **final position**.
+8. Whichever fielder is able to move to the **final position** in the least amount of turns will field the ball. The number of turns required for a fielder to move to the **final position** depends on the fielder's initial field position and their **move speed**, which is based on their speed stat. 
+9. Each base runner is guaranteed to attempt to advance at least one base, but they may attempt more. For each turn required for the fielder to move to the **final position**, each base runner will roll their speed stat and the result will be added to a running total. Each time a base runner's running total reaches 50, the base runner will attempt to advance one extra base and the running total will reset. For example, let's say it takes the fielder 3 turns to reach the **final position**, and there is a man on first base. The lead base runner and batter will each roll their speed stat three times. Let's say the lead runner rolls 25, 29, and 12. This runner will attempt to advance 2 bases, from first to third. This is because his running total exceeded 50 one time; so he attempts to advance the 1 guaranteed base plus the 1 extra base. Let's say the batter rolls 8, 3, and 10. The batter will only attempt to run to first base, because his running total only amounted to 21 after all 3 turns. Note that the number of bases a base runner will attempt to advance is limited by the number of advances attempted by any runners ahead of them.
+10. The fielder that recovered the ball will then attempt to throw out the lead runner by rolling his strength stat against the lead runner's speed stat. 
+    - If the fielder's strength roll is lesss than or equal to the lead runner's speed roll, all runners will safely advance to their attempted bases PLUS one additional base. Using the example above, the lead runner would score and the batter would advance to second base.
+    - If the fielder's strength roll is greater than ((runner's speed roll + ball factor) * 2) AND the strength roll is greater than 30, the lead runner will be thrown out.
+
+When a ball is hit, a ball factor is determined by randomly selecting a number between 1 and the maximum ball factor. The maximum ball factor is 15 for regular hits and 3 for weak contact.
+
+##### Weak Contact
+
+Weak contact can occur when the batter's contact roll is less than the pitcher's precision roll. When weak contact occurs, the ball is hit directly to the position occupied by one of the fielding team's infielders. The ball is hit with a maximum ball factor of 3 instead of the usual maximum ball factor of 15, which makes it unlikely for the fielder to make an error. A batter with a high speed stat still has a good chance of making it to first base safely on a ground ball.
+
+#### Fielding
+
+##### Reaction Range and Move Speed
+
+### Player Stats
+
+Player performance is governed by 4 player stats:
+
+- **Strength** - Controls hit distance of batted balls and likelihood of throwing runners out on force plays.
+- **Speed** - Determines how likely a runner is to make it on base without being thrown out and also how likely it is for a runner to go for extra bases. For fielders, controls how many hexes they can move in a single turn when recovering a ball that landed outside their range.
+- **Precision** - Determines how likely a fielder is to catch a batted ball or make an error. For pitchers, determines likeihood of throwing strikes, walking the batter, or forcing weak contact.
+- **Contact** - Determines how likely a batter is to hit the ball.
+
+
+
+## Development Details
+
+This is a [T3 Stack](https://create.t3.gg/) project bootstrapped with `create-t3-app`. 
 
 - [Next.js](https://nextjs.org)
 - [NextAuth.js](https://next-auth.js.org)
@@ -14,15 +69,3 @@ If you are not familiar with the different technologies used in this project, pl
 - [Tailwind CSS](https://tailwindcss.com)
 - [tRPC](https://trpc.io)
 
-## Learn More
-
-To learn more about the [T3 Stack](https://create.t3.gg/), take a look at the following resources:
-
-- [Documentation](https://create.t3.gg/)
-- [Learn the T3 Stack](https://create.t3.gg/en/faq#what-learning-resources-are-currently-available) — Check out these awesome tutorials
-
-You can check out the [create-t3-app GitHub repository](https://github.com/t3-oss/create-t3-app) — your feedback and contributions are welcome!
-
-## How do I deploy this?
-
-Follow our deployment guides for [Vercel](https://create.t3.gg/en/deployment/vercel), [Netlify](https://create.t3.gg/en/deployment/netlify) and [Docker](https://create.t3.gg/en/deployment/docker) for more information.

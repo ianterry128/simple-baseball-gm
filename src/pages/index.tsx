@@ -245,6 +245,7 @@ export default function Home() {
 
   const [isViewSchedule, setIsViewSchedule] = useState<boolean>(false);
   const [isViewTeamInfo, setIsViewTeamInfo] = useState<boolean>(false);
+  const [isViewLeagueInfo, setIsViewLeagueInfo] = useState<boolean>(false);
 
   // needed for game simulation
   
@@ -1230,11 +1231,6 @@ function MainGameView() {
       MyTeamIndex={my_team_index} />
     )
   }
-  if (gameData.phase === WeekPhase.POSTGAME) {
-    return ( 
-    <PostGameView 
-    MyTeamIndex={my_team_index}/>)
-  }
 
   const _leagueInfo: LeagueStateStruct = {
     id: gameData.leagueId,
@@ -1242,6 +1238,28 @@ function MainGameView() {
     teams: gameData.teams,
     schedule: gameData.schedule
   }  
+
+  if (isViewLeagueInfo) {
+    return (
+      <div className="flex flex-row justify-around p-10">
+        <LeagueTeamsTable
+          leagueInfoProp={_leagueInfo}
+          isActiveProp={true} />
+          <TeamDisplayTable 
+            leagueInfoProp={_leagueInfo}
+            teamIndexProp={selectedTeam}
+          /> 
+      </div>
+    )
+  }
+
+  if (gameData.phase === WeekPhase.POSTGAME) {
+    return ( 
+    <PostGameView 
+    MyTeamIndex={my_team_index}/>)
+  }
+
+  
 
   if (gameData.phase === WeekPhase.GAME) {
     return (
@@ -1340,9 +1358,6 @@ function MainGameView() {
             teamIndexProp={selectedTeam}
           /> 
         </div>
-      <LeagueTeamsTable
-      leagueInfoProp={_leagueInfo}
-      isActiveProp={true} />
     </div>
   )
 }
@@ -1585,9 +1600,10 @@ function TeamInfoView({MyTeamIndex} : {MyTeamIndex: number}) {
   const captionText: string = `My Team: ${gameData.teams[MyTeamIndex]?.name}`
 
   return (
-    <div className="overflow-x-auto">
-        <table className="table-auto border-2 border-spacing-2 p-8">
-          <caption>{captionText}</caption>
+    <div className="flex flex-col overflow-x-auto px-10 py-5 gap-5">
+      <div className="flex flex-row gap-10">
+        <table className="table-auto border-2 border-spacing-2 p-8 w-3/6 shadow-lg">
+          <caption className="text-lg font-semibold">{captionText}</caption>
           <thead>
             <tr className="even:bg-gray-50 odd:bg-white">
               <th>Name</th>
@@ -1733,9 +1749,16 @@ function TeamInfoView({MyTeamIndex} : {MyTeamIndex: number}) {
             }
           </tbody>
         </table>
-        
-        <table className="table-auto border-2 border-spacing-2 p-8">
-          <caption>Cumulative Season Stats</caption>
+        <div className="border-2 rounded-lg shadow-lg bg-black bg-opacity-65 text-white w-2/6 h-1/2 p-5">
+            <p className="text-xl underline">Did you know?</p>
+            <ul className="list-disc list-outside py-2 px-3">
+              <li>Change a player's <b>Focus Stat</b> by selecting from the dropdown menu in the <b>My Team</b> table.</li>
+              <li>Upon leveling up, players are guaranteed to increase in their focus stat by at least 1 point.</li>
+            </ul>
+        </div>
+      </div>
+        <table className="table-auto border-2 border-spacing-2 p-8 w-5/6 shadow-lg">
+          <caption className="text-lg font-semibold">Cumulative Season Stats</caption>
           <thead>
             <tr className="even:bg-gray-50 odd:bg-white">
               <th className="px-2">Name</th>
@@ -2007,16 +2030,16 @@ function TopBar() {
           bg-green-700 text-center text-white shadow-sm ">New League
             </Link>*/}
           {user != null ? (
-                      <div className="gap-3"> {/* why do I need this div? */}
-                        <Link 
-                            href="/new_league"
-                            className=" transition-colors duration-200 hover:bg-green-500 
-                        bg-green-700 text-center text-white shadow-sm ">New League
-                        </Link>
-                        <button 
-                        className="px-2"
-                        onClick={() => void signOut()}>Log Out</button>   
-                      </div>
+            <div className="gap-3"> {/* why do I need this div? */}
+                <Link 
+                    href="/new_league"
+                    className=" transition-colors duration-200 hover:bg-green-500 
+                bg-green-700 text-center text-white shadow-sm ">New League
+                </Link>
+                <button 
+                className="px-2"
+                onClick={() => void signOut()}>Log Out</button>   
+            </div>
           ) : null}
           {user == null ? (
               <button onClick={() => {
@@ -2065,6 +2088,7 @@ function TopBar() {
             text-center hover:text-white shadow-sm"
             onClick={() => {
             setIsViewSchedule(false);
+            setIsViewLeagueInfo(false);
             setIsViewTeamInfo(false);
           }}>Dashboard</button>
           <button 
@@ -2072,6 +2096,7 @@ function TopBar() {
             text-center hover:text-white shadow-sm"
             onClick={() => {
             setIsViewSchedule(true);
+            setIsViewLeagueInfo(false);
             setIsViewTeamInfo(false);
           }}>Schedule</button>
           <button 
@@ -2079,8 +2104,17 @@ function TopBar() {
             text-center hover:text-white shadow-sm"
             onClick={() => {
             setIsViewSchedule(false);
+            setIsViewLeagueInfo(false);
             setIsViewTeamInfo(true);
           }}>Team Info</button>
+          <button 
+            className="transition-colors duration-200 hover:bg-green-500 
+            text-center hover:text-white shadow-sm"
+            onClick={() => {
+            setIsViewSchedule(false);
+            setIsViewTeamInfo(false);
+            setIsViewLeagueInfo(true);
+          }}>League Info</button>
           {gameData.phase === WeekPhase.PREGAME ? (
             <button 
             className="transition-colors duration-200 hover:bg-green-400 
@@ -2405,7 +2439,7 @@ function LoggedOutView() {
               <li>Level up your players and increase their stats!</li>
               <li>Simulate games on a hexagonal grid</li>
               <li>Watch games with a detailed game log and animated scoreboard</li>
-              <li>Use detailed player stats to make key decisions concerning batting order and fielder positions</li>
+              <li>Use detailed player statistics to make key decisions concerning batting order and fielder positions</li>
               <li>Select Perks and Skills to make each player unique (feature coming soon)</li>
             </ul>
           </figure>
