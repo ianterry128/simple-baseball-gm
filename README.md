@@ -8,9 +8,40 @@ Simple Baseball GM is a sports management game with a focus on fun rather than r
 
 ## How to Play
 
-### Game Simulation
+A single season plays out over the course of 32 weeks. Each week consists of three **phases**, the **Pregame phase**, **Game phase**, and **Postgame phase**.
 
-#### Pitching 
+### Pregame Phase
+
+During the **pregame phase**, you can set your team's **batting order** and player **field positions** from the **Dashboard** screen.
+- Change **batting order** by selecting the up or down arrows for a corresponding player in the **My Team** table.
+- Change player **field positions** by first selecting a player in the **My Team** table then using the arrow buttons below the table to change the player's **field position** one hex at a time. The player's current **field position** will be reflected on the **field view** in the center of the **Dashboard** screen.
+
+During the **pregame phase** and **game phase** you can see the stats of your opponent for that week on the right side of the **Dashboard** screen.
+
+You can navigate to the next phase (**game phase**) by clicking the **Sim Game >>** button on the top navigation bar.
+
+### Game Phase
+
+During the **game phase**, you will be able to "watch" the game for that week using the **game log** and **animated scoreboard**. Click on the **Start/Pause Log** button to begin replaying the game simulation.
+
+Note that the game actually simulates fully upon clicking the **Sim Game >>** button during the **pregame phase**. This has some implications:
+- Information displayed on the **Team Info** screen during the **game phase** reflects your team information as it is AFTER the game simulation.
+- You can progress to the next phase (**postgame phase**) without watching the game simulation.
+- The **League Info** screen will show the league standings as they are AFTER the game simulation. However, all other teams' games for that week have not simulated yet, so their results will not be reflected in the **League Info** screen until the next **pregame phase**.
+
+You can navigate to the next phase (**postgame phase**) by clicking the **Gain EXP >>** button on the top navigation bar.
+
+### Postgame Phase
+
+During the **postgame phase**, you can see how each of your players performed during that week's game. You can also see how much experience each player gained and whether or not they leveled up. If a player did level up, their new level will appear in green text with a "+1" superscript indicating that their level has increased by 1. Any stat increases for the player due to the level up will also show in green text with a "+1", "+2", or "+3" superscript indicating how much the stat has increased. This information is displayed on the **Dashboard** screen.
+
+You can navigate to the **pregame phase** of the next week by clicking the **Save and Go to Next Week >>** button on the top navigation bar. Note that clicking this button also saves your game data to the database, and this is the ONLY WAY to save your game data. You can not save game data to the database during the **pregame** or **game** phases.
+
+## Game Simulation
+
+It is important to understand how the actual game simulation works so that you can make informed decisions about how to set your batting order, player field positions, and focus stats. I will assume you know the [basic rules of baseball](https://simple.wikipedia.org/wiki/Baseball).
+
+### Pitching 
 
 Upon pitching, the pitcher rolls their precision stat. 
 - If the result is less than the (batter's level * 1/3), then the batter walks. 
@@ -18,7 +49,7 @@ Upon pitching, the pitcher rolls their precision stat.
     - If the batter's contact roll is less than the pitcher's precision roll, then the batter either strikes out (20% chance) or hits with weak contact (80% chance). 
     - If the batter's contact roll is greater than or equal to the pitcher's precision roll, then the batter hits the ball. The batter's strength stat is rolled to determine the hit distance.
 
-#### Hitting
+### Hitting and Fielding
 
 There is a lot that happens when a batter succesfully hits the ball. Going in order:
 1. The hit distance is determined by rolling the batter's strength stat. A higher strength roll corresponds to a greater hit distance. See the hit distance chart below to see how the strength roll correlates with hit distance.
@@ -36,19 +67,32 @@ There is a lot that happens when a batter succesfully hits the ball. Going in or
 9. Each base runner is guaranteed to attempt to advance at least one base, but they may attempt more. For each turn required for the fielder to move to the **final position**, each base runner will roll their speed stat and the result will be added to a running total. Each time a base runner's running total reaches 50, the base runner will attempt to advance one extra base and the running total will reset. For example, let's say it takes the fielder 3 turns to reach the **final position**, and there is a man on first base. The lead base runner and batter will each roll their speed stat three times. Let's say the lead runner rolls 25, 29, and 12. This runner will attempt to advance 2 bases, from first to third. This is because his running total exceeded 50 one time; so he attempts to advance the 1 guaranteed base plus the 1 extra base. Let's say the batter rolls 8, 3, and 10. The batter will only attempt to run to first base, because his running total only amounted to 21 after all 3 turns. Note that the number of bases a base runner will attempt to advance is limited by the number of advances attempted by any runners ahead of them.
 10. The fielder that recovered the ball will then attempt to throw out the lead runner by rolling his strength stat against the lead runner's speed stat. 
     - If the fielder's strength roll is lesss than or equal to the lead runner's speed roll, all runners will safely advance to their attempted bases PLUS one additional base. Using the example above, the lead runner would score and the batter would advance to second base.
-    - If the fielder's strength roll is greater than ((runner's speed roll + ball factor) * 2) AND the strength roll is greater than 30, the lead runner will be thrown out.
+    - If the fielder's strength roll is greater than ((runner's speed roll + ball factor) * 2) AND the strength roll is greater than 30, the lead runner will be thrown out. Otherwise, all runners will advance to their attempted bases.
 
-When a ball is hit, a ball factor is determined by randomly selecting a number between 1 and the maximum ball factor. The maximum ball factor is 15 for regular hits and 3 for weak contact.
-
-##### Weak Contact
+#### Weak Contact
 
 Weak contact can occur when the batter's contact roll is less than the pitcher's precision roll. When weak contact occurs, the ball is hit directly to the position occupied by one of the fielding team's infielders. The ball is hit with a maximum ball factor of 3 instead of the usual maximum ball factor of 15, which makes it unlikely for the fielder to make an error. A batter with a high speed stat still has a good chance of making it to first base safely on a ground ball.
 
-#### Fielding
+#### Reaction Range 
 
-##### Reaction Range and Move Speed
+Every player has a **reaction range** when fielding. IF the path of a batted ball (**hit line**) passes through any tile in a fielder's **reaction range** with a **ball height** of **ground** or **air**, then that fielder will be able to attempt to field the ball. The **reaction range** of a fielder is based on their **class** (commonly referred to as position).
+| Fielder Class | Reaction Range |
+| ------------- | -------------- |
+| Catcher       | 2 tiles        |
+| Pitcher       | 1 tile         |
+| 1st Base      | 2 tiles        |
+| 2nd Base      | 3 tiles        |
+| Short Stop    | 3 tiles        |
+| 3rd Base      | 2 tiles        |
+| Right Field   | 5 tiles        |
+| Center Field  | 5 tiles        |
+| Left Field    | 5 tiles        |
 
-### Player Stats
+#### Mercy Rule
+
+If either team has more than a 10 run lead after playing 5 innings, the game will end.
+
+## Player Stats
 
 Player performance is governed by 4 player stats:
 
@@ -56,8 +100,6 @@ Player performance is governed by 4 player stats:
 - **Speed** - Determines how likely a runner is to make it on base without being thrown out and also how likely it is for a runner to go for extra bases. For fielders, controls how many hexes they can move in a single turn when recovering a ball that landed outside their range.
 - **Precision** - Determines how likely a fielder is to catch a batted ball or make an error. For pitchers, determines likeihood of throwing strikes, walking the batter, or forcing weak contact.
 - **Contact** - Determines how likely a batter is to hit the ball.
-
-
 
 ## Development Details
 
