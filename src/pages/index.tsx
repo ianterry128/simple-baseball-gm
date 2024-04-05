@@ -84,7 +84,8 @@ interface LeagueStateStruct {
 
 interface Matchup { // store teamId of competing teams
   homeTeam: string,
-  awayTeam: string
+  awayTeam: string,
+  win_or_loss: string // W for win; L for loss; - for not played yet
 }
 
 interface GameDataStateStruct {
@@ -1536,7 +1537,7 @@ function LeagueTeamsTable({leagueInfoProp, isActiveProp} : {leagueInfoProp:Leagu
 
 function ScheduleView() {
   const sched = Object.assign({}, gameData.schedule);
-  let mySched: {opponent: string | undefined, h_a: string, react_key: string}[] = []
+  let mySched: {opponent: string | undefined, h_a: string, win_or_loss: string, react_key: string}[] = []
   for (let key in sched) {
     let matchups: Matchup[] = sched[key]!;
     for (let i=0; i<matchups.length; i++) {
@@ -1545,13 +1546,13 @@ function ScheduleView() {
         // get opponent team name from id
         let opp_id = matchups[i]?.homeTeam;
         let opp_name = gameData.teams.find((value) => value.id === opp_id)?.name;
-        mySched[key] = {opponent: opp_name, h_a: 'A', react_key: crypto.randomUUID()}
+        mySched[key] = {opponent: opp_name, h_a: 'A', win_or_loss: matchups[i]!.win_or_loss, react_key: crypto.randomUUID()}
       }
       else if (matchups[i]?.homeTeam === gameData.myTeamId) {
         // this is my match and I am home
         let opp_id = matchups[i]?.awayTeam;
         let opp_name = gameData.teams.find((value) => value.id === opp_id)?.name;
-        mySched[key] = {opponent: opp_name, h_a: 'H', react_key: crypto.randomUUID()}
+        mySched[key] = {opponent: opp_name, h_a: 'H', win_or_loss: matchups[i]!.win_or_loss, react_key: crypto.randomUUID()}
       }
     }
   }
@@ -1576,7 +1577,7 @@ function ScheduleView() {
                     <td>{index}</td>
                     <td>{v.opponent}</td>
                     <td>{v.h_a}</td>
-                    <td>-</td>
+                    <td>{v.win_or_loss}</td>
                   </tr>
                 )
               })
@@ -2170,13 +2171,38 @@ function TopBar() {
                 home_win: false, 
                 player_matchStats: {}
               };
+
+              let schedule_copy: {[key: number]: Matchup[]} = JSON.parse(JSON.stringify(gameData.schedule)); // clone gameData.schedule
+
               if (isMyTeamHome) {
                 _results = exhibition(my_team, opp_team);
                 myTeamWin = _results.home_win;
+
+                for (let j=0; j<schedule_copy[gameData.week]!.length; j++) {
+                  if (schedule_copy[gameData.week]![j]!.homeTeam === gameData.myTeamId) {
+                    if (myTeamWin) {
+                      schedule_copy[gameData.week]![j]!.win_or_loss = 'W';
+                    }
+                    else {
+                      schedule_copy[gameData.week]![j]!.win_or_loss = 'L';
+                    }
+                  }
+                } 
               }
               else if (!isMyTeamHome) {
                 _results = exhibition(opp_team, my_team);
                 myTeamWin = !_results.home_win;
+
+                for (let j=0; j<schedule_copy[gameData.week]!.length; j++) {
+                  if (schedule_copy[gameData.week]![j]!.awayTeam === gameData.myTeamId) {
+                    if (myTeamWin) {
+                      schedule_copy[gameData.week]![j]!.win_or_loss = 'W';
+                    }
+                    else {
+                      schedule_copy[gameData.week]![j]!.win_or_loss = 'L';
+                    }
+                  }
+                } 
               }
               let temp_teams: TeamStateStruct[] = [];
               /////////////////// from postgameview
@@ -2204,7 +2230,7 @@ function TopBar() {
               if (oppTeamAvgLvl < myTeamAvgLvl) multiplier -= 0.5;
               //////////////////////// end from postgameview
               //let pregame_players_copy: PlayerStateStruct[] = [...my_team.playersJson];
-              let pregame_players_copy: PlayerStateStruct[] = JSON.parse(JSON.stringify(my_team.playersJson)) // clone gameData.playersJson
+              let pregame_players_copy: PlayerStateStruct[] = JSON.parse(JSON.stringify(my_team.playersJson)); // clone gameData.playersJson
               //console.log(`pregame_players_copy before: ${pregame_players_copy[0]!.experience}`)
               //console.log(`pregameplayerstats before: ${preGamePlayerStats[0]!.experience}`)
               setPreGamePlayerStats(pregame_players_copy);  // used to compare against gameData player stats in PostGameView to check which stats/levels increased
@@ -2297,7 +2323,7 @@ function TopBar() {
                 week: gameData.week,
                 phase: WeekPhase.GAME,
                 teams: temp_teams, 
-                schedule: gameData.schedule,
+                schedule: schedule_copy,
                 fielderHexPos: gameData.fielderHexPos
               })
             }}>

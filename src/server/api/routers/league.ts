@@ -110,7 +110,8 @@ export const leagueRouter = createTRPCRouter({
       week: z.number(),
       scheduleJson: z.record(z.string(), z.object({ // use string type instead of number for key: https://github.com/colinhacks/zod?tab=readme-ov-file#record-key-type
         homeTeam: z.string(),
-        awayTeam: z.string()
+        awayTeam: z.string(),
+        win_or_loss: z.string()
       }).array()), }))
     .mutation(async ({ ctx, input }) => {
       const _teamsJson = input.teamsJson as Prisma.JsonArray;

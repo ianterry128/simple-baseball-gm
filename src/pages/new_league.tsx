@@ -109,7 +109,8 @@ enum StatFocus {
 
 interface Matchup { // store teamId of competing teams
   homeTeam: string,
-  awayTeam: string
+  awayTeam: string,
+  win_or_loss: string
 }
 
 /**
@@ -752,7 +753,8 @@ export function createSchedule(teams: TeamStateStruct[]): { [key: number]: Match
     while (m < num_matches) {
       matches[m] = {
         homeTeam: teams[h_ind!]?.id!,
-        awayTeam: teams[a_ind!]?.id!
+        awayTeam: teams[a_ind!]?.id!,
+        win_or_loss: '-'
       }
       //console.log(`home team: ${h_ind} vs away team: ${a_ind}`);
       i += 2;
