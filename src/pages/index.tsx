@@ -28,10 +28,10 @@ config.autoAddCss = false; /* eslint-disable import/first */
 ////////////////////////
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { library } from '@fortawesome/fontawesome-svg-core'
-import { faHouse, faArrowUp, faArrowLeft, faArrowRight, faArrowDown } from '@fortawesome/free-solid-svg-icons'
+import { faHouse, faPlane, faArrowUp, faArrowLeft, faArrowRight, faArrowDown } from '@fortawesome/free-solid-svg-icons'
 import { createSchedule } from "./new_league";
 import { isWeakMap } from "util/types";
-library.add(faHouse, faArrowUp, faArrowLeft, faArrowRight, faArrowDown)
+library.add(faHouse, faPlane, faArrowUp, faArrowLeft, faArrowRight, faArrowDown)
 
 const myFont = localFont({ src: '../../public/fonts/Talking_Baseball.otf' })
 
@@ -1255,101 +1255,132 @@ function MainGameView() {
   }
 
   
-
+  let ha_icon: string = 'house';
+  let opp_ha_icon: string = 'house';
+  let opp_team_id: string = '';
+  let my_sched_index = 0;
+  let i = 0;
+  
+  while (i< gameData.schedule[gameData.week]!.length && opp_team_id === ''){
+    if (gameData.schedule[gameData.week]![i]!.awayTeam === gameData.myTeamId) { // my team is AWAY
+      opp_team_id = gameData.schedule[gameData.week]![i]!.homeTeam;
+      ha_icon = 'plane';
+      opp_ha_icon = 'house';
+    }
+    if (gameData.schedule[gameData.week]![i]!.homeTeam === gameData.myTeamId) { // my team is HOME
+      opp_team_id = gameData.schedule[gameData.week]![i]!.awayTeam;
+      ha_icon = 'house';
+      opp_ha_icon = 'plane';
+    }
+    i++;
+  }
   if (gameData.phase === WeekPhase.GAME) {
     return (
-      <div className="flex flex-row flex-wrap">
+      <div className="flex flex-col py-5">
+        <h1 className="text-center text-2xl font-bold">Week {gameData.week}</h1>
+        <h1 className="text-center text-2xl">Game Phase</h1>
+        <div className="flex flex-row flex-wrap">
 
-        <div className="w-full sm:w-1/5 lg:w-1/5 px-1 bg-red-300">
-          <TeamDisplayLineupChangeTable 
-            leagueInfoProp={_leagueInfo}
-            teamIndexProp={my_team_index}
-          />     
+          <div className="w-full sm:w-1/5 lg:w-[35%] pl-10">
+            <TeamDisplayLineupChangeTable 
+              leagueInfoProp={_leagueInfo}
+              teamIndexProp={my_team_index}
+              ha_iconProp={ha_icon}
+            />     
+
+            <div className="w-full py-5">
+            <TeamDisplayTable 
+              leagueInfoProp={_leagueInfo}
+              teamIndexProp={selectedTeam}
+              ha_iconProp={opp_ha_icon}
+            /> 
+          </div>
         </div>
-        <div className="w-full sm:w-3/5 lg:w-3/5 px-1 bg-orange-300 margin-auto">
-          <h1 className="text-center">Week {gameData.week}</h1>
-          <FieldView 
-          fielderHexPos={gameData.fielderHexPos}
-          numInnings={numInnings}
-          phase={gameData.phase}
-          logContents={logContents}/>
+        <div className="w-full sm:w-3/5 lg:w-[65%] pl-5 pr-3">
+          <div className=" rounded-3xl shadow-xl bg-fixed bg-bottom bg-[url('/img/baseball_lg.jpg')]">
+            <div className="backdrop-blur-sm bg-black/25  rounded-3xl shadow-xl">
+            <FieldView 
+            fielderHexPos={gameData.fielderHexPos}
+            numInnings={numInnings}
+            phase={gameData.phase}
+            logContents={logContents}/>
+          </div>
+          </div>
         </div>
-        <div className="w-full sm:w-1/5 lg:w-1/5 px-1 bg-amber-200">
-          <TeamDisplayTable 
-            leagueInfoProp={_leagueInfo}
-            teamIndexProp={selectedTeam}
-          /> 
-        </div>
+          
+      </div>
     </div>
     )
   }
   
-  let opp_team_id: string = '';
-  let my_sched_index = 0;
-  let i = 0;
-  while (i< gameData.schedule[gameData.week]!.length && opp_team_id === ''){
-    if (gameData.schedule[gameData.week]![i]!.awayTeam === gameData.myTeamId) {
-      opp_team_id = gameData.schedule[gameData.week]![i]!.homeTeam;
-    }
-    if (gameData.schedule[gameData.week]![i]!.homeTeam === gameData.myTeamId) {
-      opp_team_id = gameData.schedule[gameData.week]![i]!.awayTeam;
-    }
-    i++;
-  }
+  
   useEffect(() => {
     setSelectedTeamById(opp_team_id); // this will cause second teamdisplaytable to show opponent team of the current week
   }, []);
   
   // default return is reached only during PREGAME phase
   return (
-    <div className="flex flex-row flex-wrap">
+    <div className="flex flex-col py-5">
+      <h1 className="text-center text-2xl font-bold">Week {gameData.week}</h1>
+      <h1 className="text-center text-2xl">Pregame Phase</h1>
+      <h2 className="text-center">Set batting order and field positions</h2>
+      <div className="flex flex-row flex-wrap pl-10 pr-3 py-5">
 
-        <div className="w-full sm:w-1/5 lg:w-1/5 px-1 bg-red-300">
-          <TeamDisplayLineupChangeTable 
-            leagueInfoProp={_leagueInfo}
-            teamIndexProp={my_team_index}
-          /> 
-          <div className="flex flex-col">
-            <label>Set player field position: {selectedPlayer.class} {selectedPlayer.name}</label>
-            <div className="flex flex-row">
-              <FontAwesomeIcon 
-                className='p-1 -rotate-45' icon={['fas', 'arrow-up']}
-                onClick={() => setGameData_FielderHexPos(selectedPlayer.class as FieldPositions, {q:-1, r:0, s:1})} />
-              <FontAwesomeIcon 
-                className='p-1' icon={['fas', 'arrow-up']}
-                onClick={() => setGameData_FielderHexPos(selectedPlayer.class as FieldPositions, {q:0, r:-1, s:1})} />
-              <FontAwesomeIcon 
-                className='p-1 rotate-45' icon={['fas', 'arrow-up']}
-                onClick={() => setGameData_FielderHexPos(selectedPlayer.class as FieldPositions, {q:1, r:-1, s:0})} />
+          <div className="w-full sm:w-1/5 lg:w-[35%] px-1">
+            <TeamDisplayLineupChangeTable 
+              leagueInfoProp={_leagueInfo}
+              teamIndexProp={my_team_index}
+              ha_iconProp={ha_icon}
+            /> 
+            <div className="flex flex-col py-3">
+              <label>Set player field position: <mark><b>{selectedPlayer.class} {selectedPlayer.name}</b></mark></label>
+              <div className="border-2 bg-white shadow-lg p-3 w-24">
+              <div className="flex flex-row">
+                <FontAwesomeIcon 
+                  className='p-1 -rotate-45 cursor-pointer' icon={['fas', 'arrow-up']}
+                  onClick={() => setGameData_FielderHexPos(selectedPlayer.class as FieldPositions, {q:-1, r:0, s:1})} />
+                <FontAwesomeIcon 
+                  className='p-1 cursor-pointer' icon={['fas', 'arrow-up']}
+                  onClick={() => setGameData_FielderHexPos(selectedPlayer.class as FieldPositions, {q:0, r:-1, s:1})} />
+                <FontAwesomeIcon 
+                  className='p-1 rotate-45 cursor-pointer' icon={['fas', 'arrow-up']}
+                  onClick={() => setGameData_FielderHexPos(selectedPlayer.class as FieldPositions, {q:1, r:-1, s:0})} />
+              </div>
+              <div className="flex flex-row">
+                <FontAwesomeIcon 
+                  className='p-1 rotate-45 cursor-pointer' icon={['fas', 'arrow-down']}
+                  onClick={() => setGameData_FielderHexPos(selectedPlayer.class as FieldPositions, {q:-1, r:1, s:0})} />
+                <FontAwesomeIcon 
+                  className='p-1 cursor-pointer' icon={['fas', 'arrow-down']}
+                  onClick={() => setGameData_FielderHexPos(selectedPlayer.class as FieldPositions, {q:0, r:1, s:-1})} />
+                <FontAwesomeIcon 
+                  className='p-1 -rotate-45 cursor-pointer' icon={['fas', 'arrow-down']}
+                  onClick={() => setGameData_FielderHexPos(selectedPlayer.class as FieldPositions, {q:1, r:0, s:-1})} />
+              </div> 
+              </div>
             </div>
-            <div className="flex flex-row">
-              <FontAwesomeIcon 
-                className='p-1 rotate-45' icon={['fas', 'arrow-down']}
-                onClick={() => setGameData_FielderHexPos(selectedPlayer.class as FieldPositions, {q:-1, r:1, s:0})} />
-              <FontAwesomeIcon 
-                className='p-1' icon={['fas', 'arrow-down']}
-                onClick={() => setGameData_FielderHexPos(selectedPlayer.class as FieldPositions, {q:0, r:1, s:-1})} />
-              <FontAwesomeIcon 
-                className='p-1 -rotate-45' icon={['fas', 'arrow-down']}
-                onClick={() => setGameData_FielderHexPos(selectedPlayer.class as FieldPositions, {q:1, r:0, s:-1})} />
-            </div> 
+
+            <div className="w-full ">
+            <TeamDisplayTable 
+              leagueInfoProp={_leagueInfo}
+              teamIndexProp={selectedTeam}
+              ha_iconProp={opp_ha_icon}
+            /> 
+            </div>
+          </div>
+
+          <div className="w-full sm:w-3/5 lg:w-[65%] pl-5">
+            <div className=" bg-slate-400 bg-opacity-80 rounded-3xl shadow-lg">
+              
+              <FieldView 
+              fielderHexPos={gameData.fielderHexPos}
+              numInnings={numInnings}
+              phase={gameData.phase}
+              logContents={logContents}/>
+            </div>
           </div>
           
-        </div>
-        <div className="w-full sm:w-3/5 lg:w-3/5 px-1 bg-orange-300  margin-auto">
-          <h1 className="text-center">Week {gameData.week}</h1>
-          <FieldView 
-          fielderHexPos={gameData.fielderHexPos}
-          numInnings={numInnings}
-          phase={gameData.phase}
-          logContents={logContents}/>
-        </div>
-        <div className="w-full sm:w-1/5 lg:w-1/5 px-1 bg-amber-200">
-          <TeamDisplayTable 
-            leagueInfoProp={_leagueInfo}
-            teamIndexProp={selectedTeam}
-          /> 
-        </div>
+      </div>
     </div>
   )
 }
@@ -1359,7 +1390,7 @@ function MainGameView() {
 // IMPORTANT: batting order changes DO save to gameData state variable
 // TODO: I don't think this needs props... can just use gameData state variable directly
 */
-function TeamDisplayLineupChangeTable({leagueInfoProp, teamIndexProp} : {leagueInfoProp:LeagueStateStruct, teamIndexProp:number}) {
+function TeamDisplayLineupChangeTable({leagueInfoProp, teamIndexProp, ha_iconProp} : {leagueInfoProp:LeagueStateStruct, teamIndexProp:number, ha_iconProp:string}) {
   const notify_orderChange = () => toast("Cannot change batting order during game simulation.");
   //const notify = () => toast("Wow so easy !");
  
@@ -1399,12 +1430,13 @@ function TeamDisplayLineupChangeTable({leagueInfoProp, teamIndexProp} : {leagueI
 
   const captionText: string = "My Team: " 
   return (
-      <div className="overflow-x-auto">
-        <table className="table-auto border-2 border-spacing-2 p-8">
-          <caption>{captionText} {leagueInfoProp.teams[teamIndexProp]?.name}</caption>
+      <div className="">
+        
+        <table className="table-auto border-2 border-spacing-2 shadow-lg shadow-blue-500 w-full">
+          <caption className="text-lg font-semibold"><FontAwesomeIcon className="px-1" icon={['fas', ha_iconProp]} />{captionText} {leagueInfoProp.teams[teamIndexProp]?.name}</caption>
           <thead>
             <tr className="even:bg-gray-50 odd:bg-white">
-              <th>Batting Order</th>
+              <th>BO</th>
               <th></th>
               <th>Name</th>
               <th>Class</th>
@@ -1422,7 +1454,7 @@ function TeamDisplayLineupChangeTable({leagueInfoProp, teamIndexProp} : {leagueI
                 const keyVal: string = value.id + `-teamDisplayLineupChangeTable`;
                 return (
                   <tr key={keyVal} 
-                  className="even:bg-green-200 odd:bg-gray-50 hover:bg-blue-600 hover:text-gray-50"
+                  className="even:bg-green-200 odd:bg-gray-50 hover:bg-blue-600 hover:text-gray-50 text-center"
                   onClick={() => {
                     if (gameData.phase !== WeekPhase.GAME) {
                       setSelectedPlayerById(value.id, teamIndexProp);
@@ -1432,43 +1464,51 @@ function TeamDisplayLineupChangeTable({leagueInfoProp, teamIndexProp} : {leagueI
                     <td>
                       {
                         index === 0 ? (
-                          <button onClick={() => {
+                          <FontAwesomeIcon 
+                          className='p-1 cursor-pointer' icon={['fas', 'arrow-down']}
+                          onClick={() => {
                             if (gameData.phase !== WeekPhase.GAME) {
                               changeOrder(leagueInfoProp.teams[teamIndexProp]?.playersJson!, index, "DOWN")
                             }
                             else if (gameData.phase === WeekPhase.GAME) {
                               notify_orderChange();
                             }
-                        }}>v</button>
+                          }} />
                         ) :
                           index === 8 ? (
-                            <button onClick={() => {
+                            <FontAwesomeIcon
+                            className="p-1 cursor-pointer" icon={['fas', 'arrow-up']} 
+                            onClick={() => {
                               if (gameData.phase !== WeekPhase.GAME) {
                                 changeOrder(leagueInfoProp.teams[teamIndexProp]?.playersJson!, index, "UP")
                               }
                               else if (gameData.phase === WeekPhase.GAME) {
                                 notify_orderChange();
                               }
-                            }}>^</button> 
+                            }}/> 
                           ) :
                             (
                               <div>
-                                <button onClick={() => {
+                                <FontAwesomeIcon 
+                                className="p-1 cursor-pointer" icon={['fas', 'arrow-up']} 
+                                onClick={() => {
                                   if (gameData.phase !== WeekPhase.GAME) {
                                     changeOrder(leagueInfoProp.teams[teamIndexProp]?.playersJson!, index, "UP")
                                   }
                                   else if (gameData.phase === WeekPhase.GAME) {
                                     notify_orderChange();
                                   }
-                                }}>^</button> 
-                                <button onClick={() => {
+                                }}/>
+                                <FontAwesomeIcon
+                                className="p-1 cursor-pointer" icon={['fas', 'arrow-down']} 
+                                onClick={() => {
                                   if (gameData.phase !== WeekPhase.GAME) {
                                     changeOrder(leagueInfoProp.teams[teamIndexProp]?.playersJson!, index, "DOWN")
                                   }
                                   else if (gameData.phase === WeekPhase.GAME) {
                                     notify_orderChange();
                                   }
-                                }}>v</button>
+                                }}/>
                               </div>
                             )
                       }
@@ -1750,7 +1790,7 @@ function TeamInfoView({MyTeamIndex} : {MyTeamIndex: number}) {
         </div>
       </div>
         <table className="table-auto border-2 border-spacing-2 p-8 w-5/6 shadow-lg">
-          <caption className="text-lg font-semibold">Cumulative Season Stats</caption>
+          <caption className="text-lg font-semibold">Cumulative Career Stats</caption>
           <thead>
             <tr className="even:bg-gray-50 odd:bg-white">
               <th className="px-2">Name</th>
@@ -1887,6 +1927,7 @@ function LeagueInfoView({leagueInfoProp, teamIndexProp} : {leagueInfoProp:League
 
 function PostGameView({MyTeamIndex} : {MyTeamIndex: number}) {
   const captionText: string = `My Team: ${gameData.teams[MyTeamIndex]?.name}`
+  const teamName: string = `${gameData.teams[MyTeamIndex]?.name}`
 
   // did my team win? Was opponent team stronger or weaker?
   let didWin: boolean = false;
@@ -1921,17 +1962,15 @@ function PostGameView({MyTeamIndex} : {MyTeamIndex: number}) {
   let multiplier = didWin ? 2 : 1;
   if (oppTeamAvgLvl >= myTeamAvgLvl) multiplier += 1;
   if (oppTeamAvgLvl < myTeamAvgLvl) multiplier -= 0.5;
-
   // TODO MOVE ALL THIS
   
-
-
   return (
-    <div className="overflow-x-auto">
-      <h2>My team avg level = {myTeamAvgLvl}</h2>
-      <h2>Opponent team avg level = {oppTeamAvgLvl}</h2>
-        <table className="table-auto border-2 border-spacing-2 p-8">
-          <caption>{captionText}</caption>
+    <div className="overflow-x-auto flex flex-col pl-10 py-5 ">
+      {/*<h2>My team avg level = {myTeamAvgLvl}</h2>
+      <h2>Opponent team avg level = {oppTeamAvgLvl}</h2>*/}
+      <div className="">
+        <table className="table-auto border-2 border-spacing-2 shadow-lg sm:w-3/5 lg:w-2/5">
+          <caption className="text-lg font-semibold">{captionText}</caption>
           <thead>
             <tr className="even:bg-gray-50 odd:bg-white">
               <th>Name</th>
@@ -1943,8 +1982,7 @@ function PostGameView({MyTeamIndex} : {MyTeamIndex: number}) {
               <th>Lvl</th>
               <th>Age</th>
               <th>Exp gained</th>
-              <th>Exp NOW</th>
-              <th>Exp before game</th>
+              <th>Exp to next Lvl</th>
             </tr>
           </thead>
           <tbody>
@@ -1961,6 +1999,7 @@ function PostGameView({MyTeamIndex} : {MyTeamIndex: number}) {
                  let inc_con = 0
                  let inc_lvl = 0
                  let exp_show = 0
+                 let progress_bar_percent_num: number = 0;
                 if (preGamePlayerStats[index] !== undefined) {
                  inc_str = value.strength - preGamePlayerStats[index]!.strength;
                  inc_spd = value.speed - preGamePlayerStats[index]!.speed;
@@ -1968,7 +2007,118 @@ function PostGameView({MyTeamIndex} : {MyTeamIndex: number}) {
                  inc_con = value.contact - preGamePlayerStats[index]!.contact;
                  inc_lvl = value.level - preGamePlayerStats[index]!.level;
                  exp_show = preGamePlayerStats[index]!.experience
+                 progress_bar_percent_num = Math.floor((exp_show / getExperienceToNextLevel(value.level, 0)) * 100);
                 }
+                const exp_to_next: number = getExperienceToNextLevel(value.level, value.experience);
+                //let progress_bar_percent_num: number = Math.floor(exp_show / exp_to_next);
+                const progress_bar_percent: string = "w-[" + progress_bar_percent_num.toString() + "%]";
+                const exp_to_next_classStr_0: string = "bg-red-400 h-2.5 rounded-full " + progress_bar_percent
+                
+                const expToNext_classStrings: string[] = [
+                  "bg-red-400 h-2.5 rounded-full w-[0%]",
+                  "bg-red-400 h-2.5 rounded-full w-[1%]",
+                  "bg-red-400 h-2.5 rounded-full w-[2%]",
+                  "bg-red-400 h-2.5 rounded-full w-[3%]",
+                  "bg-red-400 h-2.5 rounded-full w-[4%]",
+                  "bg-red-400 h-2.5 rounded-full w-[5%]",
+                  "bg-red-400 h-2.5 rounded-full w-[6%]",
+                  "bg-red-400 h-2.5 rounded-full w-[7%]",
+                  "bg-red-400 h-2.5 rounded-full w-[8%]",
+                  "bg-red-400 h-2.5 rounded-full w-[9%]",
+                  "bg-red-400 h-2.5 rounded-full w-[10%]",
+                  "bg-red-400 h-2.5 rounded-full w-[11%]",
+                  "bg-red-400 h-2.5 rounded-full w-[12%]",
+                  "bg-red-400 h-2.5 rounded-full w-[13%]",
+                  "bg-red-400 h-2.5 rounded-full w-[14%]",
+                  "bg-red-400 h-2.5 rounded-full w-[15%]",
+                  "bg-red-400 h-2.5 rounded-full w-[16%]",
+                  "bg-red-400 h-2.5 rounded-full w-[17%]",
+                  "bg-red-400 h-2.5 rounded-full w-[18%]",
+                  "bg-red-400 h-2.5 rounded-full w-[19%]", 
+                  "bg-red-400 h-2.5 rounded-full w-[20%]",
+                  "bg-red-400 h-2.5 rounded-full w-[21%]",
+                  "bg-red-400 h-2.5 rounded-full w-[22%]",
+                  "bg-red-400 h-2.5 rounded-full w-[23%]",
+                  "bg-red-400 h-2.5 rounded-full w-[24%]",
+                  "bg-red-400 h-2.5 rounded-full w-[25%]",
+                  "bg-red-400 h-2.5 rounded-full w-[26%]",
+                  "bg-red-400 h-2.5 rounded-full w-[27%]",
+                  "bg-red-400 h-2.5 rounded-full w-[28%]",
+                  "bg-red-400 h-2.5 rounded-full w-[29%]", 
+                  "bg-red-400 h-2.5 rounded-full w-[30%]",
+                  "bg-red-400 h-2.5 rounded-full w-[31%]",
+                  "bg-red-400 h-2.5 rounded-full w-[32%]",
+                  "bg-red-400 h-2.5 rounded-full w-[33%]",
+                  "bg-red-400 h-2.5 rounded-full w-[34%]",
+                  "bg-red-400 h-2.5 rounded-full w-[35%]",
+                  "bg-red-400 h-2.5 rounded-full w-[36%]",
+                  "bg-red-400 h-2.5 rounded-full w-[37%]",
+                  "bg-red-400 h-2.5 rounded-full w-[38%]",
+                  "bg-red-400 h-2.5 rounded-full w-[39%]",
+                  "bg-red-400 h-2.5 rounded-full w-[40%]",
+                  "bg-red-400 h-2.5 rounded-full w-[41%]",
+                  "bg-red-400 h-2.5 rounded-full w-[42%]",
+                  "bg-red-400 h-2.5 rounded-full w-[43%]",
+                  "bg-red-400 h-2.5 rounded-full w-[44%]",
+                  "bg-red-400 h-2.5 rounded-full w-[45%]",
+                  "bg-red-400 h-2.5 rounded-full w-[46%]",
+                  "bg-red-400 h-2.5 rounded-full w-[47%]",
+                  "bg-red-400 h-2.5 rounded-full w-[48%]",
+                  "bg-red-400 h-2.5 rounded-full w-[49%]",  
+                  "bg-red-400 h-2.5 rounded-full w-[50%]",
+                  "bg-red-400 h-2.5 rounded-full w-[51%]",
+                  "bg-red-400 h-2.5 rounded-full w-[52%]",
+                  "bg-red-400 h-2.5 rounded-full w-[53%]",
+                  "bg-red-400 h-2.5 rounded-full w-[54%]",
+                  "bg-red-400 h-2.5 rounded-full w-[55%]",
+                  "bg-red-400 h-2.5 rounded-full w-[56%]",
+                  "bg-red-400 h-2.5 rounded-full w-[57%]",
+                  "bg-red-400 h-2.5 rounded-full w-[58%]",
+                  "bg-red-400 h-2.5 rounded-full w-[59%]", 
+                  "bg-red-400 h-2.5 rounded-full w-[60%]",
+                  "bg-red-400 h-2.5 rounded-full w-[61%]",
+                  "bg-red-400 h-2.5 rounded-full w-[62%]",
+                  "bg-red-400 h-2.5 rounded-full w-[63%]",
+                  "bg-red-400 h-2.5 rounded-full w-[64%]",
+                  "bg-red-400 h-2.5 rounded-full w-[65%]",
+                  "bg-red-400 h-2.5 rounded-full w-[66%]",
+                  "bg-red-400 h-2.5 rounded-full w-[67%]",
+                  "bg-red-400 h-2.5 rounded-full w-[68%]",
+                  "bg-red-400 h-2.5 rounded-full w-[69%]", 
+                  "bg-red-400 h-2.5 rounded-full w-[70%]",
+                  "bg-red-400 h-2.5 rounded-full w-[71%]",
+                  "bg-red-400 h-2.5 rounded-full w-[72%]",
+                  "bg-red-400 h-2.5 rounded-full w-[73%]",
+                  "bg-red-400 h-2.5 rounded-full w-[74%]",
+                  "bg-red-400 h-2.5 rounded-full w-[75%]",
+                  "bg-red-400 h-2.5 rounded-full w-[76%]",
+                  "bg-red-400 h-2.5 rounded-full w-[77%]",
+                  "bg-red-400 h-2.5 rounded-full w-[78%]",
+                  "bg-red-400 h-2.5 rounded-full w-[79%]", 
+                  "bg-red-400 h-2.5 rounded-full w-[80%]",
+                  "bg-red-400 h-2.5 rounded-full w-[81%]",
+                  "bg-red-400 h-2.5 rounded-full w-[82%]",
+                  "bg-red-400 h-2.5 rounded-full w-[83%]",
+                  "bg-red-400 h-2.5 rounded-full w-[84%]",
+                  "bg-red-400 h-2.5 rounded-full w-[85%]",
+                  "bg-red-400 h-2.5 rounded-full w-[86%]",
+                  "bg-red-400 h-2.5 rounded-full w-[87%]",
+                  "bg-red-400 h-2.5 rounded-full w-[88%]",
+                  "bg-red-400 h-2.5 rounded-full w-[89%]", 
+                  "bg-red-400 h-2.5 rounded-full w-[90%]",
+                  "bg-red-400 h-2.5 rounded-full w-[91%]",
+                  "bg-red-400 h-2.5 rounded-full w-[92%]",
+                  "bg-red-400 h-2.5 rounded-full w-[93%]",
+                  "bg-red-400 h-2.5 rounded-full w-[94%]",
+                  "bg-red-400 h-2.5 rounded-full w-[95%]",
+                  "bg-red-400 h-2.5 rounded-full w-[96%]",
+                  "bg-red-400 h-2.5 rounded-full w-[97%]",
+                  "bg-red-400 h-2.5 rounded-full w-[98%]",
+                  "bg-red-400 h-2.5 rounded-full w-[99%]", 
+                  "bg-red-400 h-2.5 rounded-full w-[100%]", 
+                ]
+                const exp_to_next_classStr = expToNext_classStrings[progress_bar_percent_num]; 
+                
                 
                 
                 let str_to_show = (preGamePlayerStats[index]!.strength < value.strength) ? `+${inc_str}` : ``;
@@ -1995,17 +2145,22 @@ function PostGameView({MyTeamIndex} : {MyTeamIndex: number}) {
                     <td className={lvl_className_string}>{value.level}<sup>{lvl_to_show}</sup></td>
                     <td className="px-2">{value.age}</td>
                     <td className="px-2">{exp_gained}</td>
-                    <td className="px-2">{value.experience}</td>
-                    <td className="px-2">{exp_show}</td>
+                    <td className="min-w-32">
+                    <p>{progress_bar_percent_num}</p>
+                      <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
+                        <div className={exp_to_next_classStr}></div>
+                      </div>
+                    </td>
                   </tr>
                 )
               })
             }
           </tbody>
         </table>
-        
-        <table className="table-auto border-2 border-spacing-2 p-8">
-          <caption>{captionText}</caption>
+      </div>
+      <div className="py-5">
+        <table className="table-auto border-2 border-spacing-2 shadow-lg sm:w-3/5 lg:w-4/5">
+          <caption className="text-lg font-semibold">Week {gameData.week} Performance Results</caption>
           <thead>
             <tr className="even:bg-gray-50 odd:bg-white">
               <th className="px-2">Name</th>
@@ -2062,6 +2217,7 @@ function PostGameView({MyTeamIndex} : {MyTeamIndex: number}) {
           </tbody>
         </table>
       </div>
+    </div>
       
   )
 }
@@ -2568,12 +2724,15 @@ function LoggedOutView() {
 
 // Functions outside Home() do not require REACT hooks
 // COMPONENTS
-function TeamDisplayTable({leagueInfoProp, teamIndexProp} : {leagueInfoProp:LeagueStateStruct, teamIndexProp:number}) {
+function TeamDisplayTable({leagueInfoProp, teamIndexProp, ha_iconProp} : {leagueInfoProp:LeagueStateStruct, teamIndexProp:number, ha_iconProp?:string}) {
   //const captionText: string = teamIndexProp === 0 ? "My Team: " : "Opponent Team: ";
+  if (ha_iconProp === undefined || ha_iconProp === null) {
+    ha_iconProp = ''
+  }
   return (
-      <div className="overflow-x-auto">
-        <table className="table-auto border-2 border-spacing-2 p-8 shadow-lg min-w-80">
-          <caption>Opponent Team: {leagueInfoProp.teams[teamIndexProp]?.name}</caption>
+      <div className="">
+        <table className="table-auto border-2 border-spacing-2 p-8 shadow-lg shadow-red-400 min-w-80 w-full">
+          <caption className="text-lg font-semibold"><FontAwesomeIcon className="px-1" icon={['fas', ha_iconProp]} />Opponent Team: {leagueInfoProp.teams[teamIndexProp]?.name}</caption>
           <thead>
             <tr className="even:bg-gray-50 odd:bg-white">
               <th>Name</th>
@@ -2591,7 +2750,7 @@ function TeamDisplayTable({leagueInfoProp, teamIndexProp} : {leagueInfoProp:Leag
               leagueInfoProp.teams[teamIndexProp]?.playersJson.map((index) => {
                 const keyVal: string = index.id + `-TeamDisplayTable`;
                 return (
-                  <tr key={keyVal} className="even:bg-green-200 odd:bg-gray-50 text-center">
+                  <tr key={keyVal} className="even:bg-green-200 odd:bg-gray-50 text-center hover:bg-red-500 hover:text-white">
                     <td>{index.name}</td>
                     <td>{index.class}</td>
                     <td>{index.strength}</td>

@@ -96,7 +96,7 @@ export function FieldView(props: FieldViewProps) {
   
 
   const canvas_w = 900;
-  const canvas_h = 550;
+  const canvas_h = 500;
 
   let placed_of_count = 0;
   let placed_mif_count = 0;
@@ -485,37 +485,40 @@ function MatchTextLog3(props_matchlog: MatchLogProps3) {
         className="flex flex-col p-2"
         style={{ visibility: props_matchlog.isActive ? "visible" : "hidden" }}
         >
-        <div className="flex p-2">
-          <button 
-              className="rounded-full transition-colors duration-200 hover:bg-green-500 
-          bg-green-700 text-white shadow-sm font-bold px-10 py-5 w-52"
-              onClick={() => {
-                isLogPaused ? setIsLogPaused(false) : setIsLogPaused(true)
-              }} >
-              Start/Pause Log
-          </button>
-          <button 
-              className="rounded-full transition-colors duration-200 hover:bg-green-500 
-          bg-green-700 text-white shadow-sm font-bold px-10 py-5 w-52"
-              onClick={() => {
-                if (logInterval === 1500) {
-                  setLogInterval(1000);
-                  setLogSpeedTxt("Speed >>");
-                }
-                else if (logInterval === 1000) {
-                  setLogInterval(500);
-                  setLogSpeedTxt("Speed >>>");
-                }
-                else if (logInterval === 500) {
-                  setLogInterval(1500);
-                  setLogSpeedTxt("Speed >");
-                }
-              }} 
-              >
-                {logSpeedTxt}
-          </button>
+        <div className="flex p-2 gap-2">
+          <Scoreboard></Scoreboard>
+          <div className="flex flex-col gap-2">
+            <button 
+                className="rounded-full transition-colors duration-200 hover:bg-green-500 
+            bg-green-700 text-white shadow-sm font-bold px-10 py-5 w-52"
+                onClick={() => {
+                  isLogPaused ? setIsLogPaused(false) : setIsLogPaused(true)
+                }} >
+                Start/Pause Log
+            </button>
+            <button 
+                className="rounded-full transition-colors duration-200 hover:bg-green-500 
+            bg-green-700 text-white shadow-sm font-bold px-10 py-5 w-52"
+                onClick={() => {
+                  if (logInterval === 1500) {
+                    setLogInterval(1000);
+                    setLogSpeedTxt("Speed >>");
+                  }
+                  else if (logInterval === 1000) {
+                    setLogInterval(500);
+                    setLogSpeedTxt("Speed >>>");
+                  }
+                  else if (logInterval === 500) {
+                    setLogInterval(1500);
+                    setLogSpeedTxt("Speed >");
+                  }
+                }} 
+                >
+                  {logSpeedTxt}
+            </button>
+          </div> 
         </div>
-        <Scoreboard></Scoreboard>
+        
             <textarea
             className="flex border-4 gap-2 w-full"
             id="log2"
@@ -543,12 +546,12 @@ function MatchTextLog3(props_matchlog: MatchLogProps3) {
     headerArr.push('E');
     return (
       <div
-      className="flex p-1"
+      className="flex p-1 gap-3"
       >
-        <table className="table-auto border-2 border-spacing-2 px-8">
-        <caption>`{sb_inningHalf} of the {sb_inning} inning`</caption>
+        <table className="table-auto border-2 border-spacing-2 px-8 shadow-md shadow-green-900">
+        <caption className=""><mark className="bg-gray-50 px-2 py-1">{sb_inningHalf} of inning {sb_inning}</mark></caption>
         <thead>
-        <tr className="even:bg-gray-50 odd:bg-white">
+        <tr className="bg-slate-700 bg-opacity-80 text-white">
           {
             headerArr.map((v, index) => {
               if (index <= __awayInningRuns.length) {
@@ -570,7 +573,7 @@ function MatchTextLog3(props_matchlog: MatchLogProps3) {
           </tr>
         </thead>
         <tbody>
-          <tr>
+          <tr className="bg-gray-50">
             <td>Home</td>
             {
               sb_homeInningRuns.map((v) => {
@@ -585,7 +588,7 @@ function MatchTextLog3(props_matchlog: MatchLogProps3) {
             <td className="px-2 font-bold" >{sb_hitsHome}</td>
             <td className="px-2 font-bold" >{sb_errHome}</td>
           </tr>
-          <tr>
+          <tr className="bg-gray-200">
             <td>Away</td>
             {
               sb_awayInningRuns.map((v) => {
@@ -602,11 +605,11 @@ function MatchTextLog3(props_matchlog: MatchLogProps3) {
           </tr>
         </tbody>
       </table>
-      <div className="p-2">
-      <h1>Outs: {sb_outs}</h1>
-      <h1>1st: {sb_baseRunners.first}</h1>
-      <h1>2nd: {sb_baseRunners.second}</h1>
-      <h1>3rd: {sb_baseRunners.third}</h1>
+      <div className="p-2 bg-gray-50 rounded-md min-w-36 max-w-36 shadow-md shadow-green-900">
+        <h1>Outs: {sb_outs}</h1>
+        <h1>1st: {sb_baseRunners.first}</h1>
+        <h1>2nd: {sb_baseRunners.second}</h1>
+        <h1>3rd: {sb_baseRunners.third}</h1>
       </div>
       </div>
   )
@@ -620,18 +623,20 @@ function MatchTextLog3(props_matchlog: MatchLogProps3) {
   return (
     <>
     <div className="overflow-x-auto">
-      <div className="flex flex-col">
-        <h1 className="text-center text-2xl">Game Phase</h1>
-        <h1 className="text-center">{hexCoord.q}, {hexCoord.r}, {hexCoord.s}</h1>
+      <div className="flex flex-col items-center">
         <div className="flex flex-row p-2 margin-auto">
           <MatchTextLog3
           isActive={true}
           _homeInningRuns={__homeInningRuns}
           _awayInningRuns={__awayInningRuns} />
         </div>
-        <div className="flex p-2 gap-4 justify-center margin-auto">
+        <div className="p-2 bg-gray-50 rounded-md shadow-md shadow-green-900 w-48 ">
+          <h1 className="text-center">Selected Hex: {hexCoord.q}, {hexCoord.r}, {hexCoord.s}</h1>
+          <h1 className="text-center">{hexCoordString}</h1>
+        </div>
+        <div className="flex p-2 gap-2 justify-center margin-auto">
           <canvas id="canvas" 
-            className="border-2 "
+            className=""
             width={canvas_w} 
             height={canvas_h}/>
         </div>
@@ -643,17 +648,17 @@ function MatchTextLog3(props_matchlog: MatchLogProps3) {
 
   return (
     <>
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto py-2">
       <div className="flex flex-col">
-        <h1 className="text-center text-2xl">Pregame Phase</h1>
-        <h2 className="text-center">Set batting order and field positions</h2>
+        {/*<h1 className="text-center text-2xl">Pregame Phase</h1>
+        <h2 className="text-center">Set batting order and field positions</h2>*/}
         <h1 className="text-center">Selected Hex: {hexCoord.q}, {hexCoord.r}, {hexCoord.s}</h1>
         <h1 className="text-center">{hexCoordString}</h1>
         <div className="flex flex-row p-2 margin-auto">
         </div>
-        <div className="flex p-2 gap-4 justify-center margin-auto">
+        <div className="flex p-2 gap-2 justify-center margin-auto">
           <canvas id="canvas" 
-            className="border-2 "
+            className=""
             width={canvas_w} 
             height={canvas_h}/>
         </div>
