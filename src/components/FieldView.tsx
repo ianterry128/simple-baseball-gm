@@ -4,6 +4,11 @@ import { useEffect, useState } from "react";
 import { api } from "~/utils/api";
 import { Pixel, Position, hex_distance, hex_lineDraw, hex_ring, hex_to_pixel, pixel_to_hex } from "~/utils/hexUtil";
 
+interface PlayerClassName {
+  id: string,
+  name: string, 
+  class: string,  
+}
 
 enum Height {
   GROUND = 0,
@@ -23,7 +28,8 @@ interface FieldViewProps {
   fielderHexPos: Record<FieldPositions, Position>,
   numInnings: number,
   phase: number,
-  logContents: string[]
+  logContents: string[],
+  players: PlayerClassName[],
 }
 
 // SCOREBOARD STUFF
@@ -43,7 +49,7 @@ export function FieldView(props: FieldViewProps) {
     r: 0,
     s: 0,
   });
-  const [hexCoordString, setHexCoordString] = useState<string>('0, 0, 0')
+  const [hexCoordString, setHexCoordString] = useState<string>('Hover over hex to see coordinates')
   const [canvasState, setCanvasState] = useState<HTMLCanvasElement>();
   const [hexSizeState, setHexSizeState] = useState<number>(7);
 
@@ -176,7 +182,7 @@ export function FieldView(props: FieldViewProps) {
       //console.log(`hex coord: ${_hexCoord.q}, ${_hexCoord.r}, ${_hexCoord.s}`)
       //setHexCoord(hexCoord);
       if (_hexCoord.q > 40 || _hexCoord.r > 0 || _hexCoord.s > 40 || _hexCoord.q < -40 || _hexCoord.r < -40 || _hexCoord.s < 0) {
-        setHexCoordString(`OUT OF BOUNDS`)
+        setHexCoordString(`Hover over hex to see coordinates`)
       }
       else {
         setHexCoordString(`${_hexCoord.q}, ${_hexCoord.r}, ${_hexCoord.s}`)
@@ -265,6 +271,18 @@ export function FieldView(props: FieldViewProps) {
     //drawHex(ctx, pixel.x, pixel.y, size, color);
   }
 
+  function drawPosLabels(ctx: CanvasRenderingContext2D, _pixel: Pixel, position: FieldPositions) {
+
+    ctx.fillStyle = "black"
+    ctx.globalAlpha = 0.8
+    ctx.fillRect(_pixel.x-13, _pixel.y-28, 130, 25)
+    ctx.globalAlpha = 1.0
+    ctx.font = "14px arial"
+    ctx.fillStyle = "white"
+    let hexCoordText: string = `${position}: ${props.fielderHexPos[position].q}, ${props.fielderHexPos[position].r}, ${props.fielderHexPos[position].s}`
+    ctx.fillText(hexCoordText, _pixel.x-10, _pixel.y-10)
+  }
+
   function drawFieldersInitial(f_positions: Record<FieldPositions, Position>) {
     /**
       const fielderHexPos: Record<FieldPositions, Position> = {
@@ -288,26 +306,32 @@ export function FieldView(props: FieldViewProps) {
         let pixel  = hex_to_pixel(f_positions[fp as FieldPositions], hexSizeState, {x: canvas_w/2, y: canvas_h-hexSizeState});
         drawHex(canvas.getContext('2d')!, pixel.x, pixel.y, hexSizeState, 'purple');
         drawRing(canvas.getContext('2d')!, f_positions[fp as FieldPositions], 2, hexSizeState, 'purple');
+        //drawPosLabels(canvas.getContext('2d')!, pixel, fp)
       }
       if (fp === '2B' || fp === 'SS') {
         let pixel  = hex_to_pixel(f_positions[fp as FieldPositions], hexSizeState, {x: canvas_w/2, y: canvas_h-hexSizeState});
         drawHex(canvas.getContext('2d')!, pixel.x, pixel.y, hexSizeState, 'blue');
         drawRing(canvas.getContext('2d')!, f_positions[fp as FieldPositions], 3, hexSizeState, 'blue');
+        //drawPosLabels(canvas.getContext('2d')!, pixel, fp)
       }
       if (fp === 'LF' || fp === 'CF' || fp === 'RF') {
         let pixel  = hex_to_pixel(f_positions[fp as FieldPositions], hexSizeState, {x: canvas_w/2, y: canvas_h-hexSizeState});
         drawHex(canvas.getContext('2d')!, pixel.x, pixel.y, hexSizeState, 'red');
         drawRing(canvas.getContext('2d')!, f_positions[fp as FieldPositions], 5, hexSizeState, 'red');
+        //drawPosLabels(canvas.getContext('2d')!, pixel, fp)
       }
       if (fp === 'P') {
         let pixel  = hex_to_pixel(f_positions[fp as FieldPositions], hexSizeState, {x: canvas_w/2, y: canvas_h-hexSizeState});
         drawHex(canvas.getContext('2d')!, pixel.x, pixel.y, hexSizeState, 'gold');
         drawRing(canvas.getContext('2d')!, f_positions[fp as FieldPositions], 1, hexSizeState, 'gold');
+        //drawPosLabels(canvas.getContext('2d')!, pixel, fp)
+        
       }
       if (fp === 'C') {
         let pixel  = hex_to_pixel(f_positions[fp as FieldPositions], hexSizeState, {x: canvas_w/2, y: canvas_h-hexSizeState});
         drawHex(canvas.getContext('2d')!, pixel.x, pixel.y, hexSizeState, 'black');
         drawRing_C(canvas.getContext('2d')!, f_positions[fp as FieldPositions], 2, hexSizeState, 'black');
+        //drawPosLabels(canvas.getContext('2d')!, pixel, fp)
       }
     }
 
@@ -490,7 +514,7 @@ function MatchTextLog3(props_matchlog: MatchLogProps3) {
           <div className="flex flex-col gap-2">
             <button 
                 className="rounded-full transition-colors duration-200 hover:bg-green-500 
-            bg-green-700 text-white shadow-sm font-bold px-10 py-5 w-52"
+            bg-green-700 text-white shadow-lg shadow-green-900 font-bold px-10 py-5 w-52"
                 onClick={() => {
                   isLogPaused ? setIsLogPaused(false) : setIsLogPaused(true)
                 }} >
@@ -498,7 +522,7 @@ function MatchTextLog3(props_matchlog: MatchLogProps3) {
             </button>
             <button 
                 className="rounded-full transition-colors duration-200 hover:bg-green-500 
-            bg-green-700 text-white shadow-sm font-bold px-10 py-5 w-52"
+            bg-green-700 text-white shadow-lg shadow-green-900 font-bold px-10 py-5 w-52"
                 onClick={() => {
                   if (logInterval === 1500) {
                     setLogInterval(1000);
@@ -520,7 +544,7 @@ function MatchTextLog3(props_matchlog: MatchLogProps3) {
         </div>
         
             <textarea
-            className="flex border-4 gap-2 w-full"
+            className="flex border-4 gap-2 w-full shadow-md shadow-green-900"
             id="log2"
             readOnly
             autoFocus
@@ -630,8 +654,7 @@ function MatchTextLog3(props_matchlog: MatchLogProps3) {
           _homeInningRuns={__homeInningRuns}
           _awayInningRuns={__awayInningRuns} />
         </div>
-        <div className="p-2 bg-gray-50 rounded-md shadow-md shadow-green-900 w-48 ">
-          <h1 className="text-center">Selected Hex: {hexCoord.q}, {hexCoord.r}, {hexCoord.s}</h1>
+        <div className="p-2 bg-gray-50 rounded-md shadow-md shadow-green-900 w-auto ">
           <h1 className="text-center">{hexCoordString}</h1>
         </div>
         <div className="flex p-2 gap-2 justify-center margin-auto">
@@ -649,11 +672,12 @@ function MatchTextLog3(props_matchlog: MatchLogProps3) {
   return (
     <>
     <div className="overflow-x-auto py-2">
-      <div className="flex flex-col">
+      <div className="flex flex-col items-center">
         {/*<h1 className="text-center text-2xl">Pregame Phase</h1>
         <h2 className="text-center">Set batting order and field positions</h2>*/}
-        <h1 className="text-center">Selected Hex: {hexCoord.q}, {hexCoord.r}, {hexCoord.s}</h1>
-        <h1 className="text-center">{hexCoordString}</h1>
+        <div className="py-2 px-3 bg-gray-50 rounded-md shadow-md shadow-green-900 w-auto ">
+          <h1 className="text-center">{hexCoordString}</h1>
+        </div>
         <div className="flex flex-row p-2 margin-auto">
         </div>
         <div className="flex p-2 gap-2 justify-center margin-auto">

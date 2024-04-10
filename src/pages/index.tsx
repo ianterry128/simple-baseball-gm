@@ -1254,7 +1254,23 @@ function MainGameView() {
     MyTeamIndex={my_team_index}/>)
   }
 
+  // myTeamPlayers_NameClass is to send abridged player info as prop to FieldView
+  let myTeamPlayers_NameClass: {id: string, name: string, class: string}[] = [];
+  const fieldPos_order: FieldPositions[] = ['1B', '2B', 'SS', '3B', 'CF', 'LF', 'RF', 'C', 'P'];
+  let _j = 0;
+  while (myTeamPlayers_NameClass.length < 9) {
+    for (let i=0; i<gameData.teams[my_team_index]!.playersJson.length; i++) {
+      if (gameData.teams[my_team_index]?.playersJson[i]?.class === fieldPos_order[_j]){
+        const idToAdd: string = gameData.teams[my_team_index]?.playersJson[i]?.id!;
+        const nameToAdd: string = gameData.teams[my_team_index]?.playersJson[i]?.name!;
+        const classToAdd: string = gameData.teams[my_team_index]?.playersJson[i]?.class!;
+        myTeamPlayers_NameClass.push({id: idToAdd, name: nameToAdd, class: classToAdd});
+      }
+    }
+    _j++;
+  }
   
+
   let ha_icon: string = 'house';
   let opp_ha_icon: string = 'house';
   let opp_team_id: string = '';
@@ -1303,7 +1319,9 @@ function MainGameView() {
             fielderHexPos={gameData.fielderHexPos}
             numInnings={numInnings}
             phase={gameData.phase}
-            logContents={logContents}/>
+            logContents={logContents}
+            players={myTeamPlayers_NameClass}
+            />
           </div>
           </div>
         </div>
@@ -1333,31 +1351,42 @@ function MainGameView() {
               ha_iconProp={ha_icon}
             /> 
             <div className="flex flex-col py-3">
+              
               <label>Set player field position: <mark><b>{selectedPlayer.class} {selectedPlayer.name}</b></mark></label>
-              <div className="border-2 bg-white shadow-lg p-3 w-24">
               <div className="flex flex-row">
-                <FontAwesomeIcon 
-                  className='p-1 -rotate-45 cursor-pointer' icon={['fas', 'arrow-up']}
-                  onClick={() => setGameData_FielderHexPos(selectedPlayer.class as FieldPositions, {q:-1, r:0, s:1})} />
-                <FontAwesomeIcon 
-                  className='p-1 cursor-pointer' icon={['fas', 'arrow-up']}
-                  onClick={() => setGameData_FielderHexPos(selectedPlayer.class as FieldPositions, {q:0, r:-1, s:1})} />
-                <FontAwesomeIcon 
-                  className='p-1 rotate-45 cursor-pointer' icon={['fas', 'arrow-up']}
-                  onClick={() => setGameData_FielderHexPos(selectedPlayer.class as FieldPositions, {q:1, r:-1, s:0})} />
+                <div className="border-2 bg-white shadow-lg p-3 w-24">
+                  <div className="flex flex-row">
+                    <FontAwesomeIcon 
+                      className='p-1 -rotate-45 cursor-pointer' icon={['fas', 'arrow-up']}
+                      onClick={() => setGameData_FielderHexPos(selectedPlayer.class as FieldPositions, {q:-1, r:0, s:1})} />
+                    <FontAwesomeIcon 
+                      className='p-1 cursor-pointer' icon={['fas', 'arrow-up']}
+                      onClick={() => setGameData_FielderHexPos(selectedPlayer.class as FieldPositions, {q:0, r:-1, s:1})} />
+                    <FontAwesomeIcon 
+                      className='p-1 rotate-45 cursor-pointer' icon={['fas', 'arrow-up']}
+                      onClick={() => setGameData_FielderHexPos(selectedPlayer.class as FieldPositions, {q:1, r:-1, s:0})} />
+                  </div>
+                  <div className="flex flex-row">
+                    <FontAwesomeIcon 
+                      className='p-1 rotate-45 cursor-pointer' icon={['fas', 'arrow-down']}
+                      onClick={() => setGameData_FielderHexPos(selectedPlayer.class as FieldPositions, {q:-1, r:1, s:0})} />
+                    <FontAwesomeIcon 
+                      className='p-1 cursor-pointer' icon={['fas', 'arrow-down']}
+                      onClick={() => setGameData_FielderHexPos(selectedPlayer.class as FieldPositions, {q:0, r:1, s:-1})} />
+                    <FontAwesomeIcon 
+                      className='p-1 -rotate-45 cursor-pointer' icon={['fas', 'arrow-down']}
+                      onClick={() => setGameData_FielderHexPos(selectedPlayer.class as FieldPositions, {q:1, r:0, s:-1})} />
+                  </div> 
+                </div>
+                <div className="content-center px-3">
+                  <label className="text-xl sm:text-3xl lg:text-3xl">
+                    {gameData.fielderHexPos[selectedPlayer.class as FieldPositions] !== undefined ?
+                     `(${gameData.fielderHexPos[selectedPlayer.class as FieldPositions].q}, ${gameData.fielderHexPos[selectedPlayer.class as FieldPositions].r}, ${gameData.fielderHexPos[selectedPlayer.class as FieldPositions].s})` :
+                     ''}
+                  </label>
               </div>
-              <div className="flex flex-row">
-                <FontAwesomeIcon 
-                  className='p-1 rotate-45 cursor-pointer' icon={['fas', 'arrow-down']}
-                  onClick={() => setGameData_FielderHexPos(selectedPlayer.class as FieldPositions, {q:-1, r:1, s:0})} />
-                <FontAwesomeIcon 
-                  className='p-1 cursor-pointer' icon={['fas', 'arrow-down']}
-                  onClick={() => setGameData_FielderHexPos(selectedPlayer.class as FieldPositions, {q:0, r:1, s:-1})} />
-                <FontAwesomeIcon 
-                  className='p-1 -rotate-45 cursor-pointer' icon={['fas', 'arrow-down']}
-                  onClick={() => setGameData_FielderHexPos(selectedPlayer.class as FieldPositions, {q:1, r:0, s:-1})} />
-              </div> 
               </div>
+              
             </div>
 
             <div className="w-full ">
@@ -1370,13 +1399,16 @@ function MainGameView() {
           </div>
 
           <div className="w-full sm:w-3/5 lg:w-[65%] pl-5">
-            <div className=" bg-slate-400 bg-opacity-80 rounded-3xl shadow-lg">
-              
-              <FieldView 
-              fielderHexPos={gameData.fielderHexPos}
-              numInnings={numInnings}
-              phase={gameData.phase}
-              logContents={logContents}/>
+            <div className=" bg-slate-400 bg-opacity-80 rounded-3xl shadow-xl bg-fixed bg-bottom bg-[url('/img/baseball_lg.jpg')]">
+              <div className="backdrop-blur-sm bg-black/25  rounded-3xl shadow-xl">
+                <FieldView 
+                fielderHexPos={gameData.fielderHexPos}
+                numInnings={numInnings}
+                phase={gameData.phase}
+                logContents={logContents}
+                players={myTeamPlayers_NameClass}
+                />
+              </div>
             </div>
           </div>
           
@@ -1968,7 +2000,7 @@ function PostGameView({MyTeamIndex} : {MyTeamIndex: number}) {
     <div className="overflow-x-auto flex flex-col pl-10 py-5 ">
       {/*<h2>My team avg level = {myTeamAvgLvl}</h2>
       <h2>Opponent team avg level = {oppTeamAvgLvl}</h2>*/}
-      <div className="">
+      <div className="flex flex-row gap-5">
         <table className="table-auto border-2 border-spacing-2 shadow-lg sm:w-3/5 lg:w-2/5">
           <caption className="text-lg font-semibold">{captionText}</caption>
           <thead>
@@ -1999,6 +2031,7 @@ function PostGameView({MyTeamIndex} : {MyTeamIndex: number}) {
                  let inc_con = 0
                  let inc_lvl = 0
                  let exp_show = 0
+                 let exp_after_game = 0;
                  let progress_bar_percent_num: number = 0;
                 if (preGamePlayerStats[index] !== undefined) {
                  inc_str = value.strength - preGamePlayerStats[index]!.strength;
@@ -2007,9 +2040,11 @@ function PostGameView({MyTeamIndex} : {MyTeamIndex: number}) {
                  inc_con = value.contact - preGamePlayerStats[index]!.contact;
                  inc_lvl = value.level - preGamePlayerStats[index]!.level;
                  exp_show = preGamePlayerStats[index]!.experience
-                 progress_bar_percent_num = Math.floor((exp_show / getExperienceToNextLevel(value.level, 0)) * 100);
+                 exp_after_game = preGamePlayerStats[index]!.experience + exp_gained;
+                 progress_bar_percent_num = Math.floor((value.experience / getExperienceToNextLevel(value.level, 0)) * 100);
                 }
-                const exp_to_next: number = getExperienceToNextLevel(value.level, value.experience);
+
+                const exp_to_next: number = getExperienceToNextLevel(value.level, 0);
                 //let progress_bar_percent_num: number = Math.floor(exp_show / exp_to_next);
                 const progress_bar_percent: string = "w-[" + progress_bar_percent_num.toString() + "%]";
                 const exp_to_next_classStr_0: string = "bg-red-400 h-2.5 rounded-full " + progress_bar_percent
@@ -2146,9 +2181,12 @@ function PostGameView({MyTeamIndex} : {MyTeamIndex: number}) {
                     <td className="px-2">{value.age}</td>
                     <td className="px-2">{exp_gained}</td>
                     <td className="min-w-32">
-                    <p>{progress_bar_percent_num}</p>
-                      <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
+                      <div className="group relative w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
                         <div className={exp_to_next_classStr}></div>
+                        <div className="rotate-45 bg-slate-700 w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-t-[20px] border-t-slate-700 absolute -top-5 left-10  text-xs opacity-0 transition-opacity group-hover:opacity-100 ">.</div>
+                        <span className="tooltip pointer-events-none absolute -top-7 left-0 w-max rounded-sm px-2 bg-slate-700 text-white text-sm opacity-0 transition-opacity group-hover:opacity-100 ">
+                          {value.experience} / {exp_to_next}
+                        </span>
                       </div>
                     </td>
                   </tr>
@@ -2157,6 +2195,15 @@ function PostGameView({MyTeamIndex} : {MyTeamIndex: number}) {
             }
           </tbody>
         </table>
+        <div className="border-2 rounded-lg shadow-lg bg-black bg-opacity-65 text-white w-2/5 h-1/2 p-5">
+            <p className="text-xl underline">Did you know?</p>
+            <ul className="list-disc list-outside py-2 px-3">
+              <li>The amount of experience a player earns depends on how well they performed in the last game.</li>
+              <li>Players gain extra experience when your team wins!</li>
+              <li>Players also gain extra experience when you face a stronger team, but they gain less experience when facing a weaker team.</li>
+              <li>Upon leveling up, a player will gain 3 stat points. One point will go into the player's <b>focust stat</b>. The other two points are chosen semi-randomly.</li>
+            </ul>
+        </div>
       </div>
       <div className="py-5">
         <table className="table-auto border-2 border-spacing-2 shadow-lg sm:w-3/5 lg:w-4/5">
