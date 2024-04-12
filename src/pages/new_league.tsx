@@ -638,7 +638,6 @@ export default function Home() {
   return (
     <>
     <div className="flex flex-col">
-      <h1 className="text-center text-2xl">Welcome to Simple Baseball GM!</h1>
       <TopBar_newLeague />
       <div className="flex p-2"> 
         <form onSubmit={createLeague}>

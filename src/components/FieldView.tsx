@@ -1,6 +1,6 @@
 import { Player } from "@prisma/client";
 import { Console } from "console";
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { api } from "~/utils/api";
 import { Pixel, Position, hex_distance, hex_lineDraw, hex_ring, hex_to_pixel, pixel_to_hex } from "~/utils/hexUtil";
 
@@ -547,7 +547,7 @@ function MatchTextLog3(props_matchlog: MatchLogProps3) {
             className="flex border-4 gap-2 w-full shadow-md shadow-green-900"
             id="log2"
             readOnly
-            autoFocus
+            //autoFocus
             rows={5}
             cols={130}
             value={props.logContents?.slice(0, logIndex).reverse().join('')}
@@ -557,7 +557,7 @@ function MatchTextLog3(props_matchlog: MatchLogProps3) {
     )
 }
 
-  function Scoreboard() {
+function Scoreboard() {
     //create header row and inningRun columns
     let headerArr = [' '];
     //let inningRuns = []
@@ -628,38 +628,41 @@ function MatchTextLog3(props_matchlog: MatchLogProps3) {
             <td className="px-2 font-bold" >{sb_errAway}</td>
           </tr>
         </tbody>
-      </table>
-      <div className="p-2 bg-gray-50 rounded-md min-w-36 max-w-36 shadow-md shadow-green-900">
-        <h1>Outs: {sb_outs}</h1>
-        <h1>1st: {sb_baseRunners.first}</h1>
-        <h1>2nd: {sb_baseRunners.second}</h1>
-        <h1>3rd: {sb_baseRunners.third}</h1>
-      </div>
+        </table>
+        <div className="p-2 bg-gray-50 rounded-md min-w-36 max-w-36 shadow-md shadow-green-900">
+          <h1>Outs: {sb_outs}</h1>
+          <h1>1st: {sb_baseRunners.first}</h1>
+          <h1>2nd: {sb_baseRunners.second}</h1>
+          <h1>3rd: {sb_baseRunners.third}</h1>
+        </div>
       </div>
   )
-  }
+}
 
- useEffect(() => { // TODO: why is left end of field cut off when I do it this way?
+
+ useEffect(() => { 
   drawHexes(50,50);
   drawFieldersInitial(props.fielderHexPos);
  }, [])
+
  if (props.phase === 1) {
   return (
     <>
     <div className="overflow-x-auto">
       <div className="flex flex-col items-center">
-        <div className="flex flex-row p-2 margin-auto">
+        <div className="flex flex-row p-2 m-auto">
           <MatchTextLog3
           isActive={true}
           _homeInningRuns={__homeInningRuns}
           _awayInningRuns={__awayInningRuns} />
         </div>
-        <div className="p-2 bg-gray-50 rounded-md shadow-md shadow-green-900 w-auto ">
-          <h1 className="text-center">{hexCoordString}</h1>
-        </div>
-        <div className="flex p-2 gap-2 justify-center margin-auto">
+        
+        <div className="flex flex-col p-2 gap-2 items-center m-auto">
+          <div className="py-2 px-3 bg-gray-50 rounded-md shadow-md shadow-green-900 w-auto sticky left-3 right-6">
+            <h1 className="text-center">{hexCoordString}</h1>
+          </div>
           <canvas id="canvas" 
-            className=""
+            className="py-1"
             width={canvas_w} 
             height={canvas_h}/>
         </div>
@@ -672,17 +675,16 @@ function MatchTextLog3(props_matchlog: MatchLogProps3) {
   return (
     <>
     <div className="overflow-x-auto py-2">
-      <div className="flex flex-col items-center">
+      <div className="flex flex-col ">
         {/*<h1 className="text-center text-2xl">Pregame Phase</h1>
         <h2 className="text-center">Set batting order and field positions</h2>*/}
-        <div className="py-2 px-3 bg-gray-50 rounded-md shadow-md shadow-green-900 w-auto ">
-          <h1 className="text-center">{hexCoordString}</h1>
-        </div>
-        <div className="flex flex-row p-2 margin-auto">
-        </div>
-        <div className="flex p-2 gap-2 justify-center margin-auto">
+
+        <div className="flex flex-col p-2 gap-2 items-center m-auto">
+          <div className="py-2 px-3 bg-gray-50 rounded-md shadow-md shadow-green-900 w-auto sticky left-3 right-6">
+            <h1 className="text-center">{hexCoordString}</h1>
+          </div>
           <canvas id="canvas" 
-            className=""
+            className="py-1"
             width={canvas_w} 
             height={canvas_h}/>
         </div>

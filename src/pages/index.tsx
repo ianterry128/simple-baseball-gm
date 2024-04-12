@@ -23,15 +23,15 @@ import localFont from 'next/font/local';
 // where the icons flash from a very large icon down to a properly sized one:
 import '@fortawesome/fontawesome-svg-core/styles.css';
 // Prevent fontawesome from adding its CSS since we did it manually above:
-import { config } from '@fortawesome/fontawesome-svg-core';
+import { IconName, config } from '@fortawesome/fontawesome-svg-core';
 config.autoAddCss = false; /* eslint-disable import/first */
 ////////////////////////
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { library } from '@fortawesome/fontawesome-svg-core'
-import { faHouse, faPlane, faArrowUp, faArrowLeft, faArrowRight, faArrowDown } from '@fortawesome/free-solid-svg-icons'
+import { faHouse, faPlane, faArrowUp, faArrowLeft, faArrowRight, faArrowDown, faBars } from '@fortawesome/free-solid-svg-icons'
 import { createSchedule } from "./new_league";
 import { isWeakMap } from "util/types";
-library.add(faHouse, faPlane, faArrowUp, faArrowLeft, faArrowRight, faArrowDown)
+library.add(faHouse, faPlane, faArrowUp, faArrowLeft, faArrowRight, faArrowDown, faBars)
 
 const myFont = localFont({ src: '../../public/fonts/Talking_Baseball.otf' })
 
@@ -207,6 +207,7 @@ export default function Home() {
   });
   // LEAGUE TABLE STATE
   const [isLeagueTableActive, setIsLeagueTableActive] = useState<boolean>(false);
+  const [isMenuVisible, setIsMenuVisible] = useState<boolean>(false);
 
   const [selectedTeam, setSelectedTeam] = useState(0);
   function setSelectedTeamById(_id: string) {
@@ -1295,9 +1296,9 @@ function MainGameView() {
       <div className="flex flex-col py-5">
         <h1 className="text-center text-2xl font-bold">Week {gameData.week}</h1>
         <h1 className="text-center text-2xl">Game Phase</h1>
-        <div className="flex flex-row flex-wrap">
+        <div className="flex flex-row flex-wrap pl-10 pr-3 py-5">
 
-          <div className="w-full sm:w-1/5 lg:w-[35%] pl-10">
+          <div className="w-full md:w-3/5 lg:w-2/5 xl:w-[35%] px-1 pb-5">
             <TeamDisplayLineupChangeTable 
               leagueInfoProp={_leagueInfo}
               teamIndexProp={my_team_index}
@@ -1312,7 +1313,7 @@ function MainGameView() {
             /> 
           </div>
         </div>
-        <div className="w-full sm:w-3/5 lg:w-[65%] pl-5 pr-3">
+        <div className="w-full md:w-2/5 lg:w-3/5 xl:w-[65%] pl-5">
           <div className=" rounded-3xl shadow-xl bg-fixed bg-bottom bg-[url('/img/baseball_lg.jpg')]">
             <div className="backdrop-blur-sm bg-black/25  rounded-3xl shadow-xl">
             <FieldView 
@@ -1344,7 +1345,7 @@ function MainGameView() {
       <h2 className="text-center">Set batting order and field positions</h2>
       <div className="flex flex-row flex-wrap pl-10 pr-3 py-5">
 
-          <div className="w-full sm:w-1/5 lg:w-[35%] px-1">
+          <div className="w-full md:w-3/5 lg:w-2/5 xl:w-[35%] px-1 pb-5">
             <TeamDisplayLineupChangeTable 
               leagueInfoProp={_leagueInfo}
               teamIndexProp={my_team_index}
@@ -1398,9 +1399,9 @@ function MainGameView() {
             </div>
           </div>
 
-          <div className="w-full sm:w-3/5 lg:w-[65%] pl-5">
+          <div className="w-full md:w-2/5 lg:w-3/5 xl:w-[65%] pl-5">
             <div className=" bg-slate-400 bg-opacity-80 rounded-3xl shadow-xl bg-fixed bg-bottom bg-[url('/img/baseball_lg.jpg')]">
-              <div className="backdrop-blur-sm bg-black/25  rounded-3xl shadow-xl">
+              <div className="backdrop-blur-sm bg-black/25 rounded-3xl shadow-xl">
                 <FieldView 
                 fielderHexPos={gameData.fielderHexPos}
                 numInnings={numInnings}
@@ -1462,10 +1463,9 @@ function TeamDisplayLineupChangeTable({leagueInfoProp, teamIndexProp, ha_iconPro
 
   const captionText: string = "My Team: " 
   return (
-      <div className="">
-        
+      <div className="">    
         <table className="table-auto border-2 border-spacing-2 shadow-lg shadow-blue-500 w-full">
-          <caption className="text-lg font-semibold"><FontAwesomeIcon className="px-1" icon={['fas', ha_iconProp]} />{captionText} {leagueInfoProp.teams[teamIndexProp]?.name}</caption>
+          <caption className="text-lg font-semibold"><FontAwesomeIcon className="px-1" icon={['fas', ha_iconProp as IconName]} />{captionText} {leagueInfoProp.teams[teamIndexProp]?.name}</caption>
           <thead>
             <tr className="even:bg-gray-50 odd:bg-white">
               <th>BO</th>
@@ -1575,10 +1575,10 @@ function LeagueTeamsTable({leagueInfoProp, isActiveProp} : {leagueInfoProp:Leagu
       <div
       style={{ display: isActiveProp ? "inline" : "none" }}>
         <table className="table-auto border-2 border-spacing-2 p-8 shadow-lg w-full">
-          <caption className="text-lg font-semibold">My League: {leagueInfoProp.name}</caption>
+          <caption className="text-lg font-semibold">{leagueInfoProp.name}</caption>
           <thead>
             <tr className="even:bg-gray-50 odd:bg-white">
-              <th>Name</th>
+              <th>Team Name</th>
               <th>Wins</th>
               <th>Losses</th>
             </tr>
@@ -1630,8 +1630,8 @@ function ScheduleView() {
   }
 
   return (
-    <div className="flex flex-row gap-10 px-10 py-5 w-full h-full">
-        <table className="table-auto border-2 border-spacing-2 shadow-lg w-2/6">
+    <div className="flex flex-row gap-10 px-10 py-5 w-full h-full ">
+        <table className="table-auto border-2 border-spacing-2 shadow-lg w-2/6 ">
           <caption className="text-lg font-semibold">My Schedule</caption>
           <thead>
             <tr className="even:bg-gray-50 odd:bg-white">
@@ -1645,7 +1645,7 @@ function ScheduleView() {
             {
               mySched.map((v, index) => {
                 return (
-                  <tr key={v.react_key} className="even:bg-green-200 odd:bg-gray-50  hover:bg-black hover:bg-opacity-1 hover:text-gray-100 text-center">
+                  <tr key={v.react_key} className="even:bg-green-200 odd:bg-gray-50  hover:bg-black hover:bg-opacity-80 hover:text-gray-100 text-center">
                     <td>{index}</td>
                     <td>{v.opponent}</td>
                     <td>{v.h_a}</td>
@@ -1664,7 +1664,7 @@ function TeamInfoView({MyTeamIndex} : {MyTeamIndex: number}) {
   const captionText: string = `My Team: ${gameData.teams[MyTeamIndex]?.name}`
 
   return (
-    <div className="flex flex-col overflow-x-auto px-10 py-5 gap-5">
+    <div className="flex flex-col overflow-x-auto px-10 py-5 gap-5 ">
       <div className="flex flex-row gap-10">
         <table className="table-auto border-2 border-spacing-2 p-8 w-3/6 shadow-lg">
           <caption className="text-lg font-semibold">{captionText}</caption>
@@ -1813,7 +1813,7 @@ function TeamInfoView({MyTeamIndex} : {MyTeamIndex: number}) {
             }
           </tbody>
         </table>
-        <div className="border-2 rounded-lg shadow-lg bg-black bg-opacity-65 text-white w-2/6 h-1/2 p-5">
+        <div className="border-2 rounded-lg shadow-lg bg-black bg-opacity-65 text-white min-w-48 lg:w-2/6 h-1/2 p-5">
             <p className="text-xl underline">Did you know?</p>
             <ul className="list-disc list-outside py-2 px-3">
               <li>Change a player's <b>Focus Stat</b> by selecting from the dropdown menu in the <b>My Team</b> table.</li>
@@ -1821,7 +1821,7 @@ function TeamInfoView({MyTeamIndex} : {MyTeamIndex: number}) {
             </ul>
         </div>
       </div>
-        <table className="table-auto border-2 border-spacing-2 p-8 w-5/6 shadow-lg">
+        <table className="table-auto border-2 border-spacing-2 p-8 w-5/6 shadow-lg overflow-x-scroll">
           <caption className="text-lg font-semibold">Cumulative Career Stats</caption>
           <thead>
             <tr className="even:bg-gray-50 odd:bg-white">
@@ -1899,60 +1899,63 @@ function TeamInfoView({MyTeamIndex} : {MyTeamIndex: number}) {
             }
           </tbody>
         </table>
+
       </div>
   )
 }
 
 function LeagueInfoView({leagueInfoProp, teamIndexProp} : {leagueInfoProp:LeagueStateStruct, teamIndexProp:number}) {
   return (
-    <div className="flex flex-row justify-around gap-10 px-10 py-5 w-full h-full">
-      <div className="h-full w-2/6">
+    <div className="flex flex-row flex-wrap lg:flex-nowrap gap-10 px-10 py-5 w-full h-full">
+      <div className="h-full w-full sm:w-2/6 lg:w-2/6">
       <LeagueTeamsTable
         leagueInfoProp={leagueInfoProp}
         isActiveProp={true} />
       </div>
-        
-      <table className="table-auto border-2 border-spacing-2 p-8 shadow-lg h-80 w-2/6">
-        <caption className="text-lg font-semibold">Team: {leagueInfoProp.teams[teamIndexProp]?.name}</caption>
-        <thead>
-          <tr className="even:bg-gray-50 odd:bg-white">
-            <th>Name</th>
-            <th>Class</th>
-            <th>Str</th>
-            <th>Spd</th>
-            <th>Prc</th>
-            <th>Con</th>
-            <th>Lvl</th>
-            <th>Age</th>
-          </tr>
-        </thead>
-        <tbody>
-          {
-            leagueInfoProp.teams[teamIndexProp]?.playersJson.map((index) => {
-              const keyVal: string = index.id + `-TeamDisplayTable`;
-              return (
-                <tr key={keyVal} className="even:bg-green-200 odd:bg-gray-50 hover:bg-blue-600 hover:text-gray-50 text-center">
-                  <td>{index.name}</td>
-                  <td>{index.class}</td>
-                  <td>{index.strength}</td>
-                  <td>{index.speed}</td>
-                  <td>{index.precision}</td>
-                  <td>{index.contact}</td>
-                  <td>{index.level}</td>
-                  <td>{index.age}</td>
-                </tr>
-              )
-            })
-          }
-        </tbody>
-      </table>
 
-      <div className="border-2 rounded-lg shadow-lg bg-black bg-opacity-65 text-white w-2/6 h-1/2 p-5">
+      <div className="h-full w-full sm:w-2/6 lg:w-2/6"> 
+        <table className="table-auto border-2 border-spacing-2 p-8 shadow-lg h-80 w-full">
+          <caption className="text-lg font-semibold">Team: {leagueInfoProp.teams[teamIndexProp]?.name}</caption>
+          <thead>
+            <tr className="even:bg-gray-50 odd:bg-white">
+              <th>Name</th>
+              <th>Class</th>
+              <th>Str</th>
+              <th>Spd</th>
+              <th>Prc</th>
+              <th>Con</th>
+              <th>Lvl</th>
+              <th>Age</th>
+            </tr>
+          </thead>
+          <tbody>
+            {
+              leagueInfoProp.teams[teamIndexProp]?.playersJson.map((index) => {
+                const keyVal: string = index.id + `-TeamDisplayTable`;
+                return (
+                  <tr key={keyVal} className="even:bg-green-200 odd:bg-gray-50 hover:bg-blue-600 hover:text-gray-50 text-center">
+                    <td>{index.name}</td>
+                    <td>{index.class}</td>
+                    <td>{index.strength}</td>
+                    <td>{index.speed}</td>
+                    <td>{index.precision}</td>
+                    <td>{index.contact}</td>
+                    <td>{index.level}</td>
+                    <td>{index.age}</td>
+                  </tr>
+                )
+              })
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <div className="border-2 rounded-lg shadow-lg bg-black bg-opacity-65 text-white w-full sm:w-2/6 lg:w-2/6 h-1/2 p-5">
             <p className="text-xl underline">Did you know?</p>
             <ul className="list-disc list-outside py-2 px-3">
               <li>Click on the row in the <b>League Table</b> corresponding to the team you'd like to view.</li>
             </ul>
-        </div>
+      </div>
     </div>
   )
 }
@@ -1997,11 +2000,11 @@ function PostGameView({MyTeamIndex} : {MyTeamIndex: number}) {
   // TODO MOVE ALL THIS
   
   return (
-    <div className="overflow-x-auto flex flex-col pl-10 py-5 ">
+    <div className="overflow-x-auto flex flex-col pl-10 py-5 h-full">
       {/*<h2>My team avg level = {myTeamAvgLvl}</h2>
       <h2>Opponent team avg level = {oppTeamAvgLvl}</h2>*/}
-      <div className="flex flex-row gap-5">
-        <table className="table-auto border-2 border-spacing-2 shadow-lg sm:w-3/5 lg:w-2/5">
+      <div className="flex flex-row gap-10">
+        <table className="table-auto border-2 border-spacing-2 shadow-lg w-3/6 lg:w-2:5">
           <caption className="text-lg font-semibold">{captionText}</caption>
           <thead>
             <tr className="even:bg-gray-50 odd:bg-white">
@@ -2195,7 +2198,7 @@ function PostGameView({MyTeamIndex} : {MyTeamIndex: number}) {
             }
           </tbody>
         </table>
-        <div className="border-2 rounded-lg shadow-lg bg-black bg-opacity-65 text-white w-2/5 h-1/2 p-5">
+        <div className="border-2 rounded-lg shadow-lg bg-black bg-opacity-65 text-white min-w-80 lg:w-2/6 h-1/2 p-5">
             <p className="text-xl underline">Did you know?</p>
             <ul className="list-disc list-outside py-2 px-3">
               <li>The amount of experience a player earns depends on how well they performed in the last game.</li>
@@ -2205,7 +2208,8 @@ function PostGameView({MyTeamIndex} : {MyTeamIndex: number}) {
             </ul>
         </div>
       </div>
-      <div className="py-5">
+
+      <div className="py-5 ">
         <table className="table-auto border-2 border-spacing-2 shadow-lg sm:w-3/5 lg:w-4/5">
           <caption className="text-lg font-semibold">Week {gameData.week} Performance Results</caption>
           <thead>
@@ -2660,13 +2664,51 @@ function TopBar() {
           </Link>*/}
         {user != null ? (
                     <div className="gap-3"> {/* why do I need this div? */}
+
+                    <div className="relative">
+                      <button
+                      className="transition-colors duration-200 hover:bg-green-500 
+                      text-center hover:text-white shadow-sm"
+                      onClick={() => {
+                        setIsMenuVisible(!isMenuVisible);
+                      }}
+                      >
+                       <FontAwesomeIcon icon={['fas', 'bars']} /> Menu 
+                      </button>
+                      <div
+                      className="absolute top-7 right-3"
+                      style={{ display: isMenuVisible ? "inline" : "none" }}>
+                        <div className="flex flex-col border-2 bg-white p-2 ">
+                          <Link 
+                              href="/new_league"
+                              className="transition-colors duration-200 hover:bg-neutral-100
+                               text-left text-nowrap ">New League
+                          </Link>
+                          <button 
+                            className="transition-colors duration-200 hover:bg-neutral-100
+                             text-left text-nowrap "
+                            onClick={() => {
+                              setIsPlayingGame(false);
+                            }}>
+                              Switch League
+                          </button>   
+                          <button 
+                            className="transition-colors duration-200 hover:bg-neutral-100
+                             text-left text-nowrap"
+                            onClick={() => signOut()}>Log Out
+                          </button>   
+                        </div>
+                      </div>
+
+                      </div>
+                      {/*}
                       <Link 
                           href="/new_league"
-                          className=" transition-colors duration-200 hover:bg-green-500 
+                          className="pl-2 transition-colors duration-200 hover:bg-green-500 
                           text-center hover:text-white shadow-sm ">New League
                       </Link>
                       <button 
-                        className="px-2 transition-colors duration-200 hover:bg-green-500 
+                        className="pl-2 transition-colors duration-200 hover:bg-green-500 
                         text-center hover:text-white shadow-sm"
                         onClick={() => {
                           setIsPlayingGame(false);
@@ -2674,10 +2716,10 @@ function TopBar() {
                           Switch League
                       </button>   
                       <button 
-                        className="px-2 transition-colors duration-200 hover:bg-green-500 
+                        className="pl-2 transition-colors duration-200 hover:bg-green-500 
                         text-center hover:text-white shadow-sm"
                         onClick={() => signOut()}>Log Out
-                      </button>   
+                      </button>   */}
                     </div>
         ) : null}
         {user == null ? (
@@ -2779,7 +2821,7 @@ function TeamDisplayTable({leagueInfoProp, teamIndexProp, ha_iconProp} : {league
   return (
       <div className="">
         <table className="table-auto border-2 border-spacing-2 p-8 shadow-lg shadow-red-400 min-w-80 w-full">
-          <caption className="text-lg font-semibold"><FontAwesomeIcon className="px-1" icon={['fas', ha_iconProp]} />Opponent Team: {leagueInfoProp.teams[teamIndexProp]?.name}</caption>
+          <caption className="text-lg font-semibold"><FontAwesomeIcon className="px-1" icon={['fas', ha_iconProp as IconName]} />Opponent Team: {leagueInfoProp.teams[teamIndexProp]?.name}</caption>
           <thead>
             <tr className="even:bg-gray-50 odd:bg-white">
               <th>Name</th>
