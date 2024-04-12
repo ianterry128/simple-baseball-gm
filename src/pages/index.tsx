@@ -1856,13 +1856,21 @@ function TeamInfoView({MyTeamIndex} : {MyTeamIndex: number}) {
               gameData.teams[MyTeamIndex]?.playersJson.map((value, index) => {
                 // get stats corresponding to this player
                 const average = parseFloat((value.stats_season.hits / (value.stats_season.at_bats - value.stats_season.walks)).toFixed(3)).toFixed(3).toString().substring(1);
+                const average_disp = isNaN((value.stats_season.hits / (value.stats_season.at_bats - value.stats_season.walks))) ? ".000" : average;
                 const obp = parseFloat(((value.stats_season.hits + value.stats_season.walks) / (value.stats_season.at_bats + value.stats_season.walks)).toFixed(3)).toFixed(3).toString().substring(1);
+                const obp_disp = isNaN((value.stats_season.hits + value.stats_season.walks) / (value.stats_season.at_bats + value.stats_season.walks)) ? ".000" : obp;
                 const slg = parseFloat((((value.stats_season.hits - value.stats_season.doubles - value.stats_season.triples - value.stats_season.home_runs) 
                   + (value.stats_season.doubles * 2) + (value.stats_season.triples * 3) + (value.stats_season.home_runs * 4)) 
                   / (value.stats_season.at_bats - value.stats_season.walks)).toFixed(3)).toFixed(3).toString().substring(1);
+                const slg_disp = isNaN((((value.stats_season.hits - value.stats_season.doubles - value.stats_season.triples - value.stats_season.home_runs) 
+                + (value.stats_season.doubles * 2) + (value.stats_season.triples * 3) + (value.stats_season.home_runs * 4)) 
+                / (value.stats_season.at_bats - value.stats_season.walks))) ? ".000" : slg;
                 const ops = parseFloat((parseFloat(obp) + parseFloat(slg)).toFixed(3)).toFixed(3);
+                const ops_disp = isNaN((value.stats_season.hits + value.stats_season.walks) / (value.stats_season.at_bats + value.stats_season.walks)) ? ".000" : ops;
                 const era = parseFloat(((value.stats_season.runs_allowed * 9) / value.stats_season.ip).toFixed(2)).toFixed(2).toString();
+                const era_disp = value.stats_season.ip === 0 ? "NA" : era;
                 const k_9 = parseFloat(((value.stats_season.k * 9) / value.stats_season.ip).toFixed(2)).toFixed(2).toString();
+                const k_9_disp = value.stats_season.ip === 0 ? "NA" : k_9;
                 //const average = Math.round((value.stats_season.hits / value.stats_season.at_bats) * 1000) / 1000;
 
                 const keyVal: string = value.id + `-TeamInfoView2`;
@@ -1880,10 +1888,10 @@ function TeamInfoView({MyTeamIndex} : {MyTeamIndex: number}) {
                     <td className="bg-amber-50 bg-opacity-50">{value.stats_season.rbi}</td>
                     <td className="bg-amber-50 bg-opacity-50">{value.stats_season.walks}</td>
                     <td className="bg-amber-50 bg-opacity-50 border-r-2">{value.stats_season.strike_outs}</td>
-                    <td className="bg-amber-50 bg-opacity-50">{average}</td>
-                    <td className="bg-amber-50 bg-opacity-50">{obp}</td>
-                    <td className="bg-amber-50 bg-opacity-50">{slg}</td>
-                    <td className="bg-amber-50 bg-opacity-50 border-r-2">{ops}</td>
+                    <td className="bg-amber-50 bg-opacity-50">{average_disp}</td>
+                    <td className="bg-amber-50 bg-opacity-50">{obp_disp}</td>
+                    <td className="bg-amber-50 bg-opacity-50">{slg_disp}</td>
+                    <td className="bg-amber-50 bg-opacity-50 border-r-2">{ops_disp}</td>
                     <td className="bg-blue-50 bg-opacity-50">{value.stats_season.errors}</td>
                     <td className="bg-blue-50 bg-opacity-50">{value.stats_season.assists}</td>
                     <td className="bg-blue-50 bg-opacity-50 border-r-2">{value.stats_season.putouts}</td>
@@ -1891,8 +1899,8 @@ function TeamInfoView({MyTeamIndex} : {MyTeamIndex: number}) {
                     <td className="bg-red-50 bg-opacity-50">{value.stats_season.walks_allowed}</td>
                     <td className="bg-red-50 bg-opacity-50">{value.stats_season.k}</td>
                     <td className="bg-red-50 bg-opacity-50 border-r-2">{value.stats_season.runs_allowed}</td>
-                    <td className="bg-red-50 bg-opacity-50">{era}</td>
-                    <td className="bg-red-50 bg-opacity-50">{k_9}</td>
+                    <td className="bg-red-50 bg-opacity-50">{era_disp}</td>
+                    <td className="bg-red-50 bg-opacity-50">{k_9_disp}</td>
                   </tr>
                 )
               })
@@ -2776,7 +2784,7 @@ function LoggedOutView() {
         <h2 className="py-2 text-lg">Log in with Google or Discord to play for free - right here in your browser.</h2>
         <button 
           className="rounded-full transition-colors duration-200 hover:bg-green-500 
-          bg-green-700 text-white text-2xl shadow-sm font-bold px-10 py-5 w-72"
+          bg-green-700 text-white text-2xl shadow-lg hover:shadow-lg font-bold px-10 py-5 w-72"
           onClick={() => {
             setIsPlayingGame(false);
             signIn();
