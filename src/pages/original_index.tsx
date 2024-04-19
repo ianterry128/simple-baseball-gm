@@ -6,9 +6,9 @@ import Head from "next/head";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { number } from "zod";
-import { GenerateTeam } from "~/components/GenerateTeam";
-import { MatchTextLog } from "~/components/MatchTextLog";
-import { MatchTextLog2 } from "~/components/MatchTextLog2";
+//import { GenerateTeam } from "~/components/GenerateTeam";
+//import { MatchTextLog } from "~/components/MatchTextLog";
+//import { MatchTextLog2 } from "~/components/MatchTextLog2";
 import { lastNames } from "~/data/names";
 import { teamNames } from "~/data/names";
 
