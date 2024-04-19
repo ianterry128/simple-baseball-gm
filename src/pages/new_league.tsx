@@ -1,17 +1,17 @@
-import { Player, Team } from "@prisma/client";
-import { Console } from "console";
-import { randomUUID } from "crypto";
+//import { Player, Team } from "@prisma/client";
+//import { Console } from "console";
+//import { randomUUID } from "crypto";
 import { signIn, signOut, useSession } from "next-auth/react";
-import Head from "next/head";
+//import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { FormEvent, useEffect, useState } from "react";
-import { number } from "zod";
+//import { number } from "zod";
 import { lastNames } from "~/data/names";
 import { teamNames } from "~/data/names";
 
 import { api } from "~/utils/api";
-import { Position, hex_distance, hex_lineDraw } from "~/utils/hexUtil";
+import { Position, /*hex_distance, hex_lineDraw*/ } from "~/utils/hexUtil";
 
 interface PlayerStateStruct {
     id: string,
@@ -153,14 +153,16 @@ export default function Home() {
   const user = session.data?.user;
   //const [playerInfo, setPlayerInfo] = useState<PlayerStateStruct[]>([]);
   //const [teamInfo, setTeamInfo] = useState<TeamStateStruct>();
-  const [leagueInfo, setLeagueInfo] = useState<LeagueStateStruct>({
-    id: '',
-    name: '',
-    teams: [],
-    schedule: {}
-  });
+  /**
+    const [leagueInfo, setLeagueInfo] = useState<LeagueStateStruct>({
+      id: '',
+      name: '',
+      teams: [],
+      schedule: {}
+    });
+  */
   // LEAGUE TABLE STATE
-  const [isLeagueTableActive, setIsLeagueTableActive] = useState<boolean>(true);
+  //const [isLeagueTableActive, setIsLeagueTableActive] = useState<boolean>(true);
 
   const [gameData, setGameData] = useState<GameDataStateStruct>({
     //league: {id: '', name: '', teams: []},
@@ -445,7 +447,7 @@ export default function Home() {
     }
 
     // store info in React state
-    setLeagueInfo(newLeague);
+    //setLeagueInfo(newLeague);
     // store teams in database
     // TODO: is it necessary to store teams and players in database in their own tables???
     for (let i=0; i<teamsToAdd.length; i++) {

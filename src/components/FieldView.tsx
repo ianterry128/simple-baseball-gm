@@ -164,7 +164,7 @@ export function FieldView(props: FieldViewProps) {
     base_pixel  = hex_to_pixel(home_pos, r, {x: canvas_w/2, y: canvas_h-r});
     drawHex(ctx!, base_pixel.x, base_pixel.y, r, 'silver');
     //draw mound plate
-    let p_mound_pix = hex_to_pixel(mound_pos, r, {x: canvas_w/2, y: canvas_h-r});
+    const p_mound_pix = hex_to_pixel(mound_pos, r, {x: canvas_w/2, y: canvas_h-r});
     drawHex(ctx!, p_mound_pix.x, p_mound_pix.y, r, 'silver');
     //draw mound dirt
     drawRing(ctx!, mound_pos, 1, r, '#7d7210');
