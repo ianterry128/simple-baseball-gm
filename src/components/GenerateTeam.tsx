@@ -1,5 +1,5 @@
 import { lastNames } from "~/data/names";
-import { Player } from "./CustomObjects";
+//import { Player } from "./CustomObjects";
 import { useState } from "react";
 
 interface GenerateTeamProps {
@@ -41,29 +41,6 @@ function displayTeam () {
     //localStorage.setItem("_playerName", _name);
 }
 
-function generatePlayer() {
-    const retPlayer: Player = {
-        name: "John Doe",
-        age: 22,
-
-        strength: 10,
-        speed: 12,
-        precision: 7,
-        contact: 8,
-
-        strengthPot: 0.3,
-        speedPot: 0.3,
-        precisionPot: 0.2,
-        contactPot: 0.2,
-
-        class: "1B",
-        potential: 3,
-        experience: 0,
-        level: 1,
-        classExp: 0,
-        classLvl: 1,
-    }
-}
 
 
 function generateName(): string {
