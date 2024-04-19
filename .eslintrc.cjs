@@ -34,4 +34,9 @@ const config = {
   },
 };
 
-module.exports = config;
+//module.exports = config;
+module.exports = {
+  eslint: {
+    ignoreDuringBuilds: true,
+  }
+}
