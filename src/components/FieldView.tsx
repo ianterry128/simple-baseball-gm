@@ -1,7 +1,5 @@
-import { Player } from "@prisma/client";
-import { Console } from "console";
-import { useEffect, useLayoutEffect, useState } from "react";
-import { api } from "~/utils/api";
+
+import { useEffect, useState } from "react";
 import { Pixel, Position, hex_distance, hex_lineDraw, hex_ring, hex_to_pixel, pixel_to_hex } from "~/utils/hexUtil";
 
 interface PlayerClassName {
@@ -50,7 +48,7 @@ export function FieldView(props: FieldViewProps) {
     s: 0,
   });
   const [hexCoordString, setHexCoordString] = useState<string>('Hover over hex to see coordinates')
-  const [canvasState, setCanvasState] = useState<HTMLCanvasElement>();
+  //const [canvasState, setCanvasState] = useState<HTMLCanvasElement>();
   const [hexSizeState, setHexSizeState] = useState<number>(7);
 
   // LOG STATE VARIABLES
@@ -70,8 +68,8 @@ export function FieldView(props: FieldViewProps) {
   //const [isLogActive, setIsLogActive] = useState<boolean>(false);
   
   // SCOREBOARD STATE VARIABLES
-  const [sb_teamHome, setSb_teamHome] = useState<string>('');
-  const [sb_teamAway, setSb_teamAway] = useState<string>('');
+  //const [sb_teamHome, setSb_teamHome] = useState<string>('');
+  //const [sb_teamAway, setSb_teamAway] = useState<string>('');
   const [sb_runsHome, setSb_runsHome] = useState<number>(0);
   const [sb_runsAway, setSb_runsAway] = useState<number>(0);
   const [sb_inning, setSb_inning] = useState<number>(0);
@@ -104,9 +102,9 @@ export function FieldView(props: FieldViewProps) {
   const canvas_w = 900;
   const canvas_h = 500;
 
-  let placed_of_count = 0;
-  let placed_mif_count = 0;
-  let placed_r2_count = 0;
+  //let placed_of_count = 0;
+  //let placed_mif_count = 0;
+  //let placed_r2_count = 0;
 
   const a = 2 * Math.PI / 6;
 
@@ -115,20 +113,20 @@ export function FieldView(props: FieldViewProps) {
   const center_dist = 40;
   // FUNCTIONS HERE USE REACT HOOKS
 
-  function drawHexes(x: number, y: number) { // TODO: think I don't need x and y parameters
+  function drawHexes(/*x: number, y: number*/) { // TODO: think I don't need x and y parameters
     const canvas: HTMLCanvasElement = document.getElementById('canvas') as HTMLCanvasElement;
-    setCanvasState(canvas);
+    //setCanvasState(canvas);
     const ctx = canvas.getContext('2d');
     const r = hexSizeState; // this determines size of each hex
     setHexSizeState(r);
-    let home_pos: Position = {q:0, r:0, s:0};
-    let first_pos: Position = {q:13, r:-13, s:0};
-    let second_pos: Position = {q:0, r:-13, s:13};
-    let third_pos: Position = {q:-13, r:0, s:13};
-    let r_post: Position = {q:right_dist, r:-right_dist, s:0};
-    let l_post: Position = {q:-left_dist, r:0, s:left_dist};
-    let center: Position = {q:0, r:-center_dist, s:center_dist};
-    let mound_pos: Position = {q:0, r:-7, s:7};
+    const home_pos: Position = {q:0, r:0, s:0};
+    const first_pos: Position = {q:13, r:-13, s:0};
+    const second_pos: Position = {q:0, r:-13, s:13};
+    const third_pos: Position = {q:-13, r:0, s:13};
+    const r_post: Position = {q:right_dist, r:-right_dist, s:0};
+    const l_post: Position = {q:-left_dist, r:0, s:left_dist};
+    const center: Position = {q:0, r:-center_dist, s:center_dist};
+    const mound_pos: Position = {q:0, r:-7, s:7};
 
     //drawHex(ctx!, x, y, r);
     //draw grass
@@ -176,7 +174,7 @@ export function FieldView(props: FieldViewProps) {
       const bb = canvas.getBoundingClientRect();
       const x = Math.floor( (event.clientX - bb.left) / bb.width * canvas.width );
       const y = Math.floor( (event.clientY - bb.top) / bb.height * canvas.height );
-      let _hexCoord: Position = pixel_to_hex({x:x, y:y}, r, {x: canvas_w/2, y: canvas_h-r});
+      const _hexCoord: Position = pixel_to_hex({x:x, y:y}, r, {x: canvas_w/2, y: canvas_h-r});
 
       //console.log(`pixel coord: ${x}, ${y}`);
       //console.log(`hex coord: ${_hexCoord.q}, ${_hexCoord.r}, ${_hexCoord.s}`)
@@ -194,9 +192,9 @@ export function FieldView(props: FieldViewProps) {
     const bb = canvas.getBoundingClientRect();
     const x = Math.floor( (event.clientX - bb.left) / bb.width * canvas.width );
     const y = Math.floor( (event.clientY - bb.top) / bb.height * canvas.height );
-    let _hexCoord: Position = pixel_to_hex({x:x, y:y}, r, {x: canvas_w/2, y: canvas_h-r});
-    let centered_pixel  = hex_to_pixel(_hexCoord, r, {x: canvas_w/2, y: canvas_h-r});
-    let prev_pixel: Pixel  = hex_to_pixel(hexCoord, r, {x: canvas_w/2, y: canvas_h-r});
+    const _hexCoord: Position = pixel_to_hex({x:x, y:y}, r, {x: canvas_w/2, y: canvas_h-r});
+    //let centered_pixel  = hex_to_pixel(_hexCoord, r, {x: canvas_w/2, y: canvas_h-r});
+    //let prev_pixel: Pixel  = hex_to_pixel(hexCoord, r, {x: canvas_w/2, y: canvas_h-r});
     
     //console.log(`pixel coord: ${x}, ${y}`);
     //console.log(`hex coord: ${_hexCoord.q}, ${_hexCoord.r}, ${_hexCoord.s}`)
@@ -226,10 +224,10 @@ export function FieldView(props: FieldViewProps) {
 
   function drawLine(ctx: CanvasRenderingContext2D, from: Position, to: Position, size: number, color?: string) {
    
-    let hex_line: Position[] = hex_lineDraw(from, to);
-    let num_hexes = hex_line.length;
+    const hex_line: Position[] = hex_lineDraw(from, to);
+    const num_hexes = hex_line.length;
     let pixel: Pixel = {x:0, y:0};
-    let y: number = 0;
+    //let y: number = 0;
     for (let i=0; i<num_hexes; i++) {
       pixel  = hex_to_pixel(hex_line[i]!, size, {x: canvas_w/2, y: canvas_h-hexSizeState});
       drawHex(ctx, pixel.x, pixel.y, size, color);
@@ -237,7 +235,7 @@ export function FieldView(props: FieldViewProps) {
   }
 
   function drawSquare(ctx: CanvasRenderingContext2D, left: Position, top: Position, right: Position, bottom: Position, size: number, color: string) {
-    let num_lines: number = hex_distance(top, right);
+    const num_lines: number = hex_distance(top, right);
     let fromPos = left;
     let toPos = top;
     for (let i=0; i<=num_lines; i++) {
@@ -248,7 +246,7 @@ export function FieldView(props: FieldViewProps) {
   }
 
   function drawRing(ctx: CanvasRenderingContext2D, center_hex: Position, radius: number, size: number, color?: string) {
-    let hexes_to_draw: Position[] = hex_ring(center_hex, radius);
+    const hexes_to_draw: Position[] = hex_ring(center_hex, radius);
     let pixel: Pixel = {x:0, y:0};
 
     for (let i=0; i<hexes_to_draw.length; i++) {
@@ -258,7 +256,7 @@ export function FieldView(props: FieldViewProps) {
   }
   /* This version of drawRing is for the Catcher */
   function drawRing_C(ctx: CanvasRenderingContext2D, center_hex: Position, radius: number, size: number, color?: string) {
-    let hexes_to_draw: Position[] = hex_ring(center_hex, radius);
+    const hexes_to_draw: Position[] = hex_ring(center_hex, radius);
     let pixel: Pixel = {x:0, y:0};
 
     for (let i=6; i<hexes_to_draw.length-1; i++) {
@@ -271,17 +269,19 @@ export function FieldView(props: FieldViewProps) {
     //drawHex(ctx, pixel.x, pixel.y, size, color);
   }
 
-  function drawPosLabels(ctx: CanvasRenderingContext2D, _pixel: Pixel, position: FieldPositions) {
-
-    ctx.fillStyle = "black"
-    ctx.globalAlpha = 0.8
-    ctx.fillRect(_pixel.x-13, _pixel.y-28, 130, 25)
-    ctx.globalAlpha = 1.0
-    ctx.font = "14px arial"
-    ctx.fillStyle = "white"
-    let hexCoordText: string = `${position}: ${props.fielderHexPos[position].q}, ${props.fielderHexPos[position].r}, ${props.fielderHexPos[position].s}`
-    ctx.fillText(hexCoordText, _pixel.x-10, _pixel.y-10)
-  }
+  /**
+    function drawPosLabels(ctx: CanvasRenderingContext2D, _pixel: Pixel, position: FieldPositions) {
+  
+      ctx.fillStyle = "black"
+      ctx.globalAlpha = 0.8
+      ctx.fillRect(_pixel.x-13, _pixel.y-28, 130, 25)
+      ctx.globalAlpha = 1.0
+      ctx.font = "14px arial"
+      ctx.fillStyle = "white"
+      let hexCoordText: string = `${position}: ${props.fielderHexPos[position].q}, ${props.fielderHexPos[position].r}, ${props.fielderHexPos[position].s}`
+      ctx.fillText(hexCoordText, _pixel.x-10, _pixel.y-10)
+    }
+  */
 
   function drawFieldersInitial(f_positions: Record<FieldPositions, Position>) {
     /**
@@ -303,32 +303,32 @@ export function FieldView(props: FieldViewProps) {
     for (const fp in f_positions) {
       //console.log(`fp = ${fp} and fielderhexpos[fp]= ${f_positions[fp as FieldPositions]}`)
       if (fp === '1B' || fp === '3B') {
-        let pixel  = hex_to_pixel(f_positions[fp as FieldPositions], hexSizeState, {x: canvas_w/2, y: canvas_h-hexSizeState});
+        const pixel  = hex_to_pixel(f_positions[fp as FieldPositions], hexSizeState, {x: canvas_w/2, y: canvas_h-hexSizeState});
         drawHex(canvas.getContext('2d')!, pixel.x, pixel.y, hexSizeState, 'purple');
         drawRing(canvas.getContext('2d')!, f_positions[fp as FieldPositions], 2, hexSizeState, 'purple');
         //drawPosLabels(canvas.getContext('2d')!, pixel, fp)
       }
       if (fp === '2B' || fp === 'SS') {
-        let pixel  = hex_to_pixel(f_positions[fp as FieldPositions], hexSizeState, {x: canvas_w/2, y: canvas_h-hexSizeState});
+        const pixel  = hex_to_pixel(f_positions[fp as FieldPositions], hexSizeState, {x: canvas_w/2, y: canvas_h-hexSizeState});
         drawHex(canvas.getContext('2d')!, pixel.x, pixel.y, hexSizeState, 'blue');
         drawRing(canvas.getContext('2d')!, f_positions[fp as FieldPositions], 3, hexSizeState, 'blue');
         //drawPosLabels(canvas.getContext('2d')!, pixel, fp)
       }
       if (fp === 'LF' || fp === 'CF' || fp === 'RF') {
-        let pixel  = hex_to_pixel(f_positions[fp as FieldPositions], hexSizeState, {x: canvas_w/2, y: canvas_h-hexSizeState});
+        const pixel  = hex_to_pixel(f_positions[fp as FieldPositions], hexSizeState, {x: canvas_w/2, y: canvas_h-hexSizeState});
         drawHex(canvas.getContext('2d')!, pixel.x, pixel.y, hexSizeState, 'red');
         drawRing(canvas.getContext('2d')!, f_positions[fp as FieldPositions], 5, hexSizeState, 'red');
         //drawPosLabels(canvas.getContext('2d')!, pixel, fp)
       }
       if (fp === 'P') {
-        let pixel  = hex_to_pixel(f_positions[fp as FieldPositions], hexSizeState, {x: canvas_w/2, y: canvas_h-hexSizeState});
+        const pixel  = hex_to_pixel(f_positions[fp as FieldPositions], hexSizeState, {x: canvas_w/2, y: canvas_h-hexSizeState});
         drawHex(canvas.getContext('2d')!, pixel.x, pixel.y, hexSizeState, 'gold');
         drawRing(canvas.getContext('2d')!, f_positions[fp as FieldPositions], 1, hexSizeState, 'gold');
         //drawPosLabels(canvas.getContext('2d')!, pixel, fp)
         
       }
       if (fp === 'C') {
-        let pixel  = hex_to_pixel(f_positions[fp as FieldPositions], hexSizeState, {x: canvas_w/2, y: canvas_h-hexSizeState});
+        const pixel  = hex_to_pixel(f_positions[fp as FieldPositions], hexSizeState, {x: canvas_w/2, y: canvas_h-hexSizeState});
         drawHex(canvas.getContext('2d')!, pixel.x, pixel.y, hexSizeState, 'black');
         drawRing_C(canvas.getContext('2d')!, f_positions[fp as FieldPositions], 2, hexSizeState, 'black');
         //drawPosLabels(canvas.getContext('2d')!, pixel, fp)
@@ -350,13 +350,13 @@ function MatchTextLog3(props_matchlog: MatchLogProps3) {
       if (!isLogPaused) {
         // update scoreboard state variables here
         setLogIndex(c => c + 1); 
-        let str = props.logContents[logIndex];
+        const str = props.logContents[logIndex];
         if (str?.includes('steps up')) { // set batter TODO: do this a better way
-          let batter = str.split(' ', 1);
+          const batter = str.split(' ', 1);
           setSb_batter(batter[0]!);  
         }
         if (str?.includes('Inning')) { // update inning info
-          let half = str.substring(0,3)==='Top' ? 'Top' : 'Bottom'
+          const half = str.substring(0,3)==='Top' ? 'Top' : 'Bottom'
           setSb_inningHalf(half);
           if (half==='Top') {
 
@@ -374,7 +374,7 @@ function MatchTextLog3(props_matchlog: MatchLogProps3) {
             setSb_homeInningRuns(props_matchlog._homeInningRuns);
           }
           setSb_outs(0); // reset outs to 0 when sides change
-          let baseReset: SB_BasesOccupied = { //reset bases when sides change
+          const baseReset: SB_BasesOccupied = { //reset bases when sides change
             first: 'none',
             second: 'none',
             third: 'none'
@@ -388,13 +388,13 @@ function MatchTextLog3(props_matchlog: MatchLogProps3) {
           setSb_outs(n => n+1);
         }
         if (str?.includes('out at')) {
-          let curBases = sb_baseRunners;
-          let _runner = str.split(' ', 1)[0];
+          const curBases = sb_baseRunners;
+          const _runner = str.split(' ', 1)[0];
           // which base was this runner previously on (if any)?
-          let firstBaseString: string = (sb_baseRunners.first === _runner) ? 'none' : curBases.first;
-          let secondBaseString: string = (sb_baseRunners.second === _runner) ? 'none' : curBases.second;
-          let thirdBaseString: string = (sb_baseRunners.third === _runner) ? 'none' : curBases.third;
-          let newBases: SB_BasesOccupied = {
+          const firstBaseString: string = (sb_baseRunners.first === _runner) ? 'none' : curBases.first;
+          const secondBaseString: string = (sb_baseRunners.second === _runner) ? 'none' : curBases.second;
+          const thirdBaseString: string = (sb_baseRunners.third === _runner) ? 'none' : curBases.third;
+          const newBases: SB_BasesOccupied = {
             first: firstBaseString,
             second: secondBaseString,
             third: thirdBaseString
@@ -410,8 +410,8 @@ function MatchTextLog3(props_matchlog: MatchLogProps3) {
           }
         }
         if (str?.includes('runners advance')) { // update baserunners
-          let curBases = sb_baseRunners;
-          let newBases: SB_BasesOccupied = {
+          const curBases = sb_baseRunners;
+          const newBases: SB_BasesOccupied = {
             first: sb_batter,
             second: curBases.first,
             third: curBases.second
@@ -433,12 +433,12 @@ function MatchTextLog3(props_matchlog: MatchLogProps3) {
           }
         }
         if (str?.includes('advances to third base')) { // update baserunners TODO
-          let curBases = sb_baseRunners;
-          let _runner = str.split(' ', 1)[0];
+          const curBases = sb_baseRunners;
+          const _runner = str.split(' ', 1)[0];
           // which base was this runner previously on (if any)?
-          let firstBaseString: string = (sb_baseRunners.first === _runner) ? 'none' : curBases.first;
-          let secondBaseString: string = (sb_baseRunners.second === _runner) ? 'none' : curBases.second;
-          let newBases: SB_BasesOccupied = {
+          const firstBaseString: string = (sb_baseRunners.first === _runner) ? 'none' : curBases.first;
+          const secondBaseString: string = (sb_baseRunners.second === _runner) ? 'none' : curBases.second;
+          const newBases: SB_BasesOccupied = {
             first: firstBaseString,
             second: secondBaseString,
             third: _runner!
@@ -446,11 +446,11 @@ function MatchTextLog3(props_matchlog: MatchLogProps3) {
           setSb_baseRunners(newBases);
         }
         if (str?.includes('advances to second base')) { // update baserunners TODO
-          let curBases = sb_baseRunners;
-          let _runner = str.split(' ', 1)[0];
+          const curBases = sb_baseRunners;
+          const _runner = str.split(' ', 1)[0];
           // which base was this batter previously on (if any)?
-          let firstBaseString: string = (sb_baseRunners.first === _runner) ? 'none' : curBases.first;
-          let newBases: SB_BasesOccupied = {
+          const firstBaseString: string = (sb_baseRunners.first === _runner) ? 'none' : curBases.first;
+          const newBases: SB_BasesOccupied = {
             first: firstBaseString,
             second: _runner!,
             third: curBases.third
@@ -458,9 +458,9 @@ function MatchTextLog3(props_matchlog: MatchLogProps3) {
           setSb_baseRunners(newBases);
         }
         if (str?.includes('advances to first base')) { // update baserunners TODO
-          let curBases = sb_baseRunners;
-          let _runner = str.split(' ', 1)[0];
-          let newBases: SB_BasesOccupied = {
+          const curBases = sb_baseRunners;
+          const _runner = str.split(' ', 1)[0];
+          const newBases: SB_BasesOccupied = {
             first: _runner!,
             second: curBases.second,
             third: curBases.third
@@ -481,13 +481,13 @@ function MatchTextLog3(props_matchlog: MatchLogProps3) {
             setSb_homeInningRuns(props_matchlog._homeInningRuns);
           }
           // set baserunners
-          let curBases = sb_baseRunners;
-          let newBases: SB_BasesOccupied = {
+          const curBases = sb_baseRunners;
+          const newBases: SB_BasesOccupied = {
             first: curBases.first,
             second: curBases.second,
             third: curBases.third
           }
-          let _player = str.split(' ', 1)[0];
+          const _player = str.split(' ', 1)[0];
           if (curBases.first === _player) {
             newBases.first = 'none';
           }
@@ -559,7 +559,7 @@ function MatchTextLog3(props_matchlog: MatchLogProps3) {
 
 function Scoreboard() {
     //create header row and inningRun columns
-    let headerArr = [' '];
+    const headerArr = [' '];
     //let inningRuns = []
     for (let i=0; i < __awayInningRuns.length; i++) {
       headerArr.push(`${i+1}`);
@@ -641,7 +641,7 @@ function Scoreboard() {
 
 
  useEffect(() => { 
-  drawHexes(50,50);
+  drawHexes();
   drawFieldersInitial(props.fielderHexPos);
  }, [])
 
@@ -696,34 +696,6 @@ function Scoreboard() {
 
 // Functions outside Home() do not require REACT hooks
 
-function getHexesAtDistance(distance: number): Hex[] {
-  let hexes: Hex[] = [];
-  let isFilled: boolean = false;
-  let i = 0;
-  const l_corner = {position:{q:-distance, r:0, s:distance}, isFair:true};
-  const center = {position:{q:0, r:-distance, s:distance}, isFair:true};
-  const r_corner = {position:{q:distance, r:-distance, s:0}, isFair:true};
-
-  const leftCenterLine: Position[] = hex_lineDraw(l_corner.position, center.position);
-  const centerRightLine: Position[] = hex_lineDraw(center.position, r_corner.position);
-
-  while (i < leftCenterLine.length) {
-    hexes[i] = {position:leftCenterLine[i]!, ballHeight:0};
-    i++;
-  }
-  let j = i;
-  while (j < leftCenterLine.length + centerRightLine.length - 1) {
-    if (!hexes.some(val => {
-      return JSON.stringify(val) === JSON.stringify({position:centerRightLine[i - leftCenterLine.length]!, isFair:true})
-    }))
-    {
-      hexes[j] = {position:centerRightLine[i - leftCenterLine.length]!, ballHeight:0};
-      j++;
-    }
-    i++;
-  }
-  return hexes;
-}
 
 
 
