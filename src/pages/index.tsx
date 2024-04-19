@@ -1142,65 +1142,71 @@ function MyLeaguesTable() {
   }
 
   return (
-    <div>
-    <table className="table-auto border-2 border-spacing-2 p-8">
-      <caption>My Leagues</caption>
-      <thead>
-        <tr className="even:bg-gray-50 odd:bg-white">
-          <th>---</th>
-          <th>League</th>
-          <th>Team</th>
-          <th>Season</th>
-        </tr>
-      </thead>
-      <tbody>
-
-        {
-          leagueQuery.data?.map((item, index) => {
-            return (
-              <tr key={crypto.randomUUID()} className="even:bg-green-200 odd:bg-gray-50">
-                <td className="px-5 py-2">
-                  <button 
-                    onClick={() => { 
-                      // set state that needs to persist for playing game
-                      setIsPlayingGame(true);
+    <div className="h-dvh">
+      <div className="flex flex-row justify-center">
+        <h1 className="text-2xl ">Welcome to Simple Baseball GM!</h1>
+      </div>
+      <div className="px-2">
+      <table className="table-auto border-2 border-spacing-2 p-8">
+        <caption>My Leagues</caption>
+        <thead>
+          <tr className="even:bg-gray-50 odd:bg-white">
+            <th>---</th>
+            <th>League</th>
+            <th>Team</th>
+            <th>Season</th>
+          </tr>
+        </thead>
+        <tbody>
           
-                      // from https://www.prisma.io/docs/orm/prisma-client/special-fields-and-types/working-with-json-fields
-                      if (
-                        item?.teamsJson &&
-                        typeof item?.teamsJson === 'object' &&
-                        Array.isArray(item?.teamsJson)
-                      ) {
-                        const teamsObject = item?.teamsJson as Prisma.JsonArray
-                        //const scheduleObject = item.scheduleJson as Prisma.JsonArray
-                        setGameData({
-                          //league: {id: item.id, name: item.name, teams: item.teamsJson},
-                          leagueId: item.id,
-                          leagueName: item.name,
-                          myTeamId: item.myTeamId,
-                          season: item.season, 
-                          week: item.week,
-                          phase: WeekPhase.PREGAME, // change to reflect phase from database
-                          teams: JSON.parse(JSON.stringify(teamsObject)),
-                          schedule: JSON.parse(JSON.stringify(item.scheduleJson)),
-                          fielderHexPos: default_fielderHexPos // make it so this updates to custom positions
-                        })
-                      }
-                      
-                    }}
-                    className="block rounded-md transition-colors duration-200 hover:bg-green-500 
-                  bg-green-700 text-center justify-center text-white shadow-sm font-bold h-7 w-20">PLAY
-                  </button>
-                </td>
-                <td className="px-2">{item.name}</td>
-                <td className="px-2">{item.myTeamName}</td>
-                <td className="px-2">1</td>
-              </tr>
-            )
-          })
-        }
-      </tbody>
-    </table>
+
+          {
+            leagueQuery.data?.map((item, index) => {
+              return (
+                <tr key={crypto.randomUUID()} className="even:bg-green-200 odd:bg-gray-50">
+                  <td className="px-5 py-2">
+                    <button 
+                      onClick={() => { 
+                        // set state that needs to persist for playing game
+                        setIsPlayingGame(true);
+            
+                        // from https://www.prisma.io/docs/orm/prisma-client/special-fields-and-types/working-with-json-fields
+                        if (
+                          item?.teamsJson &&
+                          typeof item?.teamsJson === 'object' &&
+                          Array.isArray(item?.teamsJson)
+                        ) {
+                          const teamsObject = item?.teamsJson as Prisma.JsonArray
+                          //const scheduleObject = item.scheduleJson as Prisma.JsonArray
+                          setGameData({
+                            //league: {id: item.id, name: item.name, teams: item.teamsJson},
+                            leagueId: item.id,
+                            leagueName: item.name,
+                            myTeamId: item.myTeamId,
+                            season: item.season, 
+                            week: item.week,
+                            phase: WeekPhase.PREGAME, // change to reflect phase from database
+                            teams: JSON.parse(JSON.stringify(teamsObject)),
+                            schedule: JSON.parse(JSON.stringify(item.scheduleJson)),
+                            fielderHexPos: default_fielderHexPos // make it so this updates to custom positions
+                          })
+                        }
+                        
+                      }}
+                      className="block rounded-md transition-colors duration-200 hover:bg-green-500 
+                    bg-green-700 text-center justify-center text-white shadow-sm font-bold h-7 w-20">PLAY
+                    </button>
+                  </td>
+                  <td className="px-2">{item.name}</td>
+                  <td className="px-2">{item.myTeamName}</td>
+                  <td className="px-2">1</td>
+                </tr>
+              )
+            })
+          }
+        </tbody>
+      </table>
+    </div>
   </div>
   )
 }
@@ -1664,7 +1670,7 @@ function TeamInfoView({MyTeamIndex} : {MyTeamIndex: number}) {
   const captionText: string = `My Team: ${gameData.teams[MyTeamIndex]?.name}`
 
   return (
-    <div className="flex flex-col overflow-x-auto px-10 py-5 gap-5 ">
+    <div className="flex flex-col overflow-x-auto px-10 py-5 gap-5 h-dvh">
       <div className="flex flex-row gap-10">
         <table className="table-auto border-2 border-spacing-2 p-8 w-3/6 shadow-lg">
           <caption className="text-lg font-semibold">{captionText}</caption>
@@ -2008,6 +2014,7 @@ function PostGameView({MyTeamIndex} : {MyTeamIndex: number}) {
   // TODO MOVE ALL THIS
   
   return (
+    <div className="h-dvh">
     <div className="overflow-x-auto flex flex-col pl-10 py-5 h-full">
       {/*<h2>My team avg level = {myTeamAvgLvl}</h2>
       <h2>Opponent team avg level = {oppTeamAvgLvl}</h2>*/}
@@ -2206,7 +2213,7 @@ function PostGameView({MyTeamIndex} : {MyTeamIndex: number}) {
             }
           </tbody>
         </table>
-        <div className="border-2 rounded-lg shadow-lg bg-black bg-opacity-65 text-white min-w-80 lg:w-2/6 h-1/2 p-5">
+        <div className="border-2 rounded-lg shadow-lg bg-black bg-opacity-65 text-white min-w-80 lg:w-2/6 sm:h-60 p-5">
             <p className="text-xl underline">Did you know?</p>
             <ul className="list-disc list-outside py-2 px-3">
               <li>The amount of experience a player earns depends on how well they performed in the last game.</li>
@@ -2277,7 +2284,7 @@ function PostGameView({MyTeamIndex} : {MyTeamIndex: number}) {
         </table>
       </div>
     </div>
-      
+    </div>
   )
 }
 
@@ -2294,11 +2301,12 @@ function TopBar() {
             <div className="gap-3"> {/* why do I need this div? */}
                 <Link 
                     href="/new_league"
-                    className=" transition-colors duration-200 hover:bg-green-500 
-                bg-green-700 text-center text-white shadow-sm ">New League
+                    className=" transition-colors duration-200 hover:bg-white
+                    text-left text-nowrap  ">New League
                 </Link>
                 <button 
-                className="px-2"
+                className="px-2 transition-colors duration-200 hover:bg-white
+                text-left text-nowrap "
                 onClick={() => void signOut()}>Log Out</button>   
             </div>
           ) : null}
