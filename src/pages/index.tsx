@@ -565,6 +565,7 @@ export default function Home() {
 
   // set hook functions as const so it can be used inside event handler
   const createLeagueConst = api.league.create.useMutation(); 
+  const updateLeagueConst = api.league.update.useMutation(); 
   const createTeamConst = api.team.create.useMutation(); 
   const createPlayerConst = api.player.create.useMutation(); 
 
@@ -2213,7 +2214,7 @@ function PostGameView({MyTeamIndex} : {MyTeamIndex: number}) {
             }
           </tbody>
         </table>
-        <div className="border-2 rounded-lg shadow-lg bg-black bg-opacity-65 text-white min-w-80 lg:w-2/6 sm:h-60 p-5">
+        <div className="border-2 rounded-lg shadow-lg bg-black bg-opacity-65 text-white min-w-80 lg:w-2/6 h-fit lg:h-fit p-5">
             <p className="text-xl underline">Did you know?</p>
             <ul className="list-disc list-outside py-2 px-3">
               <li>The amount of experience a player earns depends on how well they performed in the last game.</li>
@@ -2583,6 +2584,7 @@ function TopBar() {
                 // save all team wins/losses
                 // sim other team's games
                 let temp_teams: TeamStateStruct[] = [];
+                let temp_myteam_name: string = '';
                 for (let i=0; i<gameData.schedule[gameData.week]!.length; i++) {
                   let matchups = gameData.schedule[gameData.week]!;
                   if (matchups[i]!.homeTeam !== gameData.myTeamId && matchups[i]!.awayTeam !== gameData.myTeamId) { // don't sim game if this was my team's game for that week (already simmed)
@@ -2607,6 +2609,10 @@ function TopBar() {
                     })
                   }
                   else { // my team and my opponent team wins and gamesPlayed have already been updated
+                    // get my team name
+                    if (matchups[i]!.homeTeam === gameData.myTeamId) temp_myteam_name = getTeamById(matchups[i]!.homeTeam)?.name!;
+                    else if (matchups[i]!.awayTeam === gameData.myTeamId) temp_myteam_name = getTeamById(matchups[i]!.awayTeam)?.name!;
+
                     const team_home = getTeamById(matchups[i]!.homeTeam);
                     const team_away = getTeamById(matchups[i]!.awayTeam);
                     temp_teams.push({
@@ -2626,6 +2632,7 @@ function TopBar() {
                   }
                 }
                 if (gameData.week < 31) {
+                  // save to persistent state variable
                   setGameData({
                     leagueId: gameData.leagueId,
                     leagueName: gameData.leagueName,
@@ -2637,6 +2644,75 @@ function TopBar() {
                     schedule: gameData.schedule,
                     fielderHexPos: gameData.fielderHexPos
                   })
+                  // save to database
+                  updateLeagueConst.mutate({ id: gameData.leagueId, name: gameData.leagueName, teamsJson: temp_teams.map((v) => {
+                    return {
+                      id: v.id,
+                      name: v.name,
+                      gamesPlayed: v.gamesPlayed,
+                      wins: v.wins,
+                      playersJson: v.playersJson.map((item) => {
+                        return {
+                          id: item.id,
+                          name: item.name,
+                          age: item.age,
+                          strength: item.strength,
+                          strengthPot: item.strengthPot,
+                          speed: item.speed,
+                          speedPot: item.speedPot,
+                          precision: item.precision,
+                          precisionPot: item.precisionPot,
+                          contact: item.contact,
+                          contactPot: item.contactPot,
+                          class: item.class,
+                          potential: item.potential,
+                          experience: item.experience,
+                          level: item.level,
+                          classExp: item.classExp,
+                          classLvl: item.classLvl,
+                          teamId: v.id,
+                          focusStat: item.focusStat,
+                          stats_season: {
+                            at_bats: item.stats_season.at_bats,
+                            runs: item.stats_season.runs,
+                            walks: item.stats_season.walks,
+                            hits: item.stats_season.hits,
+                            doubles: item.stats_season.doubles,
+                            triples: item.stats_season.triples,
+                            home_runs: item.stats_season.home_runs,
+                            rbi: item.stats_season.rbi,
+                            strike_outs: item.stats_season.strike_outs,
+                            errors: item.stats_season.errors,
+                            assists: item.stats_season.assists,
+                            putouts: item.stats_season.putouts,
+                            k: item.stats_season.k,
+                            walks_allowed: item.stats_season.walks_allowed,
+                            ip: item.stats_season.ip,
+                            runs_allowed: item.stats_season.runs_allowed,
+                          },
+                          stats_career: {
+                            at_bats: item.stats_career.at_bats,
+                            runs: item.stats_career.runs,
+                            walks: item.stats_career.walks,
+                            hits: item.stats_career.hits,
+                            doubles: item.stats_career.doubles,
+                            triples: item.stats_career.triples,
+                            home_runs: item.stats_career.home_runs,
+                            rbi: item.stats_career.rbi,
+                            strike_outs: item.stats_career.strike_outs,
+                            errors: item.stats_career.errors,
+                            assists: item.stats_career.assists,
+                            putouts: item.stats_career.putouts,
+                            k: item.stats_career.k,
+                            walks_allowed: item.stats_career.walks_allowed,
+                            ip: item.stats_career.ip,
+                            runs_allowed: item.stats_career.runs_allowed,
+                          }
+                        }
+                      }),
+                      leagueId: gameData.leagueId
+                    }
+                  }) , myTeamId: gameData.myTeamId, myTeamName: temp_myteam_name, season: gameData.season, week: gameData.week + 1, scheduleJson: gameData.schedule});
                 }
                 else if (gameData.week >= 31) {
                   // create new schedule
@@ -2646,6 +2722,7 @@ function TopBar() {
                     v.gamesPlayed = 0;
                     v.wins = 0;
                   })
+                  // save to persistent state variable
                   setGameData({
                     leagueId: gameData.leagueId,
                     leagueName: gameData.leagueName,
@@ -2657,7 +2734,77 @@ function TopBar() {
                     schedule: nextSeasonSchedule,
                     fielderHexPos: gameData.fielderHexPos
                   })
+                  // save to database TODO: reset player season performance stats
+                  updateLeagueConst.mutate({ id: gameData.leagueId, name: gameData.leagueName, teamsJson: temp_teams.map((v) => {
+                    return {
+                      id: v.id,
+                      name: v.name,
+                      gamesPlayed: v.gamesPlayed,
+                      wins: v.wins,
+                      playersJson: v.playersJson.map((item) => {
+                        return {
+                          id: item.id,
+                          name: item.name,
+                          age: item.age,
+                          strength: item.strength,
+                          strengthPot: item.strengthPot,
+                          speed: item.speed,
+                          speedPot: item.speedPot,
+                          precision: item.precision,
+                          precisionPot: item.precisionPot,
+                          contact: item.contact,
+                          contactPot: item.contactPot,
+                          class: item.class,
+                          potential: item.potential,
+                          experience: item.experience,
+                          level: item.level,
+                          classExp: item.classExp,
+                          classLvl: item.classLvl,
+                          teamId: v.id,
+                          focusStat: item.focusStat,
+                          stats_season: {
+                            at_bats: item.stats_season.at_bats,
+                            runs: item.stats_season.runs,
+                            walks: item.stats_season.walks,
+                            hits: item.stats_season.hits,
+                            doubles: item.stats_season.doubles,
+                            triples: item.stats_season.triples,
+                            home_runs: item.stats_season.home_runs,
+                            rbi: item.stats_season.rbi,
+                            strike_outs: item.stats_season.strike_outs,
+                            errors: item.stats_season.errors,
+                            assists: item.stats_season.assists,
+                            putouts: item.stats_season.putouts,
+                            k: item.stats_season.k,
+                            walks_allowed: item.stats_season.walks_allowed,
+                            ip: item.stats_season.ip,
+                            runs_allowed: item.stats_season.runs_allowed,
+                          },
+                          stats_career: {
+                            at_bats: item.stats_career.at_bats,
+                            runs: item.stats_career.runs,
+                            walks: item.stats_career.walks,
+                            hits: item.stats_career.hits,
+                            doubles: item.stats_career.doubles,
+                            triples: item.stats_career.triples,
+                            home_runs: item.stats_career.home_runs,
+                            rbi: item.stats_career.rbi,
+                            strike_outs: item.stats_career.strike_outs,
+                            errors: item.stats_career.errors,
+                            assists: item.stats_career.assists,
+                            putouts: item.stats_career.putouts,
+                            k: item.stats_career.k,
+                            walks_allowed: item.stats_career.walks_allowed,
+                            ip: item.stats_career.ip,
+                            runs_allowed: item.stats_career.runs_allowed,
+                          }
+                        }
+                      }),
+                      leagueId: gameData.leagueId
+                    }
+                  }) , myTeamId: gameData.myTeamId, myTeamName: temp_myteam_name, season: gameData.season + 1, week: 0, scheduleJson: nextSeasonSchedule});
                 }
+
                 setLastMatchSimResults({
                   home_win: false,
                   player_matchStats: {}
