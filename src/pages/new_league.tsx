@@ -1,6 +1,8 @@
 //import { Player, Team } from "@prisma/client";
 //import { Console } from "console";
 //import { randomUUID } from "crypto";
+import { useQueryClient } from "@tanstack/react-query";
+import { getQueryKey } from "@trpc/react-query";
 import { signIn, signOut, useSession } from "next-auth/react";
 //import Head from "next/head";
 import Link from "next/link";
@@ -589,6 +591,9 @@ export default function Home() {
   }
 
   const schedule: { [key: number]: Matchup[]} = {}
+  
+  const queryClient = useQueryClient();
+  const leagueQueryKey = getQueryKey(api.league.getByUserId, user?.id!, 'query');
   function TopBar_newLeague() {
   
     return (
@@ -608,7 +613,12 @@ export default function Home() {
                           text-center hover:text-white shadow-sm"
                           onClick={() => {
                             setIsPlayingGame(false);
+                            queryClient.invalidateQueries({
+                              queryKey: leagueQueryKey,
+                              refetchType: 'all',
+                            });
                             router.push('/'); // this navigates to Home Page
+                            //window.location.reload(); // TODO: find better way to ensure leaguequery refetches
                           }}>
                             Switch League
                         </button>   

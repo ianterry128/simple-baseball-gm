@@ -1,5 +1,5 @@
 import { Player, Prisma } from "@prisma/client";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Console } from "console";
 import { randomUUID } from "crypto";
 import { signIn, signOut, useSession } from "next-auth/react";
@@ -31,6 +31,7 @@ import { library } from '@fortawesome/fontawesome-svg-core'
 import { faHouse, faPlane, faArrowUp, faArrowLeft, faArrowRight, faArrowDown, faBars } from '@fortawesome/free-solid-svg-icons'
 import { createSchedule } from "./new_league";
 import { isWeakMap } from "util/types";
+import { getQueryKey } from "@trpc/react-query";
 library.add(faHouse, faPlane, faArrowUp, faArrowLeft, faArrowRight, faArrowDown, faBars)
 
 const myFont = localFont({ src: '../../public/fonts/Talking_Baseball.otf' })
@@ -206,7 +207,7 @@ export default function Home() {
     schedule: {},
   });
   // LEAGUE TABLE STATE
-  const [isLeagueTableActive, setIsLeagueTableActive] = useState<boolean>(false);
+  //const [isLeagueTableActive, setIsLeagueTableActive] = useState<boolean>(false);
   const [isMenuVisible, setIsMenuVisible] = useState<boolean>(false);
 
   const [selectedTeam, setSelectedTeam] = useState(0);
@@ -1117,17 +1118,22 @@ function exhibition(team_home:TeamStateStruct, team_away:TeamStateStruct): Match
   }
 
 // COMPONENTS THAT REQUIRE STATE VARIABLES FROM HOME FUNCTION
+const queryClient = useQueryClient();
+
+const leagueQuery = api.league.getByUserId.useQuery(user?.id!);
+const leagueQueryKey = getQueryKey(api.league.getByUserId, user?.id!, 'query');
 function MyLeaguesTable() {
   if (isPlayingGame) {
     return;
   }
 
-  const session = useSession();
-  const user = session.data?.user;
+  //const session = useSession();
+  //const user = session.data?.user;
   if (user == null) { 
     return;
   }
-  const leagueQuery = api.league.getByUserId.useQuery(user?.id!)
+
+  //const leagueQuery = api.league.getByUserId.useQuery(user?.id!);
   if (leagueQuery.isFetching) { // TODO: animated loading spinner?
     return <h1>fetching...</h1>;
   }
@@ -1160,7 +1166,6 @@ function MyLeaguesTable() {
         </thead>
         <tbody>
           
-
           {
             leagueQuery.data?.map((item, index) => {
               return (
@@ -1200,7 +1205,7 @@ function MyLeaguesTable() {
                   </td>
                   <td className="px-2">{item.name}</td>
                   <td className="px-2">{item.myTeamName}</td>
-                  <td className="px-2">1</td>
+                  <td className="px-2">{item.season}</td>
                 </tr>
               )
             })
@@ -2809,6 +2814,7 @@ function TopBar() {
                   home_win: false,
                   player_matchStats: {}
                 });
+
                 //setPreGamePlayerStats(my_team.playersJson);  // used to compare against gameData player stats in PostGameView to check which stats/levels increased
                 //setPreGamePlayerStats([]);
                 //setLogContents([]);
@@ -2852,6 +2858,11 @@ function TopBar() {
                              text-left text-nowrap "
                             onClick={() => {
                               setIsPlayingGame(false);
+                              //window.location.reload(); // TODO: find a better way to ensure that leaguequery is refetched
+                              queryClient.invalidateQueries({
+                                queryKey: leagueQueryKey,
+                                refetchType: 'all',
+                              });
                             }}>
                               Switch League
                           </button>   
