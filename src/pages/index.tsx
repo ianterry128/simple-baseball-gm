@@ -1676,7 +1676,7 @@ function TeamInfoView({MyTeamIndex} : {MyTeamIndex: number}) {
   const captionText: string = `My Team: ${gameData.teams[MyTeamIndex]?.name}`
 
   return (
-    <div className="flex flex-col overflow-x-auto px-10 py-5 gap-5 h-dvh">
+    <div className="flex flex-col overflow-x-auto px-10 py-5 gap-5 ">
       <div className="flex flex-row gap-10">
         <table className="table-auto border-2 border-spacing-2 p-8 w-3/6 shadow-lg">
           <caption className="text-lg font-semibold">{captionText}</caption>
@@ -2020,7 +2020,7 @@ function PostGameView({MyTeamIndex} : {MyTeamIndex: number}) {
   // TODO MOVE ALL THIS
   
   return (
-    <div className="h-dvh">
+    <div className="">
     <div className="overflow-x-auto flex flex-col pl-10 py-5 h-full">
       {/*<h2>My team avg level = {myTeamAvgLvl}</h2>
       <h2>Opponent team avg level = {oppTeamAvgLvl}</h2>*/}
@@ -2971,8 +2971,8 @@ function LoggedOutView() {
 
 // This is the outermost HTML
   return (
-    <>
     <div className="">
+
       <TopBar />
       <div className=""> 
         <LoggedOutView />
@@ -2980,8 +2980,8 @@ function LoggedOutView() {
         <MainGameView />
         <ToastContainer />
       </div>
+
     </div>
-    </>
   );
 }
 
