@@ -20,13 +20,13 @@ const MyApp: AppType<{ session: Session | null }> = ({
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      <div className="container mx-auto ">
+      <div className="container mx-auto bg-[url('/img/overlapping-diamonds.svg')] h-full">
         <div className="flex flex-row flex-wrap h-full ">
           {/*
           <aside className="w-full sm:w-1/6 lg:w-1/12 px-2 ">
             {/*<SideNav />}
           </aside>  */}
-          <main className="w-full h-fit mx-auto bg-[url('/img/overlapping-diamonds.svg')] ">
+          <main className="w-full h-full mx-auto  ">
             <Component {...pageProps} />
           </main>
         </div>
