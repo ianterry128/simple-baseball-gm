@@ -368,6 +368,7 @@ export default function Home() {
 
         // choose lvl of player
         newPlayer.level = Math.floor(Math.random() * (team_lvl_max-team_lvl_min+1) + team_lvl_min); // random lvl between 30 and 5
+        if (newPlayer.class === 'P') newPlayer.level = Math.floor(Math.random() * (team_lvl_max-team_lvl_max-3 +1) + team_lvl_max-3); // prevents exceptionally weak pitchers
         if (m % 2) {
           team_lvl_max += 2;
         }
@@ -781,7 +782,7 @@ export function createSchedule(teams: TeamStateStruct[]): { [key: number]: Match
           indices[i]! + (num_teams/2);
       }
     }
-    // add mathups for this week to schedule
+    // add matchups for this week to schedule
     schedule[w] = matches;
   }
   return schedule;
