@@ -2047,7 +2047,7 @@ function PostGameView({MyTeamIndex} : {MyTeamIndex: number}) {
                 // get stats corresponding to this player
                 let _matchStats: playerMatchStats = lastMatchSimResults.player_matchStats[value.id]!;
                 const exp_gained: number = Math.round((_matchStats.at_bats + _matchStats.hits + _matchStats.doubles + (_matchStats.triples*2) + (_matchStats.home_runs*3) +
-                 _matchStats.rbi + _matchStats.runs + _matchStats.errors + _matchStats.assists + _matchStats.putouts) * multiplier);
+                 _matchStats.rbi + _matchStats.runs + _matchStats.errors + _matchStats.assists + _matchStats.putouts) * multiplier + 50);
                 
                  let inc_str = 0
                  let inc_spd = 0
@@ -2197,10 +2197,18 @@ function PostGameView({MyTeamIndex} : {MyTeamIndex: number}) {
                   <tr key={keyVal} className="even:bg-green-200 odd:bg-gray-50 hover:bg-blue-600 hover:text-gray-50 text-center">
                     <td className="px-2">{value.name}</td>
                     <td className="px-2">{value.class}</td>
-                    <td className={str_className_string}>{value.strength}<sup>{str_to_show}</sup></td>
-                    <td className={spd_className_string}>{value.speed}<sup>{spd_to_show}</sup></td>
-                    <td className={prec_className_string}>{value.precision}<sup>{prec_to_show}</sup></td>
-                    <td className={con_className_string}>{value.contact}<sup>{con_to_show}</sup></td>
+                    <td className="bg-red-500 bg-opacity-10">
+                      <td className={str_className_string}>{value.strength}<sup>{str_to_show}</sup></td>
+                    </td>
+                    <td className="bg-red-500 bg-opacity-10">
+                      <td className={spd_className_string}>{value.speed}<sup>{spd_to_show}</sup></td>
+                    </td>
+                    <td className="bg-red-500 bg-opacity-10">
+                      <td className={prec_className_string}>{value.precision}<sup>{prec_to_show}</sup></td>
+                    </td>
+                    <td className="bg-red-500 bg-opacity-10">
+                      <td className={con_className_string}>{value.contact}<sup>{con_to_show}</sup></td>
+                    </td>
                     <td className={lvl_className_string}>{value.level}<sup>{lvl_to_show}</sup></td>
                     <td className="px-2">{value.age}</td>
                     <td className="px-2">{exp_gained}</td>
@@ -2509,7 +2517,7 @@ function TopBar() {
 
                     // calculate experience and level ups
                     const exp_gained: number = Math.round((_matchStats.at_bats + _matchStats.hits + _matchStats.doubles + (_matchStats.triples*2) + (_matchStats.home_runs*3) +
-                      _matchStats.rbi + _matchStats.runs + _matchStats.errors + _matchStats.assists + _matchStats.putouts) * multiplier);
+                      _matchStats.rbi + _matchStats.runs + _matchStats.errors + _matchStats.assists + _matchStats.putouts) * multiplier + 50);
                     let exp_needed: number = getExperienceToNextLevel(players_copy[i]!.level, players_copy[i]!.experience);
                     if (exp_needed <= (exp_gained)) {
                       // level up

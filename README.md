@@ -98,7 +98,7 @@ Player performance is governed by 4 player stats:
 
 - **Strength** - Controls hit distance of batted balls and likelihood of throwing runners out on force plays.
 - **Speed** - Determines how likely a runner is to make it on base without being thrown out and also how likely it is for a runner to go for extra bases. For fielders, controls how many hexes they can move in a single turn when recovering a ball that landed outside their range.
-- **Precision** - Determines how likely a fielder is to catch a batted ball or make an error. For pitchers, determines likeihood of throwing strikes, walking the batter, or forcing weak contact.
+- **Precision** - Determines how likely a fielder is to catch a batted ball or make an error. For pitchers, determines likelihood of throwing strikes, walking the batter, or forcing weak contact.
 - **Contact** - Determines how likely a batter is to hit the ball.
 
 ## Development Details
